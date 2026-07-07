@@ -15,5 +15,7 @@ namespace Clean_Connect.Application.DTO
         public decimal Amount { get; set; }
        
         public string? ModifiedBy {  get; set; }
+
+       
     }
 }

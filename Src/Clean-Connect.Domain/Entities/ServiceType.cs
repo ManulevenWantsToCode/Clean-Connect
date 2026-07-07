@@ -58,8 +58,8 @@ namespace Clean_Connect.Domain.Entities
             if (name.Length < 10 || name.Length > 50)
                 throw new ArgumentOutOfRangeException(nameof(name), "Name length must be between 10 and 50.");
 
-            if (description.Length < 2 || description.Length > 300)
-                throw new ArgumentOutOfRangeException(nameof(name), "Description length must be between 20 and 300.");
+            if (description.Length < 10 || description.Length > 200)
+                throw new ArgumentOutOfRangeException(nameof(name), "Description length must be between 10 and 200.");
         }
     }
 }

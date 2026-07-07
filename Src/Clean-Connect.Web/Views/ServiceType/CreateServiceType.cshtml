@@ -1,0 +1,185 @@
+﻿@model Clean_Connect.Application.Command.ServiceTypeCommands.CreateServiceTypeCommand
+
+@{
+    ViewData["Title"] = "Create Service Type";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="page-card">
+
+    <div class="page-header">
+
+        <div>
+
+            <h2>
+
+                <i class="fa-solid fa-plus text-success me-2"></i>
+
+                Create Service Type
+
+            </h2>
+
+            <p class="text-muted mb-0">
+
+                Add a new cleaning service category.
+
+            </p>
+
+        </div>
+
+        <a asp-action="Index"
+           class="btn btn-outline-secondary">
+
+            <i class="fa-solid fa-arrow-left me-2"></i>
+
+            Back
+
+        </a>
+
+    </div>
+
+    <form asp-action="CreateServiceType"
+          method="post">
+
+        @Html.AntiForgeryToken()
+
+        <div asp-validation-summary="ModelOnly"
+             class="text-danger mb-3">
+        </div>
+
+        <div class="row">
+
+            <div class="col-lg-8">
+
+                <div class="card shadow-sm border-0 rounded-4">
+
+                    <div class="card-body">
+
+                        <!-- Name -->
+
+                        <div class="mb-4">
+
+                            <label asp-for="Name"
+                                   class="form-label">
+                            </label>
+
+                            <input asp-for="Name"
+                                   class="form-control"
+                                   placeholder="Home Cleaning" />
+
+                            <span asp-validation-for="Name"
+                                  class="text-danger">
+                            </span>
+
+                        </div>
+
+                        <!-- Description -->
+
+                        <div class="mb-4">
+
+                            <label asp-for="Description"
+                                   class="form-label">
+                            </label>
+
+                            <textarea asp-for="Description"
+                                      class="form-control"
+                                      rows="5"
+                                      placeholder="Enter a description"></textarea>
+
+                            <span asp-validation-for="Description"
+                                  class="text-danger">
+                            </span>
+
+                        </div>
+
+                        <!-- Amount -->
+
+                        <div class="mb-4">
+
+                            <label asp-for="Amount"
+                                   class="form-label">
+                            </label>
+
+                            <div class="input-group">
+
+                                <span class="input-group-text">
+
+                                    ₦
+
+                                </span>
+
+                                <input asp-for="Amount"
+                                       class="form-control"
+                                       placeholder="5000" />
+
+                            </div>
+
+                            <span asp-validation-for="Amount"
+                                  class="text-danger">
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-4">
+
+                <div class="card shadow-sm border-0 rounded-4">
+
+                    <div class="card-body text-center">
+
+                        <i class="fa-solid fa-broom fa-4x text-success mb-4"></i>
+
+                        <h4>
+
+                            Service Type
+
+                        </h4>
+
+                        <p class="text-muted">
+
+                            Create categories that workers can register under.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="mt-4">
+
+            <button type="submit"
+                    class="btn btn-success">
+
+                <i class="fa-solid fa-floppy-disk me-2"></i>
+
+                Save Service Type
+
+            </button>
+
+            <a asp-action="Index"
+               class="btn btn-secondary">
+
+                Cancel
+
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+
+@section Scripts {
+
+    <partial name="_ValidationScriptsPartial" />
+
+}

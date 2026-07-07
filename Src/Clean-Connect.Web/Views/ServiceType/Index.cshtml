@@ -1,0 +1,218 @@
+﻿@model IEnumerable<Clean_Connect.Application.DTO.ServiceTypeDto>
+
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="page-card">
+
+    <!-- ===========================
+        PAGE HEADER
+    ============================ -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h2>
+
+                <i class="fa-solid fa-broom text-success me-2"></i>
+
+                Service Types
+
+            </h2>
+
+            <p class="text-muted">
+
+                Manage all cleaning services available on Clean Connect.
+
+            </p>
+
+        </div>
+
+        <a asp-action="CreateServiceType"
+           class="btn btn-success">
+
+            <i class="fa-solid fa-plus me-2"></i>
+
+            New Service
+
+        </a>
+
+    </div>
+
+    <!-- ===========================
+        SEARCH BAR
+    ============================ -->
+
+    <div class="row mb-4">
+
+        <div class="col-lg-6" >
+
+            <div class="input-group">
+
+                <span class="input-group-text bg-white">
+
+                    <i class="fa-solid fa-magnifying-glass"></i>
+
+                </span>
+
+                <input type="text"
+                       class="form-control"
+                       placeholder="Search service type..." />
+
+            </div>
+
+        </div>
+
+    </div>
+
+    @if (Model.Any())
+    {
+
+        <div class="table-responsive">
+
+            <table class="table align-middle">
+
+                <thead>
+
+                    <tr>
+
+                        <th>#</th>
+
+                        <th>Service</th>
+
+                        <th>Description</th>
+
+                        <th>Default Price</th>
+
+                        <th class="text-center">Actions</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @{
+
+                        int count = 1;
+
+                    }
+
+                    @foreach (var item in Model)
+                    {
+
+                        <tr>
+
+                            <td>
+
+                                @count
+
+                            </td>
+
+                            <td>
+
+                                <div class="fw-bold">
+
+                                    @item.Name
+
+                                </div>
+
+                            </td>
+
+                            <td>
+
+                                @item.Description
+
+                            </td>
+
+                            <td>
+
+                                <span class="badge bg-success">
+
+                                    ₦@item.Amount.ToString("N2")
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                <div class="action-buttons justify-content-center">
+
+                                    <a asp-action="EditServiceType"
+                                       @* asp-route-id="@item.Id" *@
+                                       class="edit">
+
+                                        <i class="fa-solid fa-pen"></i>
+
+                                    </a>
+
+                                    <a asp-action="DeleteServiceType"
+                                       @* asp-route-id="@item.Id" *@
+                                       class="delete">
+
+                                        <i class="fa-solid fa-trash"></i>
+
+                                    </a>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                        count++;
+
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    }
+    else
+    {
+
+        <!-- ===========================
+            EMPTY STATE
+        ============================ -->
+
+        <div class="text-center py-5">
+
+            <div class="mb-4">
+
+                <i class="fa-solid fa-broom fa-5x text-success opacity-50"></i>
+
+            </div>
+
+            <h3>
+
+                No Service Types Yet
+
+            </h3>
+
+            <p class="text-muted">
+
+                Create your first service type to allow workers register under it.
+
+            </p>
+
+            <a asp-action="CreateServiceType"
+               class="btn btn-success mt-3">
+
+                <i class="fa-solid fa-plus me-2"></i>
+
+                Create First Service
+
+            </a>
+
+        </div>
+
+    }
+
+</div>

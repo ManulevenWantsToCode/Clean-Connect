@@ -11,7 +11,7 @@ using static Clean_Connect.Application.Command.ServiceTypeCommands.CreateService
 
 namespace Clean_Connect.Application.Command.ServiceTypeCommands
 {
-    public record UpdateServiceTypeCommands(Guid id, string Name, string Description, decimal Amount, string? CreatedBy = null) : IRequest<bool>;
+    public record UpdateServiceTypeCommands(Guid Id, string Name, string Description, decimal Amount, string? CreatedBy = null) : IRequest<bool>;
 
     public class UpdateServiceTypeValidator : AbstractValidator<UpdateServiceTypeCommands>
     {
@@ -66,11 +66,11 @@ namespace Clean_Connect.Application.Command.ServiceTypeCommands
 
             //}
 
-            var serviceTypeToUpdate = await repo.ServiceTypes.GetByIdAsync(request.id, cancellationToken);
+            var serviceTypeToUpdate = await repo.ServiceTypes.GetByIdAsync(request.Id, cancellationToken);
 
             if (serviceTypeToUpdate == null)
             {
-                logger.LogError("Service type with id {Id} not found", request.id);
+                logger.LogError("Service type with id {Id} not found", request.Id);
                 throw new KeyNotFoundException("Service type not found");
             }
 

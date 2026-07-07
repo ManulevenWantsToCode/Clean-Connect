@@ -1,0 +1,323 @@
+﻿@model Clean_Connect.Application.Command.ServiceTypeCommands.UpdateServiceTypeCommands
+
+@{
+    ViewData["Title"] = "Edit Service Type";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="page-card">
+
+    <!-- =========================================
+        PAGE HEADER
+    ========================================== -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h2>
+
+                <i class="fa-solid fa-pen-to-square text-success me-2"></i>
+
+                Edit Service Type
+
+            </h2>
+
+            <p class="text-muted mb-0">
+
+                Update an existing cleaning service.
+
+            </p>
+
+        </div>
+
+        <a asp-action="Index"
+           class="btn btn-outline-secondary">
+
+            <i class="fa-solid fa-arrow-left me-2"></i>
+
+            Back
+
+        </a>
+
+    </div>
+
+    <!-- =========================================
+        CONTENT
+    ========================================== -->
+
+    <form method="post">
+
+        @Html.AntiForgeryToken()
+
+        <input asp-for="Id" type="hidden"/>
+
+        <div class="row g-4">
+
+            <!-- ================= LEFT ================= -->
+
+            <div class="col-lg-8">
+
+                <div class="card border-0 shadow-sm rounded-4">
+
+                    <div class="card-body p-4">
+
+                        <!-- Hero -->
+
+                        <div class="text-center mb-5">
+
+                            <div class="service-circle">
+
+                                <i class="fa-solid fa-broom"></i>
+
+                            </div>
+
+                            <h3 class="mt-4">
+
+                                @Model.Name
+
+                            </h3>
+
+                            <p class="text-muted">
+
+                                Modify the information below.
+
+                            </p>
+
+                        </div>
+
+                        <!-- Name -->
+
+                        <div class="form-floating mb-4">
+
+                            <input asp-for="Name"
+                                   class="form-control"
+                                   placeholder="Service Name"/>
+
+                            <label asp-for="Name"></label>
+
+                            <span asp-validation-for="Name"
+                                  class="text-danger">
+                            </span>
+
+                        </div>
+
+                        <!-- =====================================
+                            Description
+                        ====================================== -->
+
+                        <div class="form-floating mb-4">
+
+                            <textarea asp-for="Description"
+                                      class="form-control"
+                                      placeholder="Description"
+                                      style="height:150px"></textarea>
+
+                            <label asp-for="Description"></label>
+
+                            <span asp-validation-for="Description"
+                                  class="text-danger">
+                            </span>
+
+                        </div>
+
+                        <!-- =====================================
+                            Amount
+                        ====================================== -->
+
+                        <div class="form-floating mb-4">
+
+                            <input asp-for="Amount"
+                                   class="form-control"
+                                   placeholder="Amount" />
+
+                            <label asp-for="Amount">
+
+                                Default Price (₦)
+
+                            </label>
+
+                            <span asp-validation-for="Amount"
+                                  class="text-danger">
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ================= RIGHT SIDE ================= -->
+
+            <div class="col-lg-4">
+
+                <div class="card border-0 shadow-sm rounded-4">
+
+                    <div class="card-body text-center p-4">
+
+                        <div class="service-preview">
+
+                            <i class="fa-solid fa-broom"></i>
+
+                        </div>
+
+                        <h4 class="fw-bold mt-4">
+
+                            Service Preview
+
+                        </h4>
+
+                        <p class="text-muted">
+
+                            Review your changes before saving.
+
+                        </p>
+
+                        <hr>
+
+                        <div class="preview-item">
+
+                            <small class="text-muted d-block">
+
+                                Service Name
+
+                            </small>
+
+                            <strong id="previewName">
+
+                                @Model.Name
+
+                            </strong>
+
+                        </div>
+
+                        <div class="preview-item mt-4">
+
+                            <small class="text-muted d-block">
+
+                                Default Price
+
+                            </small>
+
+                            <strong id="previewAmount">
+
+                                ₦@Model.Amount.ToString("N2")
+
+                            </strong>
+
+                        </div>
+
+                        <div class="alert alert-light mt-4 mb-0">
+
+                            <i class="fa-solid fa-circle-info text-success me-2"></i>
+
+                            Changes will immediately affect new worker registrations.
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- =====================================
+            ACTION BUTTONS
+        ====================================== -->
+
+        <div class="d-flex justify-content-end gap-3 mt-5">
+
+            <a asp-action="Index"
+               class="btn btn-outline-secondary px-4">
+
+                <i class="fa-solid fa-arrow-left me-2"></i>
+
+                Cancel
+
+            </a>
+
+            <button type="submit"
+                    id="saveButton"
+                    class="btn btn-success px-5">
+
+                <i class="fa-solid fa-floppy-disk me-2"></i>
+
+                Save Changes
+
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+@section Scripts {
+
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const nameInput = document.getElementById("Name");
+            const amountInput = document.getElementById("Amount");
+
+            const previewName = document.getElementById("previewName");
+            const previewAmount = document.getElementById("previewAmount");
+
+            if (nameInput) {
+
+                nameInput.addEventListener("keyup", function () {
+
+                    previewName.textContent =
+                        this.value || "Service Name";
+
+                });
+
+            }
+
+            if (amountInput) {
+
+                amountInput.addEventListener("keyup", function () {
+
+                    let amount = this.value;
+
+                    if (amount === "") {
+
+                        previewAmount.textContent = "₦0.00";
+
+                        return;
+
+                    }
+
+                    previewAmount.textContent =
+                        "₦" + Number(amount).toLocaleString();
+
+                });
+
+            }
+
+            const form = document.querySelector("form");
+
+            const saveButton = document.getElementById("saveButton");
+
+            form.addEventListener("submit", function () {
+
+                saveButton.disabled = true;
+
+                saveButton.innerHTML =
+
+                    '<span class="spinner-border spinner-border-sm me-2"></span>Saving Changes...';
+
+            });
+
+        });
+
+    </script>
+
+}
