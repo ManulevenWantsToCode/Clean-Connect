@@ -39,9 +39,20 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                     return false;
                 }
                 var token = await userManager.GeneratePasswordResetTokenAsync(user);
+
                 var encodedToken = Uri.EscapeDataString(token);
-                var baseUrl = configuration["AppSettings:BaseUrl"];
-                var resetLink = $"{baseUrl}/Auth/ResetPassword?email={user.Email}&token={encodedToken}";
+
+                var baseUrl = configuration["App:ClientUrl"];
+
+                if (string.IsNullOrWhiteSpace(baseUrl))
+                {
+                    throw new InvalidOperationException(
+                        "App:ClientUrl is missing from configuration.");
+                }
+
+                // Use the server-side MVC route that AuthController exposes.
+                // AuthController has [HttpGet("Reset-Password")] so the endpoint is "/Reset-Password".
+                var resetLink = $"{baseUrl.TrimEnd('/')}/Reset-Password?email={Uri.EscapeDataString(user.Email)}&token={encodedToken}";
                 var emailBody = $"<p>You requested a password reset. Click the link below to reset your password:</p><p><a href='{resetLink}'>Reset Password</a></p>";
                 var emailSubject = "Password Reset Request";
                 await mediator.Send(new EmailSenderCommand(request.Email, emailBody, emailSubject));

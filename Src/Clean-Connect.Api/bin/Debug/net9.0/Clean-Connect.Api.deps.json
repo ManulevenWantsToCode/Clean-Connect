@@ -97,7 +97,7 @@
           }
         }
       },
-      "MediatR/14.0.0": {
+      "MediatR/14.1.0": {
         "dependencies": {
           "MediatR.Contracts": "2.0.1",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
@@ -107,7 +107,7 @@
         "runtime": {
           "lib/net9.0/MediatR.dll": {
             "assemblyVersion": "14.0.0.0",
-            "fileVersion": "14.0.0.0"
+            "fileVersion": "14.1.0.0"
           }
         }
       },
@@ -1643,7 +1643,7 @@
           "Clean-Connect.Infrastructure": "1.0.0",
           "FluentValidation": "12.1.1",
           "FluentValidation.DependencyInjectionExtensions": "12.1.1",
-          "MediatR": "14.0.0",
+          "MediatR": "14.1.0",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.11",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "9.0.8",
           "Microsoft.AspNetCore.Identity.UI": "9.0.8",
@@ -1669,7 +1669,7 @@
       },
       "Clean-Connect.Domain/1.0.0": {
         "dependencies": {
-          "MediatR": "14.0.0",
+          "MediatR": "14.1.0",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.11",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "9.0.8",
           "Microsoft.AspNetCore.Identity.UI": "9.0.8",
@@ -1786,12 +1786,12 @@
       "path": "humanizer.core/2.14.1",
       "hashPath": "humanizer.core.2.14.1.nupkg.sha512"
     },
-    "MediatR/14.0.0": {
+    "MediatR/14.1.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-r5fwUO6NBvOFKaiMRx/gRrD1MEHHOio5yEdzSLs2OMeD2e9ZKnZaBQM6A6vVBEWJF4VY41vplXmDMOY1YvpqNA==",
-      "path": "mediatr/14.0.0",
-      "hashPath": "mediatr.14.0.0.nupkg.sha512"
+      "sha512": "sha512-pdxza1pLqAk+06LV3THzNJrw5K5Ah6EC17TEkoC90gsAxwtXDJAQrGuDSDinHGgxWKWEn5ebqTNN3k1bLJOb0g==",
+      "path": "mediatr/14.1.0",
+      "hashPath": "mediatr.14.1.0.nupkg.sha512"
     },
     "MediatR.Contracts/2.0.1": {
       "type": "package",

@@ -33,26 +33,75 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
         }
     }
 
-    public class LoginCommandHandler(UserManager<ApplicationUser> user,  IMediator _mediator, SignInManager<ApplicationUser> signInManager, ILogger<RegisterUserCommandHandler> logger, IConfiguration configuration) : IRequestHandler<LoginCommand, LoginResponse>
+    public class LoginCommandHandler(UserManager<ApplicationUser> user, IMediator _mediator, SignInManager<ApplicationUser> signInManager, ILogger<RegisterUserCommandHandler> logger, IConfiguration configuration) : IRequestHandler<LoginCommand, LoginResponse>
     {
         public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
-            // Find user first so we can return meaningful (but not leaking) errors
+            // Find the user
             var appUser = await user.FindByEmailAsync(request.Email);
+
             if (appUser == null)
             {
-                logger.LogWarning("Login failed for email: {Email} (invalid password)", request.Email);
+                logger.LogWarning("Login failed for email: {Email} (user not found)", request.Email);
+
+                return new LoginResponse
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = "Invalid email or password."
+                };
+            }
+
+            // Check if account is already locked
+            if (await user.IsLockedOutAsync(appUser))
+            {
+                logger.LogWarning("Locked out login attempt for {Email}", request.Email);
+
+                return new LoginResponse
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = "Your account is locked. Please try again later.",
+                    UserId = appUser.Id
+                };
+            }
+
+            // Verify password
+            var passwordValid = await user.CheckPasswordAsync(appUser, request.Password);
+
+            if (!passwordValid)
+            {
+                // Increment failed login count
+                await user.AccessFailedAsync(appUser);
+
+                // Check if this failed attempt locked the account
+                if (await user.IsLockedOutAsync(appUser))
+                {
+                    logger.LogWarning("User {Email} has been locked out.", request.Email);
+
+                    return new LoginResponse
+                    {
+                        IsSuccessful = false,
+                        ErrorMessage = "Your account has been locked due to multiple failed login attempts.",
+                        UserId = appUser.Id
+                    };
+                }
+
+                logger.LogWarning("Invalid password for {Email}", request.Email);
+
                 return new LoginResponse
                 {
                     IsSuccessful = false,
                     ErrorMessage = "Invalid email or password.",
-                    UserId = Guid.Empty
+                    UserId = appUser.Id
                 };
             }
 
+            // Password is correct, reset failed attempts
+            await user.ResetAccessFailedCountAsync(appUser);
+
+            // Now check email confirmation
             if (!appUser.EmailConfirmed)
             {
-                logger.LogWarning("Login failed for email: {Email} (email not confirmed)", request.Email);
+                logger.LogInformation("Login blocked for {Email}: email not confirmed.", request.Email);
 
                 return new LoginResponse
                 {
@@ -63,82 +112,50 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 };
             }
 
+            // Sign in (creates authentication cookie)
+            await signInManager.SignInAsync(appUser, request.RememberMe);
 
-
-           
-
-
-            var login = await signInManager.PasswordSignInAsync(appUser,request.Password,request.RememberMe,lockoutOnFailure: false);
-            if (!login.Succeeded)
-            {
-                
-
-                if (login.IsLockedOut)
-                {
-                    logger.LogWarning("Login failed for email: {Email} (account locked out)", request.Email);
-
-                    return new LoginResponse
-                    {
-                        IsSuccessful = false,
-                        ErrorMessage = "Your account is locked. Please try again later.",
-                        UserId = appUser.Id
-                    };
-                }
-
-                logger.LogWarning("Login failed for email: {Email} (invalid password)", request.Email);
-
-                return new LoginResponse
-                {
-                    IsSuccessful = false,
-                    ErrorMessage = "Invalid email or password.",
-                    UserId = appUser.Id
-                };
-            }
-             var roles = await user.GetRolesAsync(appUser);
+            // Get roles
+            var roles = await user.GetRolesAsync(appUser);
 
             if (roles.Contains("Worker") && !appUser.IsWorkerProfileCompleted)
             {
-                logger.LogInformation(
-                    "Worker {Email} logged in but has not completed their profile.",
-                    request.Email);
-
                 return new LoginResponse
                 {
                     UserId = appUser.Id,
-                    Email = appUser.Email ?? request.Email,
+                    Email = appUser.Email!,
                     Roles = roles.ToArray(),
                     IsSuccessful = true,
                     RequiresWorkerProfileCompletion = true
                 };
             }
+
             if (roles.Contains("Client") && !appUser.IsClientProfileCompleted)
             {
-                logger.LogInformation(
-                    "Client {Email} logged in but has not completed their profile.",
-                    request.Email);
-
                 return new LoginResponse
                 {
                     UserId = appUser.Id,
-                    Email = appUser.Email ?? request.Email,
+                    Email = appUser.Email!,
                     Roles = roles.ToArray(),
                     IsSuccessful = true,
                     RequiresClientProfileCompletion = true
                 };
             }
-            var token = await _mediator.Send(new JwtTokenCommand(appUser), cancellationToken);
-            
 
-            logger.LogInformation("User logged in: {Email}", request.Email);
+            // Generate JWT
+            var token = await _mediator.Send(
+                new JwtTokenCommand(appUser),
+                cancellationToken);
+
+            logger.LogInformation("User logged in successfully: {Email}", request.Email);
 
             return new LoginResponse
             {
                 UserId = appUser.Id,
-                Email = appUser.Email ?? request.Email,
+                Email = appUser.Email!,
                 Roles = roles.ToArray(),
                 Token = token,
-                IsSuccessful = true,
-               
+                IsSuccessful = true
             };
         }
     }

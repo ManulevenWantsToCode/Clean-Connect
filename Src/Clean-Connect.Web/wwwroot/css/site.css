@@ -7,6 +7,7 @@ body {
 html {
     scroll-behavior: smooth;
 }
+
 :root {
     --primary: #0ea5e9;
     --secondary: #10b981;
@@ -277,6 +278,7 @@ footer {
             margin-bottom: 15px;
         }
 }
+
 .services-section {
     padding: 80px 0;
 }
@@ -372,3 +374,419 @@ footer {
         background: white;
         color: #0f766e !important;
     }
+
+/* ===========================================================
+   WORKER PROFILE
+=========================================================== */
+
+.worker-profile-page {
+    background: #f8fafc;
+    min-height: 100vh;
+    padding: 80px 0;
+}
+
+/* Header */
+
+.worker-title {
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: var(--dark);
+}
+
+.worker-subtitle {
+    color: #64748b;
+    font-size: 1.1rem;
+    max-width: 650px;
+    margin: 15px auto 0;
+}
+
+/* Cards */
+
+.worker-card {
+    border: none;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 12px 35px rgba(0,0,0,.08);
+    transition: all .35s ease;
+}
+
+    .worker-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 45px rgba(0,0,0,.12);
+    }
+
+    /* Card Header */
+
+    .worker-card .card-header {
+        background: linear-gradient(135deg,#0f172a,#0f766e);
+        color: white;
+        border: none;
+        padding: 18px 30px;
+    }
+
+        .worker-card .card-header h4 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+    .worker-card .card-body {
+        padding: 35px;
+    }
+
+/* ===========================================================
+   PROFILE IMAGE
+=========================================================== */
+
+.profile-picture {
+    width: 180px;
+    height: 180px;
+    margin: auto;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 6px solid #e2e8f0;
+    transition: .35s;
+}
+
+    .profile-picture:hover {
+        border-color: var(--secondary);
+        transform: scale(1.03);
+    }
+
+    .profile-picture img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+/* ===========================================================
+   INPUTS
+=========================================================== */
+
+.form-label {
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+}
+
+.form-control,
+.form-select {
+    border-radius: 12px;
+    padding: 12px 15px;
+    border: 1px solid #dbe4ee;
+    transition: .3s;
+}
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--secondary);
+        box-shadow: 0 0 0 .2rem rgba(16,185,129,.2);
+    }
+
+/* ===========================================================
+   BUTTONS
+=========================================================== */
+
+.btn-success {
+    background: var(--secondary);
+    border: none;
+    border-radius: 50px;
+    padding: 14px 40px;
+    font-weight: 600;
+    transition: .35s;
+}
+
+    .btn-success:hover {
+        background: #059669;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(16,185,129,.35);
+    }
+
+.btn-outline-success {
+    border-radius: 50px;
+    padding: 12px 25px;
+    font-weight: 600;
+}
+
+/* ===========================================================
+   FILE INPUT
+=========================================================== */
+
+input[type=file] {
+    border-radius: 12px;
+}
+/* ===========================================================
+   SPACING
+=========================================================== */
+
+.worker-card:not(:last-child) {
+    margin-bottom: 35px;
+}
+
+/*=========================================
+      PROGRESS STEPPER
+=========================================*/
+
+.worker-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    margin-bottom: 60px;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.step-number {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.step.active .step-number {
+    background: var(--secondary);
+}
+
+.step span {
+    margin-top: 12px;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.step-line {
+    flex: 1;
+    height: 4px;
+    background: #d1d5db;
+    margin: 0 20px;
+}
+
+/* ===========================================================
+   RESPONSIVE
+=========================================================== */
+
+@media (max-width:992px) {
+
+    ...
+}
+
+@media (max-width:768px) {
+
+    .worker-title {
+        font-size: 2rem;
+    }
+
+    .profile-picture {
+        width: 140px;
+        height: 140px;
+    }
+
+    .worker-card .card-header {
+        text-align: center;
+    }
+
+    .btn-success {
+        width: 100%;
+    }
+
+    .worker-stepper {
+        gap: .25rem;
+    }
+
+    .step-line {
+        margin: 0 10px;
+        height: 3px;
+    }
+
+    .step-number {
+        width: 50px;
+        height: 50px;
+    }
+}
+/*=========================================
+    WIZARD STEPS
+=========================================*/
+
+.wizard-step {
+    display: none;
+    animation: fadeIn .35s ease-in-out;
+}
+
+    .wizard-step.active {
+        display: block;
+    }
+
+@keyframes fadeIn {
+
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.step.active .step-number {
+    background: var(--secondary);
+    color: #fff;
+}
+
+.step.active span {
+    color: var(--secondary);
+    font-weight: 700;
+}
+
+/*=========================================
+    PREMIUM FLOATING INPUTS
+=========================================*/
+
+.form-floating {
+    position: relative;
+}
+
+    .form-floating > .form-control,
+    .form-floating > .form-select {
+        height: 65px;
+        border-radius: 16px;
+        padding-left: 60px;
+        border: 1px solid #d9dee7;
+        background: #fff;
+        transition: .3s;
+        box-shadow: none;
+    }
+
+    .form-floating > label {
+        left: 60px;
+        color: #64748b;
+    }
+
+    .form-floating i {
+        position: absolute;
+        left: 22px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        z-index: 5;
+        font-size: 18px;
+        transition: .3s;
+    }
+
+    .form-floating:focus-within i {
+        color: #10b981;
+    }
+
+    .form-floating .form-control:focus,
+    .form-floating .form-select:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 .18rem rgba(16,185,129,.15);
+    }
+
+    .form-floating textarea {
+        min-height: 150px;
+        padding-left: 60px;
+    }
+
+.worker-card {
+    border: none;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 15px 35px rgba(15,23,42,.08);
+}
+
+    .worker-card .card-body {
+        padding: 2rem;
+    }
+
+    .worker-card .card-header {
+        padding: 2rem 2rem .5rem;
+    }
+
+.profile-picture img {
+    width: 170px;
+    height: 170px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 6px solid #ecfdf5;
+    box-shadow: 0 10px 25px rgba(0,0,0,.12);
+}
+
+/*=========================================
+    LOCATION SECTION
+=========================================*/
+
+.location-box {
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    border-radius: 18px;
+    padding: 30px;
+}
+
+.location-preview {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 18px;
+    padding: 30px;
+}
+
+.location-preview-icon {
+    font-size: 55px;
+    color: #10b981;
+}
+
+.btn-location {
+    border-radius: 50px;
+    font-weight: 600;
+    padding: 14px 30px;
+}
+
+.btn-location:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(16,185,129,.25);
+}
+
+/*=========================================
+    STEP 3
+=========================================*/
+
+.profile-tip {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 18px;
+    padding: 25px;
+}
+
+.tip-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #facc15;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+}
+
+.profile-summary {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 30px;
+}
+
+.profile-summary li {
+    font-size: 16px;
+}
+

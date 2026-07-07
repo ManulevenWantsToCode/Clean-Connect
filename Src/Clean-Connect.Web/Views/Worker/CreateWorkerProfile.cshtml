@@ -1,0 +1,709 @@
+﻿@{
+    ViewData["Title"] = "Create Worker Profile";
+}
+
+<div class="worker-profile-page py-5">
+
+    <div class="container">
+
+        <!-- Page Header -->
+        <div class="text-center mb-5">
+
+            <h1 class="worker-title">
+                Complete Your Worker Profile
+            </h1>
+
+            <p class="worker-subtitle">
+                Build your professional profile and start connecting with clients looking for trusted cleaning professionals.
+            </p>
+
+        </div>
+
+        <!-- Progress -->
+        <div class="worker-stepper mb-5">
+
+            <div class="step active">
+                <div class="step-number">1</div>
+                <span>Personal</span>
+            </div>
+
+            <div class="step-line"></div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <span>Location</span>
+            </div>
+
+            <div class="step-line"></div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <span>Service</span>
+            </div>
+
+        </div>
+
+        <form id="workerProfileForm" method="post" enctype="multipart/form-data">
+
+            <!-- ===================================================== -->
+            <!-- STEP 1 -->
+            <!-- ===================================================== -->
+
+            <div id="step1" class="wizard-step active">
+
+                <!-- Profile Photo -->
+
+                <div class="worker-card mb-4">
+
+                    <div class="card-body text-center">
+
+                        <div class="profile-picture mb-4">
+
+                            <img id="previewImage"
+                                 src="~/images/profile-placeholder.png"
+                                 alt="Profile Photo" />
+
+                        </div>
+
+                        <h3 class="fw-bold">
+                            Upload Profile Photo
+                        </h3>
+
+                        <p class="text-muted mb-4">
+                            A clear profile picture helps clients trust you.
+                        </p>
+
+                        <input type="file"
+                               id="profileImage"
+                               class="form-control"
+                               accept="image/*" />
+
+                    </div>
+
+                </div>
+
+                <!-- Personal Information -->
+
+                <div class="worker-card">
+
+                    <div class="card-header border-0 bg-white pt-4">
+
+                        <h4 class="fw-bold">
+
+                            <i class="fa-solid fa-user text-success me-2"></i>
+
+                            Personal Information
+
+                        </h4>
+
+                        <small class="text-muted">
+                            Tell us a little about yourself.
+                        </small>
+
+                    </div>
+
+                    <div class="card-body">
+
+                        <div class="row g-4">
+
+                            <!-- First Name -->
+
+                            <div class="col-md-6">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-user"></i>
+
+                                    <input type="text"
+                                           class="form-control"
+                                           id="FirstName"
+                                           placeholder="First Name">
+
+                                    <label for="FirstName">
+
+                                        First Name
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Last Name -->
+
+                            <div class="col-md-6">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-user"></i>
+
+                                    <input type="text"
+                                           class="form-control"
+                                           id="LastName"
+                                           placeholder="Last Name">
+
+                                    <label for="LastName">
+
+                                        Last Name
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Email -->
+
+                            <div class="col-md-6">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-envelope"></i>
+
+                                    <input type="email"
+                                           class="form-control"
+                                           id="Email"
+                                           placeholder="Email">
+
+                                    <label for="Email">
+
+                                        Email Address
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Phone -->
+
+                            <div class="col-md-6">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-phone"></i>
+
+                                    <input type="tel"
+                                           class="form-control"
+                                           id="Phone"
+                                           placeholder="Phone">
+
+                                    <label for="Phone">
+
+                                        Phone Number
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Gender -->
+
+                            <div class="col-md-6">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-venus-mars"></i>
+
+                                    <select class="form-select"
+                                            id="Gender">
+
+                                        <option value=""></option>
+
+                                        <option>Male</option>
+
+                                        <option>Female</option>
+
+                                    </select>
+
+                                    <label for="Gender">
+
+                                        Gender
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- DOB -->
+
+                            <div class="col-md-6">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-calendar-days"></i>
+
+                                    <input type="date"
+                                           class="form-control"
+                                           id="Dob"
+                                           placeholder="Date of Birth">
+
+                                    <label for="Dob">
+
+                                        Date of Birth
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Navigation -->
+
+                <div class="d-flex justify-content-end mt-5">
+
+                    <button type="button"
+                            id="nextBtn1"
+                            class="btn btn-success btn-lg px-5">
+
+                        Continue
+
+                        <i class="fa-solid fa-arrow-right ms-2"></i>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+            <!-- ===================================================== -->
+            <!-- STEP 2 - LOCATION -->
+            <!-- ===================================================== -->
+
+            <div id="step2" class="wizard-step">
+
+                <div class="worker-card">
+
+                    <div class="card-header border-0 bg-white pt-4">
+
+                        <h4 class="fw-bold">
+
+                            <i class="fa-solid fa-location-dot text-success me-2"></i>
+
+                            Location Information
+
+                        </h4>
+
+                        <small class="text-muted">
+                            We'll use your location to connect you with nearby clients.
+                        </small>
+
+                    </div>
+
+                    <div class="card-body">
+
+                        <!-- Current Location Card -->
+
+                        <div class="location-box mb-5">
+
+                            <div class="d-flex align-items-center justify-content-between flex-wrap">
+
+                                <div>
+
+                                    <h5 class="fw-bold mb-2">
+
+                                        <i class="fa-solid fa-location-crosshairs text-success me-2"></i>
+
+                                        Detect My Location
+
+                                    </h5>
+
+                                    <p class="text-muted mb-0">
+
+                                        Click the button below to automatically fill your coordinates.
+
+                                    </p>
+
+                                </div>
+
+                                <button type="button"
+                                        class="btn btn-success btn-location px-4">
+
+                                    <i class="fa-solid fa-location-crosshairs me-2"></i>
+
+                                    Use My Current Location
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                        <div class="row g-4">
+
+                            <!-- State -->
+
+                            <div class="col-md-4">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-map"></i>
+
+                                    <input type="text"
+                                           class="form-control"
+                                           id="State"
+                                           placeholder="State">
+
+                                    <label for="State">
+
+                                        State
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Latitude -->
+
+                            <div class="col-md-4">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-earth-africa"></i>
+
+                                    <input type="text"
+                                           class="form-control"
+                                           id="latitude"
+                                           placeholder="Latitude"
+                                           readonly>
+
+                                    <label for="latitude">
+
+                                        Latitude
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Longitude -->
+
+                            <div class="col-md-4">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-compass"></i>
+
+                                    <input type="text"
+                                           class="form-control"
+                                           id="longitude"
+                                           placeholder="Longitude"
+                                           readonly>
+
+                                    <label for="longitude">
+
+                                        Longitude
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- Preview Box -->
+
+                        <div class="location-preview mt-5">
+
+                            <div class="row align-items-center">
+
+                                <div class="col-md-2 text-center">
+
+                                    <i class="fa-solid fa-map-location-dot location-preview-icon"></i>
+
+                                </div>
+
+                                <div class="col-md-10">
+
+                                    <h5 class="fw-bold">
+
+                                        Location Preview
+
+                                    </h5>
+
+                                    <p class="text-muted mb-0">
+
+                                        Once your location is detected, your coordinates will appear above.
+
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Navigation -->
+
+                <div class="d-flex justify-content-between mt-5">
+
+                    <button type="button"
+                            id="prevBtn2"
+                            class="btn btn-outline-secondary btn-lg px-5">
+
+                        <i class="fa-solid fa-arrow-left me-2"></i>
+
+                        Previous
+
+                    </button>
+
+                    <button type="button"
+                            id="nextBtn2"
+                            class="btn btn-success btn-lg px-5">
+
+                        Continue
+
+                        <i class="fa-solid fa-arrow-right ms-2"></i>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+            <!-- ===================================================== -->
+            <!-- STEP 3 - PROFESSIONAL INFORMATION -->
+            <!-- ===================================================== -->
+
+            <div id="step3" class="wizard-step">
+
+                <div class="worker-card">
+
+                    <div class="card-header border-0 bg-white pt-4">
+
+                        <h4 class="fw-bold">
+
+                            <i class="fa-solid fa-briefcase text-success me-2"></i>
+
+                            Professional Information
+
+                        </h4>
+
+                        <small class="text-muted">
+                            Tell clients what you do best and why they should hire you.
+                        </small>
+
+                    </div>
+
+                    <div class="card-body">
+
+                        <div class="row g-4">
+
+                            <!-- Service Type -->
+
+                            <div class="col-md-6">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-broom"></i>
+
+                                    <select class="form-select"
+                                            id="ServiceType">
+
+                                        <option value=""></option>
+
+                                        <option>Home Cleaning</option>
+
+                                        <option>Office Cleaning</option>
+
+                                        <option>Deep Cleaning</option>
+
+                                        <option>Laundry</option>
+
+                                        <option>Post Construction Cleaning</option>
+
+                                        <option>Carpet Cleaning</option>
+
+                                    </select>
+
+                                    <label for="ServiceType">
+
+                                        Service Type
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Experience -->
+
+                            <div class="col-md-6">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-award"></i>
+
+                                    <input type="number"
+                                           class="form-control"
+                                           id="Experience"
+                                           placeholder="Experience">
+
+                                    <label for="Experience">
+
+                                        Years of Experience
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Bio -->
+
+                            <div class="col-12">
+
+                                <div class="form-floating">
+
+                                    <i class="fa-solid fa-pen"></i>
+
+                                    <textarea class="form-control"
+                                              id="Bio"
+                                              placeholder="About Yourself"
+                                              style="height:170px"></textarea>
+
+                                    <label for="Bio">
+
+                                        About Yourself
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- Tips -->
+
+                        <div class="profile-tip mt-5">
+
+                            <div class="d-flex">
+
+                                <div class="tip-icon">
+
+                                    <i class="fa-solid fa-lightbulb"></i>
+
+                                </div>
+
+                                <div class="ms-3">
+
+                                    <h5 class="fw-bold">
+
+                                        Profile Tip
+
+                                    </h5>
+
+                                    <p class="mb-0 text-muted">
+
+                                        Workers with a complete profile and a short professional
+                                        description are more likely to receive job requests.
+
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- Summary -->
+
+                        <div class="profile-summary mt-5">
+
+                            <h5 class="fw-bold mb-3">
+
+                                <i class="fa-solid fa-circle-check text-success me-2"></i>
+
+                                You're Almost Done
+
+                            </h5>
+
+                            <ul class="list-unstyled mb-0">
+
+                                <li class="mb-2">
+
+                                    <i class="fa-solid fa-user-check text-success me-2"></i>
+
+                                    Personal information completed
+
+                                </li>
+
+                                <li class="mb-2">
+
+                                    <i class="fa-solid fa-location-dot text-success me-2"></i>
+
+                                    Location information completed
+
+                                </li>
+
+                                <li>
+
+                                    <i class="fa-solid fa-briefcase text-success me-2"></i>
+
+                                    Professional information ready
+
+                                </li>
+
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Navigation -->
+
+                <div class="d-flex justify-content-between mt-5">
+
+                    <button type="button"
+                            id="prevBtn3"
+                            class="btn btn-outline-secondary btn-lg px-5">
+
+                        <i class="fa-solid fa-arrow-left me-2"></i>
+
+                        Previous
+
+                    </button>
+
+                    <button type="submit"
+                            id="saveButton"
+                            class="btn btn-success btn-lg px-5">
+
+                        <i class="fa-solid fa-circle-check me-2"></i>
+
+                        Create Worker Profile
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+@section Scripts {
+
+    <script src="~/js/worker-profile.js"></script>
+
+}

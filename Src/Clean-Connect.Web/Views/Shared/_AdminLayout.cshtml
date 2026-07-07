@@ -1,0 +1,144 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>@ViewData["Title"] - Clean Connect Admin</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+
+    <link rel="stylesheet"
+          href="~/css/admin.css"
+          asp-append-version="true" />
+</head>
+
+<body>
+
+    <div class="admin-wrapper">
+
+        <!-- Sidebar -->
+
+        <aside class="sidebar">
+
+            <div class="sidebar-header">
+
+                <i class="fa-solid fa-broom"></i>
+
+                <span>Clean Connect</span>
+
+            </div>
+
+            <ul>
+
+                <li>
+
+                    <a asp-controller="Dashboard"
+                       asp-action="Index">
+
+                        <i class="fa-solid fa-chart-line"></i>
+
+                        Dashboard
+
+                    </a>
+
+                </li>
+
+                <li>
+
+                    <a asp-controller="ServiceType"
+                       asp-action="Index">
+
+                        <i class="fa-solid fa-layer-group"></i>
+
+                        Service Types
+
+                    </a>
+
+                </li>
+
+                <li>
+
+                    <a asp-controller="Worker"
+                       asp-action="Index">
+
+                        <i class="fa-solid fa-users"></i>
+
+                        Workers
+
+                    </a>
+
+                </li>
+
+                <li>
+
+                    <a asp-controller="Booking"
+                       asp-action="Index">
+
+                        <i class="fa-solid fa-calendar-check"></i>
+
+                        Bookings
+
+                    </a>
+
+                </li>
+
+                <li>
+
+                    <a asp-controller="Account"
+                       asp-action="Logout">
+
+                        <i class="fa-solid fa-right-from-bracket"></i>
+
+                        Logout
+
+                    </a>
+
+                </li>
+
+            </ul>
+
+        </aside>
+
+        <!-- Main Content -->
+
+        <div class="content">
+
+            <!-- Top Bar -->
+
+            <header class="topbar">
+
+                <div>
+
+                    <h4>@ViewData["Title"]</h4>
+
+                </div>
+
+                <div class="admin-user">
+
+                    <i class="fa-solid fa-user-circle"></i>
+
+                    <span>@User.Identity?.Name</span>
+
+                </div>
+
+            </header>
+
+            <main>
+
+                @RenderBody()
+
+            </main>
+
+        </div>
+
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

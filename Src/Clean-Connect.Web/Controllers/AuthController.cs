@@ -1,4 +1,5 @@
-﻿using AspNetCoreHero.ToastNotification.Abstractions;
+﻿using AspNetCoreGeneratedDocument;
+using AspNetCoreHero.ToastNotification.Abstractions;
 using Clean_Connect.Application.Command.ApplicationUserCommand;
 using Clean_Connect.Application.Command.Auth;
 using Clean_Connect.Application.DTO;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Clean_Connect.Web.Controllers
 {
+   
     public class AuthController : Controller
     {
 
@@ -99,22 +101,18 @@ namespace Clean_Connect.Web.Controllers
                     "User {Email} logged in successfully",
                     model.Email);
 
-                // Sign in the user to establish authentication cookie
-                var appUser = await _user.FindByEmailAsync(model.Email);
-                if (appUser != null)
-                {
-                    await _signInManager.SignInAsync(appUser, model.RememberMe);
-                }
+                
 
                 if (result.RequiresWorkerProfileCompletion)
                 {
-                    return RedirectToAction("Create", "WorkerProfile");
+                    _notyf.Information("Please Complete your profile");
+                    return RedirectToAction(nameof(WorkerController.CreateWorkerProfile), "Worker");
                 }
 
                 //if (result.RequiresClientProfileCompletion)
                 //{
                 //    _logger.LogInformation("Redirecting to client profile creation.");
-                //    return RedirectToAction(nameof(ClientsController.CreateClientProfile), "Clients");
+                //    return RedirectToAction(nameof(CreateClientProfile), "Clients");
                 //}
 
                 _notyf.Success("Login successful. Welcome back!");
@@ -299,6 +297,7 @@ namespace Clean_Connect.Web.Controllers
             };
             return View(model);
         }
+
 
         [HttpPost("Reset-Password")]
         [ValidateAntiForgeryToken]
