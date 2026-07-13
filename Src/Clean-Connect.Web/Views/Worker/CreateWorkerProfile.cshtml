@@ -1,4 +1,6 @@
-﻿@{
+@model Clean_Connect.Application.Command.WorkerCommands.CreateWorkerCommand
+
+@{
     ViewData["Title"] = "Create Worker Profile";
 }
 
@@ -7,6 +9,7 @@
     <div class="container">
 
         <!-- Page Header -->
+
         <div class="text-center mb-5">
 
             <h1 class="worker-title">
@@ -19,31 +22,51 @@
 
         </div>
 
-        <!-- Progress -->
+        <!-- Progress Stepper -->
+
         <div class="worker-stepper mb-5">
 
             <div class="step active">
+
                 <div class="step-number">1</div>
+
                 <span>Personal</span>
+
             </div>
 
             <div class="step-line"></div>
 
             <div class="step">
+
                 <div class="step-number">2</div>
+
                 <span>Location</span>
+
             </div>
 
             <div class="step-line"></div>
 
             <div class="step">
+
                 <div class="step-number">3</div>
+
                 <span>Service</span>
+
             </div>
 
         </div>
 
-        <form id="workerProfileForm" method="post" enctype="multipart/form-data">
+        <form asp-action="Create"
+              asp-controller="Worker"
+              method="post"
+              enctype="multipart/form-data"
+              id="workerProfileForm">
+
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly"
+                 class="alert alert-danger">
+            </div>
 
             <!-- ===================================================== -->
             <!-- STEP 1 -->
@@ -51,7 +74,7 @@
 
             <div id="step1" class="wizard-step active">
 
-                <!-- Profile Photo -->
+                <!-- Profile Picture -->
 
                 <div class="worker-card mb-4">
 
@@ -73,10 +96,14 @@
                             A clear profile picture helps clients trust you.
                         </p>
 
-                        <input type="file"
-                               id="profileImage"
+                        <input 
+                               type="file"
                                class="form-control"
+                               id="profileImage"
                                accept="image/*" />
+
+                      @*   <span asp-validation-for="ProfileImage" *@
+                              @* class="text-danger"></span> *@
 
                     </div>
 
@@ -107,148 +134,154 @@
                         <div class="row g-4">
 
                             <!-- First Name -->
+                            <div class="input-group custom-input">
 
-                            <div class="col-md-6">
-
-                                <div class="form-floating">
+                                <span class="input-group-text">
 
                                     <i class="fa-solid fa-user"></i>
 
-                                    <input type="text"
+                                </span>
+
+                                <div class="form-floating">
+
+                                    <input asp-for="FirstName"
                                            class="form-control"
-                                           id="FirstName"
-                                           placeholder="First Name">
+                                           placeholder="First Name" />
 
-                                    <label for="FirstName">
-
-                                        First Name
-
-                                    </label>
+                                    <label asp-for="FirstName"></label>
 
                                 </div>
 
                             </div>
+
+                            <span asp-validation-for="FirstName" class="text-danger"></span>
 
                             <!-- Last Name -->
 
-                            <div class="col-md-6">
+                            <div class="input-group custom-input">
 
-                                <div class="form-floating">
+                                <span class="input-group-text">
 
                                     <i class="fa-solid fa-user"></i>
 
-                                    <input type="text"
+                                </span>
+
+                                <div class="form-floating">
+
+                                    <input asp-for="LastName"
                                            class="form-control"
-                                           id="LastName"
-                                           placeholder="Last Name">
+                                           placeholder="Last Name" />
 
-                                    <label for="LastName">
-
-                                        Last Name
-
-                                    </label>
+                                    <label asp-for="LastName"></label>
 
                                 </div>
 
                             </div>
+
+                            <span asp-validation-for="LastName" class="text-danger"></span>
 
                             <!-- Email -->
 
-                            <div class="col-md-6">
+                            <div class="input-group custom-input">
 
-                                <div class="form-floating">
+                                <span class="input-group-text">
 
                                     <i class="fa-solid fa-envelope"></i>
 
-                                    <input type="email"
+                                </span>
+
+                                <div class="form-floating">
+
+                                    <input asp-for="Email"
                                            class="form-control"
-                                           id="Email"
-                                           placeholder="Email">
+                                           placeholder="Email" />
 
-                                    <label for="Email">
-
-                                        Email Address
-
-                                    </label>
+                                    <label asp-for="Email"></label>
 
                                 </div>
 
                             </div>
 
-                            <!-- Phone -->
+                            <span asp-validation-for="Email" class="text-danger"></span>
 
-                            <div class="col-md-6">
+                            <!-- Contact -->
 
-                                <div class="form-floating">
+                            <div class="input-group custom-input">
+
+                                <span class="input-group-text">
 
                                     <i class="fa-solid fa-phone"></i>
 
-                                    <input type="tel"
+                                </span>
+
+                                <div class="form-floating">
+
+                                    <input asp-for="Contact"
                                            class="form-control"
-                                           id="Phone"
-                                           placeholder="Phone">
+                                           placeholder="Phone Number" />
 
-                                    <label for="Phone">
-
-                                        Phone Number
-
-                                    </label>
+                                    <label asp-for="Contact"></label>
 
                                 </div>
 
                             </div>
+
+                            <span asp-validation-for="Contact" class="text-danger"></span>
 
                             <!-- Gender -->
 
-                            <div class="col-md-6">
+                            <div class="input-group custom-input">
 
-                                <div class="form-floating">
+                                <span class="input-group-text">
 
                                     <i class="fa-solid fa-venus-mars"></i>
 
-                                    <select class="form-select"
-                                            id="Gender">
-
-                                        <option value=""></option>
-
-                                        <option>Male</option>
-
-                                        <option>Female</option>
-
-                                    </select>
-
-                                    <label for="Gender">
-
-                                        Gender
-
-                                    </label>
-
-                                </div>
-
-                            </div>
-
-                            <!-- DOB -->
-
-                            <div class="col-md-6">
+                                </span>
 
                                 <div class="form-floating">
 
-                                    <i class="fa-solid fa-calendar-days"></i>
+                                    <select asp-for="Gender"
+                                            class="form-select">
 
-                                    <input type="date"
-                                           class="form-control"
-                                           id="Dob"
-                                           placeholder="Date of Birth">
+                                        <option value="">Select Gender</option>
 
-                                    <label for="Dob">
+                                        <option value="Male">Male</option>
 
-                                        Date of Birth
+                                        <option value="Female">Female</option>
 
-                                    </label>
+                                    </select>
+
+                                    <label asp-for="Gender"></label>
 
                                 </div>
 
                             </div>
+
+                            <span asp-validation-for="Gender" class="text-danger"></span>
+
+                            <!-- Date Of Birth -->
+
+                            <div class="input-group custom-input">
+
+                                <span class="input-group-text">
+
+                                    <i class="fa-solid fa-calendar-days"></i>
+
+                                </span>
+
+                                <div class="form-floating">
+
+                                    <input asp-for="Dob"
+                                           type="date"
+                                           class="form-control" />
+
+                                    <label asp-for="Dob"></label>
+
+                                </div>
+
+                            </div>
+
+                            <span asp-validation-for="Dob" class="text-danger"></span>
 
                         </div>
 
@@ -256,7 +289,7 @@
 
                 </div>
 
-                <!-- Navigation -->
+                <!-- Next Button -->
 
                 <div class="d-flex justify-content-end mt-5">
 
@@ -300,11 +333,11 @@
 
                     <div class="card-body">
 
-                        <!-- Current Location Card -->
+                        <!-- Location Card -->
 
                         <div class="location-box mb-5">
 
-                            <div class="d-flex align-items-center justify-content-between flex-wrap">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
 
                                 <div>
 
@@ -318,7 +351,7 @@
 
                                     <p class="text-muted mb-0">
 
-                                        Click the button below to automatically fill your coordinates.
+                                        Click the button below to automatically detect your current location.
 
                                     </p>
 
@@ -345,18 +378,14 @@
 
                                 <div class="form-floating">
 
-                                    <i class="fa-solid fa-map"></i>
-
-                                    <input type="text"
+                                    <input asp-for="State"
                                            class="form-control"
-                                           id="State"
-                                           placeholder="State">
+                                           placeholder="State" />
 
-                                    <label for="State">
+                                    <label asp-for="State"></label>
 
-                                        State
-
-                                    </label>
+                                    <span asp-validation-for="State"
+                                          class="text-danger"></span>
 
                                 </div>
 
@@ -368,19 +397,15 @@
 
                                 <div class="form-floating">
 
-                                    <i class="fa-solid fa-earth-africa"></i>
-
-                                    <input type="text"
-                                           class="form-control"
+                                    <input asp-for="Latitude"
                                            id="latitude"
-                                           placeholder="Latitude"
-                                           readonly>
+                                           class="form-control"
+                                           readonly />
 
-                                    <label for="latitude">
+                                    <label asp-for="Latitude"></label>
 
-                                        Latitude
-
-                                    </label>
+                                    <span asp-validation-for="Latitude"
+                                          class="text-danger"></span>
 
                                 </div>
 
@@ -392,19 +417,15 @@
 
                                 <div class="form-floating">
 
-                                    <i class="fa-solid fa-compass"></i>
-
-                                    <input type="text"
-                                           class="form-control"
+                                    <input asp-for="Longitude"
                                            id="longitude"
-                                           placeholder="Longitude"
-                                           readonly>
+                                           class="form-control"
+                                           readonly />
 
-                                    <label for="longitude">
+                                    <label asp-for="Longitude"></label>
 
-                                        Longitude
-
-                                    </label>
+                                    <span asp-validation-for="Longitude"
+                                          class="text-danger"></span>
 
                                 </div>
 
@@ -412,7 +433,7 @@
 
                         </div>
 
-                        <!-- Preview Box -->
+                        <!-- Location Preview -->
 
                         <div class="location-preview mt-5">
 
@@ -434,7 +455,7 @@
 
                                     <p class="text-muted mb-0">
 
-                                        Once your location is detected, your coordinates will appear above.
+                                        Once your location is detected, the latitude and longitude above will be filled automatically.
 
                                     </p>
 
@@ -495,7 +516,9 @@
                         </h4>
 
                         <small class="text-muted">
-                            Tell clients what you do best and why they should hire you.
+
+                            Tell clients the type of cleaning service you provide.
+
                         </small>
 
                     </div>
@@ -505,162 +528,168 @@
                         <div class="row g-4">
 
                             <!-- Service Type -->
+                            <div class="col-md-12">
 
-                            <div class="col-md-6">
+                                <div class="input-group custom-input">
+
+                                    <span class="input-group-text">
+
+                                        <i class="fa-solid fa-broom"></i>
+
+                                    </span>
+
+                                    <div class="form-floating">
+
+                                        <select asp-for="ServiceTypeId"
+                                                asp-items="ViewBag.ServiceTypes"
+                                                class="form-select">
+
+                                            <option value="">
+                                                Select a Service Type
+                                            </option>
+
+                                        </select>
+
+                                        <label asp-for="ServiceTypeId"></label>
+
+                                    </div>
+
+                                </div>
+
+                                <span asp-validation-for="ServiceTypeId"
+                                      class="text-danger"></span>
+
+                            </div>
+
+                            <!-- About Me -->
+
+                            @* <div class="col-md-12">
 
                                 <div class="form-floating">
 
-                                    <i class="fa-solid fa-broom"></i>
+                                    <textarea asp-for="AboutMe"
+                                              class="form-control"
+                                              placeholder="About Me"
+                                              style="height:180px"></textarea>
 
-                                    <select class="form-select"
-                                            id="ServiceType">
+                                    <label asp-for="AboutMe">
 
-                                        <option value=""></option>
-
-                                        <option>Home Cleaning</option>
-
-                                        <option>Office Cleaning</option>
-
-                                        <option>Deep Cleaning</option>
-
-                                        <option>Laundry</option>
-
-                                        <option>Post Construction Cleaning</option>
-
-                                        <option>Carpet Cleaning</option>
-
-                                    </select>
-
-                                    <label for="ServiceType">
-
-                                        Service Type
+                                        About Me
 
                                     </label>
 
                                 </div>
 
-                            </div>
+                                <small class="text-muted">
+
+                                    Tell clients why they should hire you.
+
+                                </small>
+
+                            </div> *@
 
                             <!-- Experience -->
 
-                            <div class="col-md-6">
+                            @* <div class="col-md-6">
 
                                 <div class="form-floating">
 
-                                    <i class="fa-solid fa-award"></i>
-
-                                    <input type="number"
+                                    <input asp-for="YearsOfExperience"
                                            class="form-control"
-                                           id="Experience"
-                                           placeholder="Experience">
+                                           placeholder="Years Of Experience" />
 
-                                    <label for="Experience">
+                                    <label asp-for="YearsOfExperience">
 
-                                        Years of Experience
+                                        Years Of Experience
 
                                     </label>
 
                                 </div>
 
-                            </div>
+                            </div> *@
 
-                            <!-- Bio -->
+                            <!-- Availability -->
 
-                            <div class="col-12">
+                          @*   <div class="col-md-6">
 
                                 <div class="form-floating">
 
-                                    <i class="fa-solid fa-pen"></i>
+                                    <select asp-for="Availability"
+                                            class="form-select">
 
-                                    <textarea class="form-control"
-                                              id="Bio"
-                                              placeholder="About Yourself"
-                                              style="height:170px"></textarea>
+                                        <option value="">
+                                            Select Availability
+                                        </option>
 
-                                    <label for="Bio">
+                                        <option>Weekdays</option>
 
-                                        About Yourself
+                                        <option>Weekends</option>
 
-                                    </label>
+                                        <option>Anytime</option>
+
+                                    </select>
+
+                                    <label asp-for="Availability"></label>
 
                                 </div>
 
-                            </div>
+                            </div> *@
 
                         </div>
 
-                        <!-- Tips -->
+                    </div>
 
-                        <div class="profile-tip mt-5">
+                </div>
 
-                            <div class="d-flex">
+                <!-- Summary -->
+                <div class="worker-card summary-card mt-5">
 
-                                <div class="tip-icon">
+                    <div class="card-body text-center">
 
-                                    <i class="fa-solid fa-lightbulb"></i>
+                        <div class="summary-icon mb-4">
 
-                                </div>
-
-                                <div class="ms-3">
-
-                                    <h5 class="fw-bold">
-
-                                        Profile Tip
-
-                                    </h5>
-
-                                    <p class="mb-0 text-muted">
-
-                                        Workers with a complete profile and a short professional
-                                        description are more likely to receive job requests.
-
-                                    </p>
-
-                                </div>
-
-                            </div>
+                            <i class="fa-solid fa-circle-check"></i>
 
                         </div>
 
-                        <!-- Summary -->
+                        <h2 class="fw-bold mb-3">
 
-                        <div class="profile-summary mt-5">
+                            You're Almost Done!
 
-                            <h5 class="fw-bold mb-3">
+                        </h2>
 
-                                <i class="fa-solid fa-circle-check text-success me-2"></i>
+                        <p class="text-muted mb-4">
 
-                                You're Almost Done
+                            Please review your information carefully before creating
+                            your worker profile.
 
-                            </h5>
+                        </p>
 
-                            <ul class="list-unstyled mb-0">
+                        <div class="summary-list">
 
-                                <li class="mb-2">
+                            <div class="summary-item">
 
-                                    <i class="fa-solid fa-user-check text-success me-2"></i>
+                                <i class="fa-solid fa-user text-success"></i>
 
-                                    Personal information completed
+                                <span>Personal Information</span>
 
-                                </li>
+                            </div>
 
-                                <li class="mb-2">
+                            <div class="summary-item">
 
-                                    <i class="fa-solid fa-location-dot text-success me-2"></i>
+                                <i class="fa-solid fa-location-dot text-success"></i>
 
-                                    Location information completed
+                                <span>Location Information</span>
 
-                                </li>
+                            </div>
 
-                                <li>
+                            <div class="summary-item">
 
-                                    <i class="fa-solid fa-briefcase text-success me-2"></i>
+                                <i class="fa-solid fa-broom text-success"></i>
 
-                                    Professional information ready
+                                <span>Selected Service</span>
 
-                                </li>
-
-                            </ul>
+                            </div>
 
                         </div>
 
@@ -670,11 +699,11 @@
 
                 <!-- Navigation -->
 
-                <div class="d-flex justify-content-between mt-5">
+                <div class="d-flex justify-content-between align-items-center mt-5">
 
                     <button type="button"
                             id="prevBtn3"
-                            class="btn btn-outline-secondary btn-lg px-5">
+                            class="btn btn-light btn-lg px-5">
 
                         <i class="fa-solid fa-arrow-left me-2"></i>
 
@@ -686,7 +715,7 @@
                             id="saveButton"
                             class="btn btn-success btn-lg px-5">
 
-                        <i class="fa-solid fa-circle-check me-2"></i>
+                        <i class="fa-solid fa-user-check me-2"></i>
 
                         Create Worker Profile
 
@@ -698,12 +727,10 @@
 
         </form>
 
-    </div>
+@section Scripts{
 
-</div>
+            <partial name="_ValidationScriptsPartial" />
 
-@section Scripts {
-
-    <script src="~/js/worker-profile.js"></script>
+            <script src="~/js/worker-profile.js"></script>
 
 }

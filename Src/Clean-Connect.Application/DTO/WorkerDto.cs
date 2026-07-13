@@ -1,4 +1,4 @@
-﻿namespace Clean_Connect.Application.DTO
+namespace Clean_Connect.Application.DTO
 {
     public record WorkerDto
     {
