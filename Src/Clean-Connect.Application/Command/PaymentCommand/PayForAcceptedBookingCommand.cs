@@ -14,7 +14,8 @@ namespace Clean_Connect.Application.Command.PaymentCommand
         Guid ClientId,
         string Email,
         string PaymentMethod,
-        string? CreatedBy = null) : IRequest<PaymentInitializationResponse>;
+        string? CreatedBy = null,
+        string? CallbackUrl = null) : IRequest<PaymentInitializationResponse>;
 
     public class PayForAcceptedBookingCommandValidator : AbstractValidator<PayForAcceptedBookingCommand>
     {
@@ -104,7 +105,7 @@ namespace Clean_Connect.Application.Command.PaymentCommand
 
             await repo.Payments.CreatePayment(payment, cancellationToken);
 
-            var response = await paystackService.InitializePayment(booking.Amount, request.Email, reference);
+            var response = await paystackService.InitializePayment(booking.Amount, request.Email, reference, request.CallbackUrl);
             if (!response.Status)
             {
                 throw new InvalidOperationException("Payment initialization failed.");

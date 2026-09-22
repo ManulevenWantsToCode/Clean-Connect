@@ -10,6 +10,7 @@ namespace Clean_Connect.Application.Interface.Repositories
         Task<Escrow?> GetByPaymentId(Guid paymentId, CancellationToken cancellationToken);
         Task<List<Escrow>> GetByWorkerId(Guid workerId, CancellationToken cancellationToken);
         Task<List<Escrow>> GetByStatus(EscrowStatus status, CancellationToken cancellationToken);
+        Task<List<Escrow>> GetAllEscrowsAsync(CancellationToken cancellationToken);
         Task UpdateEscrow(Escrow escrow, CancellationToken cancellationToken);
     }
 }

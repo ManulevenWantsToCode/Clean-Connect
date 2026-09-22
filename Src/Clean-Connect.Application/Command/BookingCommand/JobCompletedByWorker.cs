@@ -1,4 +1,5 @@
 ﻿using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.Interface.Services;
 using Clean_Connect.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -29,11 +30,13 @@ namespace Clean_Connect.Application.Command.BookingCommand
     public class JobCompletedByWorkerHandler : IRequestHandler<JobCompletedByWorkerCommand, bool>
     {
         private readonly IUnitOfWork repo;
+        private readonly INotificationService notificationService;
         private readonly ILogger<JobCompletedByWorkerHandler> logger;
 
-        public JobCompletedByWorkerHandler(IUnitOfWork repo, ILogger<JobCompletedByWorkerHandler> logger)
+        public JobCompletedByWorkerHandler(IUnitOfWork repo, INotificationService notificationService, ILogger<JobCompletedByWorkerHandler> logger)
         {
             this.repo = repo;
+            this.notificationService = notificationService;
             this.logger = logger;
         }
 
@@ -53,13 +56,14 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 throw new InvalidOperationException($"Booking with ID {request.BookingId} is not in in progress and cannot be marked as completed.");
             }
 
-            if (booking.DateOfBooking != DateTime.UtcNow.Date)
+            if (booking.DateOfService.Date != DateTime.UtcNow.Date)
             {
 
                 throw new InvalidOperationException($"Booking with ID {request.BookingId} is not scheduled for today and cannot be marked completed.");
             }
             booking.MarkAsAwaitingClientConfirmation();
             await repo.Bookings.UpdateBooking(booking, cancellationToken);
+            await notificationService.JobFinishedByWorkerAsync(booking, cancellationToken);
             return true;
         }
     }

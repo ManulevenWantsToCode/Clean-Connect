@@ -2,6 +2,7 @@ using Azure.Core;
 using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.Command.WorkerCommands;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.Interface.Services;
 using Clean_Connect.Domain.Entities;
 using Clean_Connect.Domain.Enums;
 using FluentValidation;
@@ -39,13 +40,15 @@ namespace Clean_Connect.Application.Command.ClientCommands
         private readonly IUnitOfWork repo;
         private readonly MarkAsCompletedService service;
         private readonly EscrowService escrowService;
+        private readonly INotificationService notificationService;
         private readonly ILogger<MarkAsCompletedHandler> logger;
 
-        public MarkAsCompletedHandler(IUnitOfWork _repo, MarkAsCompletedService _service, EscrowService escrowService, ILogger<MarkAsCompletedHandler> _logger)
+        public MarkAsCompletedHandler(IUnitOfWork _repo, MarkAsCompletedService _service, EscrowService escrowService, INotificationService notificationService, ILogger<MarkAsCompletedHandler> _logger)
         {
             repo = _repo;
             service = _service;
             this.escrowService = escrowService;
+            this.notificationService = notificationService;
             logger = _logger;
         }
 
@@ -63,10 +66,8 @@ namespace Clean_Connect.Application.Command.ClientCommands
             var client = await repo.Clients.GetClientById(request.ClientId, cancellationToken);
             if (client != null && client.ReferredById.HasValue)
             {
-                // Check if this is the first completed booking for this client
-                var completedBookingsCount = client.Bookings.Count(b => b.BookingStatus == BookingStatus.Completed);
-                if (completedBookingsCount == 1) // It's 1 because we just called booking.MarkAsCompleted() locally? 
-                                                // Actually, the database hasn't been updated yet.
+                var hasPriorCompletedBooking = client.Bookings.Any(b => b.Id != booking.Id && b.BookingStatus == BookingStatus.Completed);
+                if (!hasPriorCompletedBooking)
                 {
                     var referrer = await repo.Clients.GetClientById(client.ReferredById.Value, cancellationToken);
                     if (referrer != null)
@@ -80,6 +81,7 @@ namespace Clean_Connect.Application.Command.ClientCommands
                             var coupon = Coupon.Create(couponCode, 30, DateTime.UtcNow.AddMonths(1), 1, "System-Referral");
                             await repo.Coupons.CreateCouponAsync(coupon, cancellationToken);
                             logger.LogInformation("Generated 30% referral coupon for referrer {ReferrerId}: {CouponCode}", referrer.Id, couponCode);
+                            await notificationService.ReferralCouponAwardedAsync(referrer, couponCode, cancellationToken);
                         }
                     }
                 }
@@ -88,6 +90,7 @@ namespace Clean_Connect.Application.Command.ClientCommands
             logger.LogInformation("Worker {WorkerId} Completed booking {BookingId}", booking.WorkerId, request.BookingId);
 
             await repo.SaveChangesAsync(cancellationToken);
+            await notificationService.JobCompletedAsync(booking, cancellationToken);
             logger.LogInformation("Worker {WorkerId} Completed booking {BookingId}", booking.WorkerId, request.BookingId);
             return true;
 

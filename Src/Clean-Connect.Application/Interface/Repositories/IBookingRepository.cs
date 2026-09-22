@@ -18,6 +18,8 @@ namespace Clean_Connect.Application.Interface.Repositories
         Task UpdateBooking(Booking booking, CancellationToken cancellationToken);
 
         Task DeleteBooking(Booking booking, CancellationToken cancellationToken);
-       
+
+        Task<List<Booking>> GetExpiredBookingsAsync(CancellationToken cancellationToken);
+
     }
 }

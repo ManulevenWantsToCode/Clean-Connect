@@ -1,0 +1,277 @@
+@model Clean_Connect.Application.DTO.AdminSettingsDto
+@{
+    ViewData["Title"] = "Settings";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    }
+
+<div class="admin-page-header">
+    <div class="admin-page-title-wrap">
+        <h2>Platform Settings & Configuration</h2>
+        <p>Manage platform identity, booking rules, fee structure, payout policies, and operational administrators.</p>
+    </div>
+    <div class="admin-page-actions">
+        <button class="btn btn-admin-primary" data-save-feedback>
+            <i class="fa-solid fa-floppy-disk me-1"></i> Save Changes
+        </button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Platform Identity -->
+    <div class="col-lg-6">
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <div class="settings-icon-wrapper">
+                    <i class="fa-solid fa-building-shield"></i>
+                </div>
+                <div>
+                    <h5 class="settings-card-title">Platform Identity</h5>
+                    <p class="settings-card-desc">Public details used across emails, receipts, and the marketplace.</p>
+                </div>
+            </div>
+            <div class="settings-card-body">
+                <div class="mb-3">
+                    <label class="form-label">Platform Name</label>
+                    <input type="text" class="form-control" value="@Model.PlatformName" />
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Support Email</label>
+                        <input type="email" class="form-control" value="@Model.SupportEmail" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Customer Service Phone</label>
+                        <input type="text" class="form-control" value="@Model.CustomerServicePhone" />
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Base Currency</label>
+                        <input type="text" class="form-control" value="@Model.BaseCurrency" readonly disabled />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Default Timezone</label>
+                        <input type="text" class="form-control" value="@Model.Timezone" readonly disabled />
+                    </div>
+                </div>
+                <div class="form-check form-switch settings-switch">
+                    <input class="form-check-input" type="checkbox" id="maintenanceMode" @(Model.MaintenanceMode ? "checked" : "") />
+                    <label class="form-check-label" for="maintenanceMode">
+                        <span class="fw-semibold">Maintenance Mode</span>
+                        <span class="d-block small text-muted">Temporarily disable new bookings while the platform is being updated.</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking & Dispatch Rules -->
+    <div class="col-lg-6">
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <div class="settings-icon-wrapper settings-icon-sky">
+                    <i class="fa-solid fa-calendar-day"></i>
+                </div>
+                <div>
+                    <h5 class="settings-card-title">Booking & Dispatch Rules</h5>
+                    <p class="settings-card-desc">Scheduling constraints that govern booking windows and cleaner matching.</p>
+                </div>
+            </div>
+            <div class="settings-card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Auto-Match Timeout (minutes)</label>
+                        <input type="number" class="form-control" value="@Model.AutoMatchCleanerTimeoutMinutes" min="1" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Minimum Advance Notice (hours)</label>
+                        <input type="number" class="form-control" value="@Model.MinimumAdvanceNoticeHours" min="0" />
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Free Cancellation Window (hours)</label>
+                        <input type="number" class="form-control" value="@Model.FreeCancellationWindowHours" min="0" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Max Active Jobs / Cleaner / Day</label>
+                        <input type="number" class="form-control" value="@Model.MaxActiveJobsPerCleanerPerDay" min="1" />
+                    </div>
+                </div>
+                <div class="settings-note">
+                    <i class="fa-solid fa-circle-info me-2"></i>
+                    Changes to dispatch rules apply to new bookings only and take effect immediately.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments & Payouts -->
+    <div class="col-lg-6">
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <div class="settings-icon-wrapper settings-icon-amber">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                </div>
+                <div>
+                    <h5 class="settings-card-title">Payments & Payouts</h5>
+                    <p class="settings-card-desc">Commission structure, escrow release, and worker withdrawal limits.</p>
+                </div>
+            </div>
+            <div class="settings-card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Platform Commission (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" value="@Model.CommissionPercent" min="0" max="100" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Auto-Release Escrow Delay (hours)</label>
+                        <input type="number" class="form-control" value="@Model.AutoReleaseEscrowDelayHours" min="0" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Minimum Worker Withdrawal</label>
+                    <div class="input-group">
+                        <span class="input-group-text">₦</span>
+                        <input type="number" class="form-control" value="@Model.MinimumWorkerWithdrawal.ToString("0")" min="0" step="500" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Payment Gateway Mode</label>
+                    <select class="form-select">
+                        <option selected>@Model.PaymentGatewayMode</option>
+                        <option>Paystack Test Sandbox</option>
+                        <option>Bank Transfer Fallback Only</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Communication & Notifications -->
+    <div class="col-lg-6">
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <div class="settings-icon-wrapper settings-icon-rose">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+                <div>
+                    <h5 class="settings-card-title">Communication & Notifications</h5>
+                    <p class="settings-card-desc">Automated alerts sent to clients and cleaners at key booking milestones.</p>
+                </div>
+            </div>
+            <div class="settings-card-body">
+                <div class="form-check form-switch settings-switch">
+                    <input class="form-check-input" type="checkbox" id="newBookingEmail" @(Model.EmailAlertsOnNewBooking ? "checked" : "") />
+                    <label class="form-check-label" for="newBookingEmail">
+                        <span class="fw-semibold">Email Alerts on New Booking</span>
+                        <span class="d-block small text-muted">Notify assigned cleaners instantly when a booking lands.</span>
+                    </label>
+                </div>
+                <div class="form-check form-switch settings-switch">
+                    <input class="form-check-input" type="checkbox" id="cleanerSms" @(Model.SmsToCleanerOnAssignment ? "checked" : "") />
+                    <label class="form-check-label" for="cleanerSms">
+                        <span class="fw-semibold">SMS to Cleaner on Assignment</span>
+                        <span class="d-block small text-muted">Send a text message summary with the job address and time.</span>
+                    </label>
+                </div>
+                <div class="form-check form-switch settings-switch">
+                    <input class="form-check-input" type="checkbox" id="disputeNotifications" @(Model.DisputeAndFlaggedReviewNotifications ? "checked" : "") />
+                    <label class="form-check-label" for="disputeNotifications">
+                        <span class="fw-semibold">Dispute & Flagged Review Alerts</span>
+                        <span class="d-block small text-muted">Notify the admin team when escrow disputes or flagged reviews occur.</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Platform Admins -->
+    <div class="col-12">
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <div class="settings-icon-wrapper settings-icon-emerald">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div>
+                    <h5 class="settings-card-title">Platform Administrators</h5>
+                    <p class="settings-card-desc">User accounts with full access to the admin portal.</p>
+                </div>
+                <div class="ms-auto">
+                    <button class="btn btn-admin-primary btn-sm">
+                        <i class="fa-solid fa-user-plus me-1"></i> Invite Admin
+                    </button>
+                </div>
+            </div>
+            <div class="settings-card-body p-0">
+                <div class="admin-table-responsive border-0">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Administrator</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.AdminUsers.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-user-shield fs-3 mb-2 d-block text-secondary"></i>
+                                        No administrators assigned yet.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var u in Model.AdminUsers)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="user-cell">
+                                                <div class="user-avatar-initials bg-success-subtle text-success">@u.Initials</div>
+                                                <div class="user-details">
+                                                    <span class="user-name">@u.Name</span>
+                                                    @if (u.IsOwner)
+                                                    {
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle">Owner</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>@u.Email</td>
+                                        <td><span class="badge bg-secondary-subtle text-dark border">@u.Role</span></td>
+                                        <td>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                                <i class="fa-solid fa-circle me-1 small"></i>@u.Status
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="table-actions justify-content-end">
+                                                <button class="btn-action-icon text-danger" title="Remove Admin">
+                                                    <i class="fa-solid fa-user-xmark"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+
+    </script>
+}

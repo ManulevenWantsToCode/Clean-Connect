@@ -10,6 +10,15 @@ namespace Clean_Connect.Application.DTO
         string PaymentReference,
         string CheckoutUrl);
 
+    public record PaymentConfirmationResult(
+        Guid BookingId,
+        Guid PaymentId,
+        decimal Amount,
+        string PaymentReference,
+        string? TransactionId,
+        string Status,
+        string? FailureReason);
+
     public record PaymentDto
     {
             public Guid Id { get; set; }

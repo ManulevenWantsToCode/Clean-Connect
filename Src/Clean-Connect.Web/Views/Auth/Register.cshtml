@@ -1,4 +1,4 @@
-﻿@model Clean_Connect.Application.Command.ApplicationUserCommand.RegisterUserCommand
+@model Clean_Connect.Application.Command.ApplicationUserCommand.RegisterUserCommand
 
 @{
     ViewData["Title"] = "Register";
@@ -12,7 +12,7 @@
 
         <div class="overlay"></div>
 
-        <div class="left-content">
+        <div class="left-content" data-aos="fade-right">
 
             <div class="brand">
                 <i class="fa-solid fa-broom"></i>
@@ -34,15 +34,23 @@
 
     <div class="auth-right">
 
-        <div class="login-card">
+        <div class="login-card shadow-lg" data-aos="fade-left">
 
             <div class="text-center mb-4">
 
-                <h2>Create Account</h2>
+                <h2 class="fw-bold">Create Account 👋</h2>
 
                 <p class="text-muted">
-                    Fill in the details below
+                    Fill in the details below to get started
                 </p>
+
+                @if (ViewData["ReferralCode"] is string referral && !string.IsNullOrWhiteSpace(referral))
+                {
+                    <div class="alert alert-success py-2 px-3 small mb-3">
+                        <i class="fa-solid fa-gift me-1"></i>
+                        You were invited by a Clean Connect member! Your referral code will be applied when you set up your profile.
+                    </div>
+                }
 
             </div>
 
@@ -61,9 +69,14 @@
 
                     <label asp-for="Email" class="form-label"></label>
 
-                    <input asp-for="Email"
-                           class="form-control"
-                           placeholder="Enter your email" />
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fa-solid fa-envelope"></i>
+                        </span>
+                        <input asp-for="Email"
+                               class="form-control"
+                               placeholder="Enter your email" />
+                    </div>
 
                     <span asp-validation-for="Email"
                           class="text-danger"></span>
@@ -77,6 +90,9 @@
                     <label asp-for="Password" class="form-label"></label>
 
                     <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
 
                         <input asp-for="Password"
                                id="password"
@@ -116,7 +132,10 @@
                         <div class="col-md-6">
 
                             <div class="role-card"
-                                 data-role="Client">
+                                 data-role="Client"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-label="Select Client Role">
 
                                 <i class="fa-solid fa-user role-icon"></i>
 
@@ -133,7 +152,10 @@
                         <div class="col-md-6">
 
                             <div class="role-card"
-                                 data-role="Worker">
+                                 data-role="Worker"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-label="Select Worker Role">
 
                                 <i class="fa-solid fa-broom role-icon"></i>
 
@@ -155,18 +177,35 @@
                 </div>
 
                 <button type="submit"
-                        class="btn btn-success login-btn w-100">
-
+                        class="btn btn-success login-btn w-100 py-3">
+                    <i class="fa-solid fa-user-plus me-2"></i>
                     Create Account
-
                 </button>
+
+                <div class="divider">
+
+                    <span>OR</span>
+
+                </div>
+
+                <a asp-action="GoogleLogin"
+                   asp-controller="Auth"
+                   class="btn btn-light border w-100 google-btn">
+
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg"
+                         width="22"
+                         class="me-2" />
+
+                    Sign up with Google
+
+                </a>
 
                 <div class="text-center mt-4">
 
-                    Already have an account?
+                    <span class="text-muted me-1">Already have an account?</span>
 
-                    <a asp-action="Login">
-                        Login
+                    <a asp-action="Login" class="fw-semibold">
+                        Sign In
                     </a>
 
                 </div>
@@ -179,9 +218,63 @@
 </div>
 
 @section Scripts {
-
     <partial name="_ValidationScriptsPartial" />
 
-  
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const roleCards = document.querySelectorAll(".role-card");
+            const hiddenInput = document.getElementById("SelectedRole");
+            const googleBtn = document.querySelector("a.google-btn");
 
-}
+            if (!roleCards.length || !hiddenInput) return;
+
+            function selectRole(card) {
+                roleCards.forEach(function (c) {
+                    c.classList.remove("active");
+                });
+                card.classList.add("active");
+                hiddenInput.value = card.getAttribute("data-role");
+
+                if (googleBtn) {
+                    var role = card.getAttribute("data-role");
+                    var url = new URL(googleBtn.href, window.location.origin);
+                    url.searchParams.set("role", role);
+                    googleBtn.href = url.toString();
+                }
+            }
+
+            // Default: select Client if empty
+            const currentRole = hiddenInput.value || "Client";
+            const initialCard = document.querySelector(`.role-card[data-role="${currentRole}"]`) || roleCards[0];
+            if (initialCard) {
+                selectRole(initialCard);
+            }
+
+            roleCards.forEach(function (card) {
+                card.addEventListener("click", function () {
+                    selectRole(card);
+                });
+
+                card.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        selectRole(card);
+                    }
+                });
+            });
+
+            // Password toggle
+            const toggleBtn = document.getElementById("togglePassword");
+            const passwordInput = document.getElementById("password");
+            if (toggleBtn && passwordInput) {
+                toggleBtn.addEventListener("click", function () {
+                    const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+                    passwordInput.setAttribute("type", type);
+                    toggleBtn.querySelector("i").className = type === "password"
+                        ? "fa-solid fa-eye"
+                        : "fa-solid fa-eye-slash";
+                });
+            }
+        });
+    </script>
+}

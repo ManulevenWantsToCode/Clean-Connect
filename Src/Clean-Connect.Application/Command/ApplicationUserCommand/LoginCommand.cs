@@ -1,14 +1,12 @@
-﻿using Clean_Connect.Application.Command.Auth;
+using Clean_Connect.Application.Command.Auth;
 using Clean_Connect.Application.DTO;
-using Clean_Connect.Application.Interface.Services;
+using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Domain.Entities;
 using FluentValidation;
 using MediatR;
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Data;
 
 namespace Clean_Connect.Application.Command.ApplicationUserCommand
 {
@@ -25,6 +23,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 .WithMessage("Email is invalid")
                 .Length(10, 100)
                 .WithMessage("Email must be between 10-100 characters");
+
             RuleFor(x => x.Password)
                 .NotEmpty()
                 .WithMessage("Password is required")
@@ -33,7 +32,13 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
         }
     }
 
-    public class LoginCommandHandler(UserManager<ApplicationUser> user, IMediator _mediator, SignInManager<ApplicationUser> signInManager, ILogger<RegisterUserCommandHandler> logger, IConfiguration configuration) : IRequestHandler<LoginCommand, LoginResponse>
+    public class LoginCommandHandler(
+        UserManager<ApplicationUser> user,
+        IMediator _mediator,
+        SignInManager<ApplicationUser> signInManager,
+        IUnitOfWork repo,
+        ILogger<RegisterUserCommandHandler> logger,
+        IConfiguration configuration) : IRequestHandler<LoginCommand, LoginResponse>
     {
         public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
@@ -112,23 +117,59 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 };
             }
 
-            // Sign in (creates authentication cookie)
-            await signInManager.SignInAsync(appUser, request.RememberMe);
-
             // Get roles
             var roles = await user.GetRolesAsync(appUser);
 
             if (roles.Contains("Worker") && !appUser.IsWorkerProfileCompleted)
             {
-                return new LoginResponse
+                var workerProfile = await repo.Workers.GetByEmail(appUser.Email!, cancellationToken);
+
+                if (workerProfile == null)
                 {
-                    UserId = appUser.Id,
-                    Email = appUser.Email!,
-                    Roles = roles.ToArray(),
-                    IsSuccessful = true,
-                    RequiresWorkerProfileCompletion = true
-                };
+                    // Sign in (creates authentication cookie) so the user can complete the profile form.
+                    await signInManager.SignInAsync(appUser, request.RememberMe);
+
+                    return new LoginResponse
+                    {
+                        UserId = appUser.Id,
+                        Email = appUser.Email!,
+                        Roles = roles.ToArray(),
+                        IsSuccessful = true,
+                        RequiresWorkerProfileCompletion = true
+                    };
+                }
+
+                appUser.CompleteWorkerProfile();
+
+                var updateResult = await user.UpdateAsync(appUser);
+                if (!updateResult.Succeeded)
+                {
+                    foreach (var error in updateResult.Errors)
+                    {
+                        logger.LogError(
+                            "Failed to repair worker profile completion flag for {Email}: {Code} - {Description}",
+                            appUser.Email,
+                            error.Code,
+                            error.Description);
+                    }
+
+                    return new LoginResponse
+                    {
+                        UserId = appUser.Id,
+                        Email = appUser.Email!,
+                        Roles = roles.ToArray(),
+                        IsSuccessful = false,
+                        ErrorMessage = "Unable to verify your worker profile. Please try again."
+                    };
+                }
+
+                logger.LogInformation(
+                    "Repaired worker profile completion flag during login for {Email}",
+                    appUser.Email);
             }
+
+            // Sign in (creates authentication cookie)
+            await signInManager.SignInAsync(appUser, request.RememberMe);
 
             if (roles.Contains("Client") && !appUser.IsClientProfileCompleted)
             {
@@ -155,7 +196,8 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 Email = appUser.Email!,
                 Roles = roles.ToArray(),
                 Token = token,
-                IsSuccessful = true
+                IsSuccessful = true,
+                RequiresWorkerProfileCompletion = false
             };
         }
     }

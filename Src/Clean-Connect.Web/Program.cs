@@ -5,10 +5,13 @@ using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Application.Interface.Services;
 using Clean_Connect.Domain.Entities;
+using Clean_Connect.Web.Hubs;
+using Clean_Connect.Web.Services;
 using Clean_Connect.Infrastructure.Context;
 using Clean_Connect.Persistence.Repositories;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -55,13 +58,17 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 
 
 // --------------------
-// Authentication - JWT
+// Authentication
 // --------------------
-builder.Services.AddAuthentication(options =>
+builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
+    options.LoginPath = "/Login";
+    options.AccessDeniedPath = "/Login";
+});
+
+// Keep Identity's application cookie as the default for MVC pages.
+// JWT remains available explicitly as the Bearer scheme.
+builder.Services.AddAuthentication()
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
@@ -76,12 +83,26 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+var googleSection = builder.Configuration.GetSection("Authentication:Google");
+if (!string.IsNullOrWhiteSpace(googleSection["ClientId"]) && !string.IsNullOrWhiteSpace(googleSection["ClientSecret"]))
+{
+    builder.Services.AddAuthentication().AddGoogle(options =>
+    {
+        options.ClientId = googleSection["ClientId"];
+        options.ClientSecret = googleSection["ClientSecret"];
+        options.SaveTokens = false;
+        options.Scope.Add("email");
+        options.Scope.Add("profile");
+    });
+}
+
 // --------------------
 // Authorization
 // --------------------
 builder.Services.AddAuthorization();
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
 
 
 // --------------------
@@ -93,6 +114,7 @@ builder.Services.AddMediatR(cfg =>
 // --------------------
 // DI for Services
 // --------------------
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<GeocodingService>();
 builder.Services.AddScoped<WorkerAvailabilityService>();
 builder.Services.AddScoped<BookingRuleService>();
@@ -100,9 +122,17 @@ builder.Services.AddScoped<AcceptBookingService>();
 builder.Services.AddScoped<MarkAsCompletedService>();
 builder.Services.AddScoped<EscrowService>();
 builder.Services.AddScoped<PayoutService>();
+builder.Services.AddScoped<RefundService>();
 builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IPaystackService, PaystackService>();
+
+// --------------------
+// Background services
+// --------------------
+builder.Services.AddHostedService<BookingExpirationService>();
 
 
 // --------------------
@@ -117,6 +147,7 @@ builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<IEscrowRepository, EscrowRepository>();
 builder.Services.AddScoped<ICouponRepository, CouponRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 
@@ -145,9 +176,11 @@ builder.Services.AddNotyf(config =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseExceptionHandler("/Home/Error");
+app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
@@ -158,6 +191,8 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHub<NotificationHub>("/hubs/notifications");
+
 app.MapStaticAssets();
 
 app.MapControllerRoute(
@@ -165,5 +200,29 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    if (!context.ServiceTypes.Any())
+    {
+        var serviceTypes = new[]
+        {
+            ServiceType.Create("Residential Cleaning", "Professional cleaning for homes and apartments", 100.00m),
+            ServiceType.Create("Commercial Cleaning", "Office and commercial space cleaning services", 200.00m),
+            ServiceType.Create("Deep Cleaning", "Thorough deep cleaning for all living spaces", 150.00m),
+            ServiceType.Create("Carpet Cleaning", "Professional carpet and upholstery cleaning", 120.00m),
+            ServiceType.Create("Move In/Out Cleaning", "Complete cleaning for move-in and move-out", 180.00m),
+        };
+
+        foreach (var st in serviceTypes)
+            context.ServiceTypes.Add(st);
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} service types", serviceTypes.Length);
+    }
+}
 
 app.Run();

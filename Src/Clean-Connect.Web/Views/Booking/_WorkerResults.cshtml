@@ -1,0 +1,55 @@
+@model Clean_Connect.Web.Models.ChooseWorkerViewModel
+@using Clean_Connect.Web.Helpers
+
+@if (Model.Workers.Count == 0)
+{
+    <div class="booking-empty">
+        <i class="fa-solid fa-user-slash"></i>
+        <h2>No workers free on this day</h2>
+        <p>All workers for @Model.DateOfService.ToString("MMM dd, yyyy") are already booked. Try another date, time, or widen your search radius.</p>
+        <a asp-action="ChooseWorker" asp-controller="Booking" asp-route-dateOfService="@DateTime.Today.AddDays(2).ToString("yyyy-MM-dd")" class="btn btn-success booking-action-btn rounded-pill px-4 mt-3">
+            <i class="fa-solid fa-calendar-plus me-2"></i>Try another day
+        </a>
+    </div>
+}
+else
+{
+    <div class="choose-worker-grid">
+        @foreach (var w in Model.Workers)
+        {
+            <article class="choose-worker-card">
+                <div class="choose-worker-card__top">
+                    <div class="choose-worker-card__avatar">
+                        @{ var initials = string.Join("", w.Name.Split(' ').Where(x => x.Length > 0).Select(x => x[0]).Take(2)).ToUpper(); }
+                        @initials
+                    </div>
+                    <div class="choose-worker-card__title">
+                        <h2>@w.Name</h2>
+                        <span><i class="fa-solid fa-briefcase"></i> @w.ServiceName</span>
+                    </div>
+                    <div class="choose-worker-card__price">&#8358;@w.Amount.ToString("N0")</div>
+                </div>
+
+                <div class="choose-worker-card__meta">
+                    <span><i class="fa-solid fa-star"></i> @w.Rating.ToString("0.0") (@w.TotalRating)</span>
+                    <span><i class="fa-solid fa-location-dot"></i> @(w.DistanceInKm.HasValue ? $"~{w.DistanceInKm.Value.ToString("0.#")} km away" : (string.IsNullOrWhiteSpace(w.State) ? "Your area" : w.State))</span>
+                    <span><i class="fa-solid fa-cake-candles"></i> @w.Age yrs</span>
+                </div>
+
+                <div class="choose-worker-card__price-sm">&#8358;@w.Amount.ToString("N0")</div>
+
+                <a asp-controller="Booking" asp-action="Create"
+                   asp-route-workerId="@w.Id"
+                   asp-route-serviceTypeId="@w.ServiceTypeId"
+                   asp-route-dateOfService="@Model.DateOfService.ToString("yyyy-MM-dd")"
+                   asp-route-timeRange="@Model.TimeRange"
+                   asp-route-latitude="@ViewBag.OriginLatitude"
+                   asp-route-longitude="@ViewBag.OriginLongitude"
+                   asp-route-radius="@ViewBag.OriginRadius"
+                   class="btn btn-success booking-action-btn w-100 rounded-pill">
+                    <i class="fa-solid fa-arrow-right me-2"></i>Continue with @w.Name.Split(' ')[0]
+                </a>
+            </article>
+        }
+    </div>
+}

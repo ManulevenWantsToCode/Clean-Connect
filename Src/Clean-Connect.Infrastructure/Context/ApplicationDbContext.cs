@@ -24,6 +24,7 @@ namespace Clean_Connect.Infrastructure.Context
         public DbSet<Wallet> Wallets { get; set; }
         public DbSet<Escrow> Escrows { get; set; }
         public DbSet<Coupon> Coupons { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

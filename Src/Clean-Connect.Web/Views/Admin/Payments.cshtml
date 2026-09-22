@@ -1,0 +1,319 @@
+@model List<Clean_Connect.Application.DTO.AdminPaymentDto>
+@using Clean_Connect.Domain.Enums
+@{
+    ViewData["Title"] = "Payments";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    string FormatNaira(decimal amount) => $"₦{amount:N0}";
+    string PaymentStatusLabel(PaymentStatus s) => s switch
+    {
+        PaymentStatus.Successful => "Successful",
+        PaymentStatus.Refunded => "Refunded",
+        PaymentStatus.Abandoned => "Abandoned",
+        PaymentStatus.Reversed => "Reversed",
+        PaymentStatus.Canceled => "Canceled",
+        PaymentStatus.Failed => "Failed",
+        _ => "Pending"
+    };
+    string PaymentStatusClass(PaymentStatus s) => s == PaymentStatus.Successful
+        ? "badge-status-success"
+        : (s == PaymentStatus.Failed || s == PaymentStatus.Reversed || s == PaymentStatus.Canceled
+            ? "badge-status-danger"
+            : (s == PaymentStatus.Pending ? "badge-status-info" : "badge-status-warning"));
+    var volume = Model.Sum(p => p.GrossAmount);
+    var fees = Model.Where(p => p.Status == PaymentStatus.Successful).Sum(p => p.Fee);
+    var successCount = Model.Count(p => p.Status == PaymentStatus.Successful);
+    var troubleCount = Model.Count(p => p.Status == PaymentStatus.Failed || p.Status == PaymentStatus.Reversed || p.Status == PaymentStatus.Canceled);
+}
+
+<div class="admin-page-header">
+    <div class="admin-page-title-wrap">
+        <h2>Payments & Transactions</h2>
+        <p>Review deposits, settlement statuses, platform fees collected, and gateway transaction records.</p>
+    </div>
+    <div class="admin-page-actions">
+        <button class="btn btn-admin-secondary">
+            <i class="fa-solid fa-file-invoice-dollar me-1"></i> Financial Report
+        </button>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Transaction Volume</span>
+                <div class="stat-icon-wrapper stat-icon-emerald">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@FormatNaira(volume)</div>
+            <div class="stat-card-meta">
+                <span class="trend-badge trend-badge-up">@Model.Count.ToString("N0")</span>
+                <span>payment transactions recorded</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Platform Fees Collected</span>
+                <div class="stat-icon-wrapper stat-icon-sky">
+                    <i class="fa-solid fa-percent"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@FormatNaira(fees)</div>
+            <div class="stat-card-meta">
+                <span class="text-success fw-bold">@successCount successful</span>
+                <span>completions credited</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Successful Payments</span>
+                <div class="stat-icon-wrapper stat-icon-amber">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@successCount.ToString("N0")</div>
+            <div class="stat-card-meta">
+                <span class="text-warning fw-bold">@Model.Where(p => p.EscrowStatus == "In Escrow").Count().ToString("N0")</span>
+                <span>still held in escrow</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Failed / Reversed</span>
+                <div class="stat-icon-wrapper stat-icon-rose">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@troubleCount.ToString("N0")</div>
+            <div class="stat-card-meta">
+                <span class="text-danger fw-bold">@Model.Count(p => p.Status == PaymentStatus.Refunded).ToString("N0") refunded</span>
+                <span>transactions requiring attention</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Toolbar -->
+<div class="admin-filter-bar">
+    <div class="filter-left-group">
+        <div class="filter-search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="filter-search-input" data-table-search="paymentsTable" placeholder="Search transaction or booking ref..." />
+        </div>
+
+        <select class="filter-select" data-table-filter="paymentsTable" data-filter-col="5">
+            <option value="all">All Payment Statuses</option>
+            <option value="Successful">Successful</option>
+            <option value="Pending">Pending</option>
+            <option value="Failed">Failed</option>
+            <option value="Refunded">Refunded</option>
+        </select>
+
+        <select class="filter-select" data-table-filter="paymentsTable" data-filter-col="6">
+            <option value="all">All Gateways</option>
+            <option value="Paystack">Paystack Card</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+        </select>
+
+        <button class="btn btn-sm btn-admin-secondary" data-reset-filter="paymentsTable">
+            <i class="fa-solid fa-filter-circle-xmark me-1"></i> Reset
+        </button>
+    </div>
+
+    <div class="filter-right-group">
+        <span class="results-counter" id="paymentsTable-counter">Showing @Model.Count of @Model.Count records</span>
+    </div>
+</div>
+
+<!-- Payments Table -->
+<div class="admin-card">
+    <div class="admin-table-responsive">
+        <table class="admin-table" id="paymentsTable">
+            <thead>
+                <tr>
+                    <th>Transaction Ref</th>
+                    <th>Booking</th>
+                    <th>Payer &rarr; Payee</th>
+                    <th>Gross (₦)</th>
+                    <th>Fee (₦)</th>
+                    <th>Status</th>
+                    <th>Gateway</th>
+                    <th>Date</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-receipt fs-3 mb-2 d-block text-secondary"></i>
+                            No payments recorded yet.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @for (var i = 0; i < Model.Count; i++)
+                    {
+                        var p = Model[i];
+                        <tr>
+                            <td class="fw-bold text-primary">@p.TransactionRef</td>
+                            <td class="small text-muted fw-semibold">@p.BookingRef</td>
+                            <td>
+                                <div class="user-cell">
+                                    <div>
+                                        <span class="user-name">@p.PayerName</span>
+                                        <span class="user-subtext"><i class="fa-solid fa-arrow-right-long text-muted"></i> @p.PayeeName</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="fw-semibold">@FormatNaira(p.GrossAmount)</td>
+                            <td class="text-muted small">@FormatNaira(p.Fee)</td>
+                            <td>
+                                <span class="badge-status @PaymentStatusClass(p.Status)">
+                                    <span class="badge-status-dot"></span> @PaymentStatusLabel(p.Status)
+                                </span>
+                            </td>
+                            <td><span class="badge bg-light text-muted border">@p.Gateway</span></td>
+                            <td>
+                                <div class="small fw-semibold">@p.Timestamp.ToString("MMM d, yyyy")</div>
+                                <span class="user-subtext">@p.Timestamp.ToString("HH:mm")</span>
+                            </td>
+                            <td class="text-end">
+                                <div class="table-actions justify-content-end">
+                                    <button class="btn-action-icon" onclick="openReceiptModal(@i)" title="View Receipt">
+                                        <i class="fa-solid fa-receipt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+
+                <tr id="paymentsTable-no-results" style="display: none;">
+                    <td colspan="9" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-magnifying-glass fs-3 mb-2 d-block text-secondary"></i>
+                        No payments match your selected criteria.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="admin-pagination-wrapper" data-paginate="paymentsTable" data-page-size="8">
+        <span class="pagination-info" data-pagination-info>Showing all @Model.Count payments</span>
+        <ul class="admin-pagination" data-pagination-list></ul>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="paymentReceiptModal" tabindex="-1" aria-labelledby="paymentReceiptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentReceiptModalLabel">
+                    <i class="fa-solid fa-receipt text-success me-2"></i>
+                    Payment Receipt
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center py-3 border-bottom mb-3">
+                    <div class="receipt-amount fs-2 fw-bold text-success" id="pr-amount">—</div>
+                    <div class="text-muted small" id="pr-ref">—</div>
+                </div>
+
+                <div class="receipt-table">
+                    <div class="receipt-row">
+                        <span class="text-muted">Booking Reference</span>
+                        <span class="fw-semibold" id="pr-booking">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Paid By</span>
+                        <span id="pr-payer">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Paid To</span>
+                        <span id="pr-payee">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Platform Fee</span>
+                        <span class="text-muted" id="pr-fee">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Worker Net Settlement</span>
+                        <span class="fw-bold text-success" id="pr-net">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Escrow Status</span>
+                        <span id="pr-escrow">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Gateway</span>
+                        <span id="pr-gateway">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Gateway Reference</span>
+                        <span class="small" id="pr-gateway-ref">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Payout Destination</span>
+                        <span id="pr-destination">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Timestamp</span>
+                        <span id="pr-date">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="text-muted">Status</span>
+                        <span id="pr-status">—</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-admin-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-admin-primary">
+                    <i class="fa-solid fa-print me-1"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const paymentsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
+
+        function openReceiptModal(index) {
+            const p = paymentsData[index];
+            if (!p) return;
+            document.getElementById('paymentReceiptModalLabel').textContent = 'Payment Receipt: ' + p.transactionRef;
+            document.getElementById('pr-amount').textContent = '\u20A6' + p.grossAmount.toLocaleString();
+            document.getElementById('pr-ref').textContent = p.transactionRef;
+            document.getElementById('pr-booking').textContent = p.bookingRef;
+            document.getElementById('pr-payer').textContent = p.payerName;
+            document.getElementById('pr-payee').textContent = p.payeeName;
+            document.getElementById('pr-fee').textContent = '\u20A6' + p.fee.toLocaleString();
+            document.getElementById('pr-net').textContent = '\u20A6' + p.workerNetSettlement.toLocaleString();
+            document.getElementById('pr-escrow').textContent = p.escrowStatus;
+            document.getElementById('pr-gateway').textContent = p.gateway;
+            document.getElementById('pr-gateway-ref').textContent = p.gatewayRef;
+            document.getElementById('pr-destination').textContent = p.payoutDestination || 'N/A';
+            document.getElementById('pr-date').textContent = new Date(p.timestamp).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+            document.getElementById('pr-status').textContent = p.status;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('paymentReceiptModal')).show();
+        }
+    </script>
+}

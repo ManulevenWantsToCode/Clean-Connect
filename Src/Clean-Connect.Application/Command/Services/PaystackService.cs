@@ -24,17 +24,22 @@ namespace Clean_Connect.Application.Command.Services
             _logger = logger;
         }
 
-        public async Task<PaystackInitResponse> InitializePayment(decimal amount, string email, string reference)
+        public async Task<PaystackInitResponse> InitializePayment(decimal amount, string email, string reference, string? callbackUrl = null)
         {
             
             _logger.LogInformation("Initializing Paystack payment for email: {Email}, amount: {Amount}, reference: {Reference}", email, amount, reference);
       
-            var requestData = new
+            var requestData = new Dictionary<string, object>
             {
-                email,
-                amount = (int)(amount * 100), // Paystack expects amount in kobo
-                reference
+                ["email"] = email,
+                ["amount"] = (int)(amount * 100), // Paystack expects amount in kobo
+                ["reference"] = reference
             };
+
+            if (!string.IsNullOrWhiteSpace(callbackUrl))
+            {
+                requestData["callback_url"] = callbackUrl;
+            }
             
             _logger.LogDebug("Paystack initialization request data: {@RequestData}", requestData);
 
@@ -185,6 +190,73 @@ namespace Clean_Connect.Application.Command.Services
 
             _logger.LogInformation("Transfer initiated successfully. TransferCode: {TransferCode}, Status: {Status}", paystackResponse.Data.TransferCode, paystackResponse.Data.Status);
 
+            return paystackResponse.Data;
+        }
+
+        public async Task<bool> RefundTransactionAsync(string transactionReference, decimal amount, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Initiating Paystack refund for transaction: {Reference}, amount: {Amount}", transactionReference, amount);
+
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
+
+            var amountKobo = (int)(amount * 100m);
+            var requestData = new
+            {
+                transaction = transactionReference,
+                amount = amountKobo
+            };
+
+            _logger.LogDebug("Paystack refund request data: {@RequestData}", requestData);
+
+            var response = await _httpClient.PostAsJsonAsync($"{_paystackBase}/refund", requestData, cancellationToken);
+
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            _logger.LogDebug("Paystack refund response content: {Content}", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Paystack refund failed for transaction: {Reference}. Response: {Content}", transactionReference, content);
+                return false;
+            }
+
+            var paystackResponse = JsonSerializer.Deserialize<PaystackRefundResponse>(content, JsonOptions);
+
+            if (paystackResponse == null || !paystackResponse.Status)
+            {
+                _logger.LogError("Paystack refund rejected for transaction: {Reference}. Response: {Content}", transactionReference, content);
+                return false;
+            }
+
+            _logger.LogInformation("Paystack refund initiated for transaction: {Reference}. Status: {Status}", transactionReference, paystackResponse.Data?.Status);
+            return true;
+        }
+
+        public async Task<List<PaystackBankResponse>> ListBanksAsync(string currency, CancellationToken cancellationToken)
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
+
+            _logger.LogInformation("Fetching list of banks from Paystack for currency: {Currency}", currency);
+
+            var response = await _httpClient.GetAsync($"{_paystackBase}/bank?currency={Uri.EscapeDataString(currency)}&per_page=100", cancellationToken);
+
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Failed to fetch banks from Paystack. Response: {Content}", content);
+                throw new Exception($"Failed to fetch banks from Paystack: {content}");
+            }
+
+            var paystackResponse = JsonSerializer.Deserialize<PaystackListBanksResponse>(content, JsonOptions);
+
+            if (paystackResponse == null || !paystackResponse.Status || paystackResponse.Data == null)
+            {
+                _logger.LogError("Invalid bank list response from Paystack. Response: {Content}", content);
+                throw new Exception($"Invalid bank list response from Paystack: {paystackResponse?.Message ?? content}");
+            }
+
+            _logger.LogInformation("Fetched {Count} banks from Paystack.", paystackResponse.Data.Count);
             return paystackResponse.Data;
         }
     }

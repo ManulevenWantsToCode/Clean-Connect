@@ -2,7 +2,6 @@ using Clean_Connect.Domain.Enums;
 using Clean_Connect.Domain.Events;
 using Clean_Connect.Domain.Utilities;
 using Clean_Connect.Domain.Value_Objects;
-using MediatR;
 
 namespace Clean_Connect.Domain.Entities
 {
@@ -27,9 +26,6 @@ namespace Clean_Connect.Domain.Entities
         }
 
         public Client Client { get; private set; }
-        private readonly List<INotification> _domainEvents = new();
-        public IReadOnlyCollection<INotification> DomainEvents => _domainEvents.AsReadOnly();
-
 
         public Worker Worker { get; private set; }
 
@@ -76,7 +72,7 @@ namespace Clean_Connect.Domain.Entities
             BookingStatus = BookingStatus.AcceptedAwaitingPayment;
             PaymentStatus = PaymentStatus.Pending;
 
-            _domainEvents.Add(new BookingAcceptedEvent(Id));
+            AddDomainEvent(new BookingAcceptedEvent(Id));
         }
 
         public void Reject()
@@ -91,11 +87,21 @@ namespace Clean_Connect.Domain.Entities
 
         }
 
-        public void StartJob()
+        public void RequestStartJob()
         {
             if (BookingStatus != BookingStatus.MarkAsPaid)
             {
-                throw new InvalidOperationException("Only paid bookings can be started.");
+                throw new InvalidOperationException("Only paid bookings can be requested to start.");
+            }
+
+            BookingStatus = BookingStatus.AwaitingClientStartConfirmation;
+        }
+
+        public void StartJob()
+        {
+            if (BookingStatus != BookingStatus.AwaitingClientStartConfirmation)
+            {
+                throw new InvalidOperationException("Only bookings confirmed by the client can be started.");
             }
 
             BookingStatus = BookingStatus.InProgress;
@@ -130,6 +136,40 @@ namespace Clean_Connect.Domain.Entities
                 throw new InvalidOperationException("Only paid, in-progress, or awaiting confirmation bookings can be marked as completed.");
             }
             BookingStatus = BookingStatus.Completed;
+        }
+
+        public bool CanExpire => BookingStatus is
+            BookingStatus.Pending or
+            BookingStatus.AcceptedAwaitingPayment or
+            BookingStatus.MarkAsPaid or
+            BookingStatus.AwaitingClientStartConfirmation or
+            BookingStatus.InProgress or
+            BookingStatus.AwaitingClientConfirmation;
+
+        public void MarkAsExpired()
+        {
+            if (!CanExpire)
+            {
+                throw new InvalidOperationException("Only active bookings that have passed their service date can be marked as expired.");
+            }
+            BookingStatus = BookingStatus.Expired;
+        }
+
+        public void RefundPayment()
+        {
+            PaymentStatus = PaymentStatus.Refunded;
+        }
+
+        public void AssignWorker(Guid workerId, string? modifiedBy = null)
+        {
+            if (workerId == Guid.Empty)
+                throw new ArgumentException("Worker id cannot be empty.", nameof(workerId));
+
+            if (BookingStatus != BookingStatus.Pending)
+                throw new InvalidOperationException("Only pending bookings can be assigned a cleaner.");
+
+            WorkerId = workerId;
+            UpdateMetadata(modifiedBy);
         }
     }
 }

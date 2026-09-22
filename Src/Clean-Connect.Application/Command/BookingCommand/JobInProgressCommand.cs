@@ -1,4 +1,5 @@
 ﻿using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.Interface.Services;
 using Clean_Connect.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -6,11 +7,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Clean_Connect.Application.Command.BookingCommand
 {
-    public record JobInProgressCommand(Guid WorkerId, Guid BookingId) : IRequest<bool>;
+    public record RequestJobStartCommand(Guid WorkerId, Guid BookingId) : IRequest<bool>;
 
-    public class JobInProgressValidator : AbstractValidator<JobInProgressCommand>
+    public class RequestJobStartValidator : AbstractValidator<RequestJobStartCommand>
     {
-        public JobInProgressValidator()
+        public RequestJobStartValidator()
         {
             RuleFor(x => x.WorkerId)
                 .NotEmpty()
@@ -25,17 +26,19 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 .WithMessage("Invalid Id");
         }
     }
-    public class JobInProgressHandler : IRequestHandler<JobInProgressCommand, bool>
+    public class RequestJobStartHandler : IRequestHandler<RequestJobStartCommand, bool>
     {
         private readonly IUnitOfWork repo;
-        private readonly ILogger<JobInProgressHandler> logger;
+        private readonly INotificationService notificationService;
+        private readonly ILogger<RequestJobStartHandler> logger;
 
-        public JobInProgressHandler(IUnitOfWork _repo, ILogger<JobInProgressHandler> _logger)
+        public RequestJobStartHandler(IUnitOfWork _repo, INotificationService notificationService, ILogger<RequestJobStartHandler> _logger)
         {
             repo = _repo;
+            this.notificationService = notificationService;
             logger = _logger;
         }
-        public async Task<bool> Handle(JobInProgressCommand request, CancellationToken cancellationToken)
+        public async Task<bool> Handle(RequestJobStartCommand request, CancellationToken cancellationToken)
         {
             var booking = await repo.Bookings.GetBookingById(request.BookingId, cancellationToken);
             if (booking == null)
@@ -48,16 +51,17 @@ namespace Clean_Connect.Application.Command.BookingCommand
             }
             if (booking.BookingStatus != BookingStatus.MarkAsPaid)
             {
-                throw new InvalidOperationException($"Booking with ID {request.BookingId} is not in paid status and cannot be marked as in progress.");
+                throw new InvalidOperationException($"Booking with ID {request.BookingId} is not in paid status and cannot be requested to start.");
             }
 
-            if(booking.DateOfBooking != DateTime.UtcNow.Date)
+            if (booking.DateOfService.Date != DateTime.UtcNow.Date)
             {
-                throw new InvalidOperationException($"Booking with ID {request.BookingId} is not scheduled for today and cannot be marked as in progress.");
-            } 
+                throw new InvalidOperationException($"Booking with ID {request.BookingId} is not scheduled for today and cannot be requested to start.");
+            }
 
-            booking.StartJob();
+            booking.RequestStartJob();
             await repo.Bookings.UpdateBooking(booking, cancellationToken);
+            await notificationService.StartJobRequestedAsync(booking, cancellationToken);
             return true;
         }
 

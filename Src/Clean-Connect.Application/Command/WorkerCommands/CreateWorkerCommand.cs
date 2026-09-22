@@ -1,16 +1,18 @@
 using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.Interface.Services;
 using Clean_Connect.Domain.Entities;
 using Clean_Connect.Domain.Enums;
 using Clean_Connect.Domain.Value_Objects;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Reflection.Metadata.Ecma335;
 
 namespace Clean_Connect.Application.Command.WorkerCommands
 {
-    public record CreateWorkerCommand(string FirstName, string LastName,double Latitude, double Longitude, string Email, string Contact, string Gender, Guid ServiceTypeId,  string State, DateTime Dob, string? CreatedBy = null) : IRequest<bool>;
+    public record CreateWorkerCommand(string FirstName, string LastName, double? Latitude, double? Longitude, string Email, string Contact, string Gender, Guid ServiceTypeId, string State, DateTime Dob, string? CreatedBy = null) : IRequest<bool>;
 
     public class RegisterWorkerValidator : AbstractValidator<CreateWorkerCommand>
     {
@@ -31,11 +33,11 @@ namespace Clean_Connect.Application.Command.WorkerCommands
                 .WithMessage("Last name must be between 2-50 characters");
 
             RuleFor(x => x.Latitude)
-               .InclusiveBetween(4.0, 14.0)
-               .WithMessage("Latitude must be between 4.0 and 14.0.");
+                .Must(lat => lat == null || (lat >= 4.0 && lat <= 14.0))
+                .WithMessage("Latitude must be between 4.0 and 14.0.");
 
             RuleFor(x => x.Longitude)
-                .InclusiveBetween(2.5, 15.5)
+                .Must(lng => lng == null || (lng >= 2.5 && lng <= 15.5))
                 .WithMessage("Longitude must be between 2.5 and 15.5.");
 
 
@@ -76,7 +78,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
 
         }
     }
-    public class CreateWorkerHandler(IUnitOfWork repo, GeocodingService geocodingService, ILogger<CreateWorkerHandler> logger) : IRequestHandler<CreateWorkerCommand, bool>
+    public class CreateWorkerHandler(IUnitOfWork repo, GeocodingService geocodingService, ICurrentUser currentUser, UserManager<ApplicationUser> userManager, ILogger<CreateWorkerHandler> logger) : IRequestHandler<CreateWorkerCommand, bool>
     {
         public async Task<bool> Handle(CreateWorkerCommand request, CancellationToken cancellationToken)
         {
@@ -86,12 +88,35 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             }
 
             var checkServiceType = await repo.ServiceTypes.GetByIdAsync(request.ServiceTypeId, cancellationToken);
-            if(checkServiceType == null)
+            if (checkServiceType == null)
             {
                 logger.LogWarning("Worker creation failed. ServiceTypeId not found: {ServiceTypeId}", request.ServiceTypeId);
-                throw  new ValidationException("Service Type not found");
+                throw new ValidationException("Service Type not found");
             }
 
+            if (string.IsNullOrWhiteSpace(currentUser.UserId))
+            {
+                logger.LogWarning("Worker creation failed because no authenticated user was found.");
+                throw new UnauthorizedAccessException("You must be logged in to create a worker profile.");
+            }
+
+            var appUser = await userManager.FindByIdAsync(currentUser.UserId);
+
+            if (appUser == null)
+            {
+                logger.LogError("ApplicationUser not found for Id: {UserId}", currentUser.UserId);
+                throw new UnauthorizedAccessException("Unable to find the logged-in user.");
+            }
+
+            if (!string.Equals(appUser.Email, request.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning(
+                    "Worker creation failed. Profile email {ProfileEmail} does not match logged-in user {UserEmail}",
+                    request.Email,
+                    appUser.Email);
+
+                throw new ValidationException("Worker profile email must match your login email.");
+            }
 
             var checkExistingEmail = await repo.Workers.GetByEmail(request.Email, cancellationToken);
 
@@ -101,19 +126,39 @@ namespace Clean_Connect.Application.Command.WorkerCommands
                 throw new ValidationException("Email already in use");
             }
 
-
-
-
             var fullname = FullName.Create(request.FirstName, request.LastName);
             var email = Email.Create(request.Email);
-            var location = Location.Create(request.Latitude, request.Longitude);
-            var discoverAddress = await geocodingService.GetAddressAsync(request.Latitude, request.Longitude);
-            if (!discoverAddress.Contains("Nigeria"))
-                throw new Exception("Location must be in Nigeria.");
+
+            var (latitude, longitude) = request.Latitude.HasValue && request.Longitude.HasValue
+                ? (request.Latitude.Value, request.Longitude.Value)
+                : (8.5, 6.5);
+
+            var location = Location.Create(latitude, longitude);
+
+            string discoverAddress;
+            if (request.Latitude.HasValue && request.Longitude.HasValue)
+            {
+                try
+                {
+                    discoverAddress = await geocodingService.GetAddressAsync(request.Latitude.Value, request.Longitude.Value);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Geocoding failed for lat={Lat}, lng={Lng}, falling back to State-based address", request.Latitude, request.Longitude);
+                    discoverAddress = $"{request.State}, Nigeria";
+                }
+
+                if (!discoverAddress.Contains("Nigeria"))
+                    discoverAddress = $"{request.State}, Nigeria";
+            }
+            else
+            {
+                logger.LogInformation("Location not provided. Using State-based address.");
+                discoverAddress = $"{request.State}, Nigeria";
+            }
+
             var address = Address.Create(discoverAddress);
             var contact = PhoneNumber.Create(request.Contact);
-
-
 
             var worker = Worker.Create(
                 fullname,
@@ -125,13 +170,62 @@ namespace Clean_Connect.Application.Command.WorkerCommands
                 email,
                 request.State,
                 request.Dob,
-                request.CreatedBy
-                );
+                request.CreatedBy);
+
+            logger.LogInformation("Creating worker profile for {Email}", request.Email);
 
             await repo.Workers.CreateWorker(worker, cancellationToken);
-            await repo.SaveChangesAsync(cancellationToken);
 
-            logger.LogInformation("CreateWorker succeeded. WorkerId={WorkerId}, Email={Email}", worker.Id, request.Email);
+            var saveResult = await repo.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation("Worker SaveChangesAsync returned: {SaveResult}", saveResult);
+
+            var result = saveResult > 0;
+
+            if (!result)
+            {
+                logger.LogWarning("Worker profile was not saved.");
+                return false;
+            }
+
+            logger.LogInformation("Current Logged-in UserId: {UserId}", currentUser.UserId);
+
+            logger.LogInformation(
+                "User found. Email={Email}, IsWorkerProfileCompleted BEFORE={Status}",
+                appUser.Email,
+                appUser.IsWorkerProfileCompleted);
+
+            appUser.CompleteWorkerProfile();
+
+            logger.LogInformation(
+                "After CompleteWorkerProfile(), IsWorkerProfileCompleted={Status}",
+                appUser.IsWorkerProfileCompleted);
+
+            var identityResult = await userManager.UpdateAsync(appUser);
+
+            if (!identityResult.Succeeded)
+            {
+                var errorMessages = string.Join("; ", identityResult.Errors.Select(e => $"{e.Code}: {e.Description}"));
+
+                logger.LogError("Identity Update Error: {Errors}", errorMessages);
+
+                throw new Exception($"Failed to update ApplicationUser: {errorMessages}");
+            }
+
+            logger.LogInformation("ApplicationUser updated successfully.");
+
+            // Read it again from the database
+            var updatedUser = await userManager.FindByIdAsync(currentUser.UserId!);
+
+            logger.LogInformation(
+                "Database Value After Update: IsWorkerProfileCompleted={Status}",
+                updatedUser?.IsWorkerProfileCompleted);
+
+            logger.LogInformation(
+                "CreateWorker succeeded. WorkerId={WorkerId}, Email={Email}",
+                worker.Id,
+                request.Email);
+
             return true;
         }
     }

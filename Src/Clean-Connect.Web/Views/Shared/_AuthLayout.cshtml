@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="~/lib/font-awesome/css/all.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/lib/notyf/notyf.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
 
     <!-- AOS -->
@@ -41,6 +42,7 @@
     
 
     @await RenderSectionAsync("Scripts", required: false)
+    <script src="~/lib/notyf/notyf.min.js"></script>
     @await Component.InvokeAsync("Notyf")
 
 </body>

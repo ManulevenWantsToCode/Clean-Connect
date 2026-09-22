@@ -1,0 +1,88 @@
+@model Clean_Connect.Web.Models.PaymentConfirmationViewModel
+@using Clean_Connect.Web.Helpers
+
+@{
+    ViewData["Title"] = Model.Succeeded ? "Payment Confirmed" : "Payment Not Completed";
+    Layout = "_DashboardLayout";
+}
+
+<div class="dash-page payment-confirmation-page">
+    <div class="container">
+        <div class="payment-confirmation">
+            <div class="payment-confirmation__icon @(Model.Succeeded ? "success" : "failed")">
+                <i class="fa-solid @(Model.Succeeded ? "fa-check" : "fa-xmark")"></i>
+            </div>
+
+            <h1>@Model.Title</h1>
+            <p class="payment-confirmation__message">@Model.Message</p>
+
+            @if (Model.Succeeded)
+            {
+                <div class="payment-receipt-card">
+                    <div class="payment-receipt-card__header">
+                        <span class="booking-kicker">
+                            <i class="fa-solid fa-receipt"></i>
+                            Payment Receipt
+                        </span>
+                        <span class="status-badge tone-success">Paid</span>
+                    </div>
+
+                    <div class="payment-receipt-row">
+                        <span>Service</span>
+                        <strong>@Model.ServiceName</strong>
+                    </div>
+                    <div class="payment-receipt-row">
+                        <span>Worker</span>
+                        <strong>@Model.WorkerName</strong>
+                    </div>
+                    <div class="payment-receipt-row">
+                        <span>Amount</span>
+                        <strong>&#8358;@Model.Amount.ToString("N0")</strong>
+                    </div>
+                    <div class="payment-receipt-row">
+                        <span>Reference</span>
+                        <strong class="text-break">@Model.PaymentReference</strong>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.TransactionId))
+                    {
+                        <div class="payment-receipt-row">
+                            <span>Transaction</span>
+                            <strong>#@Model.TransactionId</strong>
+                        </div>
+                    }
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(Model.FailureReason))
+            {
+                <div class="payment-failed-reason">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>@Model.FailureReason</span>
+                </div>
+            }
+
+            <div class="payment-confirmation__actions">
+                @if (Model.Succeeded)
+                {
+                    <a asp-controller="Booking" asp-action="Details" asp-route-bookingId="@Model.BookingId" class="btn btn-success rounded-pill px-4">
+                        <i class="fa-solid fa-calendar-check me-2"></i>View Booking
+                    </a>
+                    <a asp-controller="Client" asp-action="Dashboard" class="btn btn-outline-success rounded-pill px-4">
+                        <i class="fa-solid fa-house me-2"></i>Go to Dashboard
+                    </a>
+                }
+                else if (Model.BookingId != Guid.Empty)
+                {
+                    <a asp-controller="Booking" asp-action="Details" asp-route-bookingId="@Model.BookingId" class="btn btn-success rounded-pill px-4">
+                        <i class="fa-solid fa-credit-card me-2"></i>Try Payment Again
+                    </a>
+                }
+                else
+                {
+                    <a asp-controller="Booking" asp-action="ClientResponses" class="btn btn-outline-success rounded-pill px-4">
+                        <i class="fa-solid fa-arrow-left me-2"></i>Back to Bookings
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

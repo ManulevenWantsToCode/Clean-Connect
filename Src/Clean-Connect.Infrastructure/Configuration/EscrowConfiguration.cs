@@ -25,6 +25,16 @@ namespace Clean_Connect.Infrastructure.Configuration
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
 
+            builder.Property(x => x.CommissionRate)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired()
+                .HasDefaultValue(10m);
+
+            builder.Property(x => x.CommissionAmount)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired()
+                .HasDefaultValue(0m);
+
             builder.Property(x => x.Status)
                 .HasConversion<string>()
                 .HasMaxLength(50)

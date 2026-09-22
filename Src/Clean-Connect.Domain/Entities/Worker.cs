@@ -51,6 +51,8 @@ namespace Clean_Connect.Domain.Entities
 
         public string State { get; private set; } = default!;
 
+        public bool IsAvailable { get; private set; } = true;
+
         public DateTime DateOfBirth { get; private set; } = default!;
 
         public int Age

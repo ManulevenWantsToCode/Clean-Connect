@@ -1,0 +1,183 @@
+@model List<Clean_Connect.Application.DTO.BookingDto>
+@using Clean_Connect.Web.Helpers
+
+@{
+    ViewData["Title"] = "Worker Responses";
+    Layout = "_DashboardLayout";
+
+    var total = Model?.Count ?? 0;
+    var pending = Model?.Count(b => b.BookingStatus == "Pending") ?? 0;
+    var active = Model?.Count(b => b.BookingStatus is "AcceptedAwaitingPayment" or "MarkAsPaid" or "AwaitingClientStartConfirmation" or "InProgress" or "AwaitingClientConfirmation") ?? 0;
+    var completed = Model?.Count(b => b.BookingStatus == "Completed") ?? 0;
+    var declined = Model?.Count(b => b.BookingStatus is "Rejected" or "Cancelled" or "Expired") ?? 0;
+}
+
+<div class="dash-page booking-workflow-page">
+    <div class="container">
+        <div class="booking-hero">
+            <div>
+                <span class="booking-kicker">
+                    <i class="fa-solid fa-bell"></i>
+                    Booking Flow
+                </span>
+                <h1>Your client bookings</h1>
+                <p>Track each request after the worker responds, secure payment, or choose another professional when a request is declined.</p>
+            </div>
+            <a asp-controller="Booking" asp-action="Create" class="booking-hero__link">
+                <i class="fa-solid fa-calendar-plus"></i>
+                New Booking
+            </a>
+        </div>
+
+        @if (total == 0)
+        {
+            <div class="booking-empty">
+                <i class="fa-solid fa-inbox"></i>
+                <h2>No bookings yet</h2>
+                <p>Once a worker accepts or declines your booking request, the response will appear here.</p>
+                <a asp-controller="Booking" asp-action="Create" class="btn btn-success rounded-pill px-4 mt-3">
+                    <i class="fa-solid fa-calendar-plus me-2"></i>Create a booking
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="bookings-stats">
+                <div class="bookings-stat">
+                    <span class="bookings-stat__icon neutral"><i class="fa-solid fa-list"></i></span>
+                    <div><strong>@total</strong><small>Total</small></div>
+                </div>
+                <div class="bookings-stat">
+                    <span class="bookings-stat__icon warning"><i class="fa-solid fa-hourglass-half"></i></span>
+                    <div><strong>@pending</strong><small>Pending</small></div>
+                </div>
+                <div class="bookings-stat">
+                    <span class="bookings-stat__icon success"><i class="fa-solid fa-gears"></i></span>
+                    <div><strong>@active</strong><small>Active</small></div>
+                </div>
+                <div class="bookings-stat">
+                    <span class="bookings-stat__icon info"><i class="fa-solid fa-circle-check"></i></span>
+                    <div><strong>@completed</strong><small>Completed</small></div>
+                </div>
+                <div class="bookings-stat">
+                    <span class="bookings-stat__icon danger"><i class="fa-solid fa-circle-xmark"></i></span>
+                    <div><strong>@declined</strong><small>Declined</small></div>
+                </div>
+            </div>
+
+            <div class="bookings-card">
+                <div class="bookings-card__toolbar">
+                    <div class="bookings-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="bookingsSearch" placeholder="Search worker or service..." />
+                    </div>
+                    <div class="bookings-chips" id="bookingsChips">
+                        <button type="button" class="chip is-active" data-filter="all">All</button>
+                        <button type="button" class="chip" data-filter="pending">Pending</button>
+                        <button type="button" class="chip" data-filter="active">Active</button>
+                        <button type="button" class="chip" data-filter="completed">Completed</button>
+                        <button type="button" class="chip" data-filter="declined">Declined</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 bookings-table">
+                        <thead>
+                            <tr>
+                                <th>Worker</th>
+                                <th>Service</th>
+                                <th>Service Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Payment</th>
+                                <th class="text-end">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var b in Model)
+                            {
+                                var tone = BookingStatusHelper.BookingTone(b.BookingStatus);
+                                var ptone = BookingStatusHelper.PaymentTone(b.PaymentStatus);
+                                var group = b.BookingStatus == "Pending" ? "pending"
+                                    : b.BookingStatus == "Completed" ? "completed"
+                                    : b.BookingStatus is "Rejected" or "Cancelled" or "Expired" ? "declined"
+                                    : "active";
+
+                                <tr class="bookings-row" data-href="@Url.Action("Details", "Booking", new { bookingId = b.Id })"
+                                    data-status="@group"
+                                    data-search="@b.WorkersName @b.ServiceName"
+                                    role="link" tabindex="0" aria-label="View booking details for @b.ServiceName">
+                                    <td>
+                                        <span class="bookings-worker">
+                                            <span class="bookings-avatar"><i class="fa-solid fa-user"></i></span>
+                                            <span class="fw-semibold">@b.WorkersName</span>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="bookings-service">
+                                            <span class="bookings-service__icon"><i class="fa-solid fa-spray-can-sparkles"></i></span>
+                                            @b.ServiceName
+                                        </span>
+                                    </td>
+                                    <td class="bookings-date"><i class="fa-regular fa-calendar me-2"></i>@b.DateOfService.ToString("MMM dd, yyyy")</td>
+                                    <td class="bookings-amount">&#8358;@b.Amount.ToString("N0")</td>
+                                    <td><span class="status-badge tone-@tone">@BookingStatusHelper.BookingLabel(b.BookingStatus)</span></td>
+                                    <td><span class="status-badge tone-@ptone">@BookingStatusHelper.PaymentLabel(b.PaymentStatus)</span></td>
+                                    <td class="text-end">
+                                        <a asp-controller="Booking" asp-action="Details" asp-route-bookingId="@b.Id" class="bookings-view">
+                                            <span>View</span><i class="fa-solid fa-arrow-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var rows = document.querySelectorAll(".bookings-row");
+            var search = document.getElementById("bookingsSearch");
+            var chips = document.querySelectorAll("#bookingsChips .chip");
+            var activeFilter = "all";
+
+            rows.forEach(function (row) {
+                row.addEventListener("click", function (e) {
+                    if (e.target.closest("a")) return;
+                    window.location.href = row.dataset.href;
+                });
+                row.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        window.location.href = row.dataset.href;
+                    }
+                });
+            });
+
+            function apply() {
+                var q = (search.value || "").toLowerCase().trim();
+                rows.forEach(function (row) {
+                    var matchFilter = activeFilter === "all" || row.dataset.status === activeFilter;
+                    var matchSearch = !q || (row.dataset.search || "").toLowerCase().indexOf(q) !== -1;
+                    row.style.display = matchFilter && matchSearch ? "" : "none";
+                });
+            }
+
+            chips.forEach(function (chip) {
+                chip.addEventListener("click", function () {
+                    chips.forEach(function (c) { c.classList.remove("is-active"); });
+                    chip.classList.add("is-active");
+                    activeFilter = chip.dataset.filter;
+                    apply();
+                });
+            });
+
+            search.addEventListener("input", apply);
+        });
+    </script>
+}

@@ -140,6 +140,7 @@ builder.Services.AddScoped<EscrowService>();
 builder.Services.AddScoped<PayoutService>();
 builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IPaystackService, PaystackService>();
 
 builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
@@ -160,6 +161,7 @@ builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<IEscrowRepository, EscrowRepository>();
 builder.Services.AddScoped<ICouponRepository, CouponRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // --------------------

@@ -26,7 +26,10 @@ namespace Clean_Connect.Application.Command.Services
         public string? Email =>
             _httpContextAccessor.HttpContext?
                 .User?
-                .FindFirstValue(ClaimTypes.Email);
+                .FindFirstValue(ClaimTypes.Email)
+            ?? _httpContextAccessor.HttpContext?
+                .User?
+                .FindFirstValue(ClaimTypes.Name);
         
         public string? Role =>
             _httpContextAccessor.HttpContext?

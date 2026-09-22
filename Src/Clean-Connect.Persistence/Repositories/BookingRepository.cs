@@ -1,5 +1,6 @@
 ﻿using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Domain.Entities;
+using Clean_Connect.Domain.Enums;
 using Clean_Connect.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.Geometries;
@@ -44,6 +45,27 @@ namespace Clean_Connect.Persistence.Repositories
         public async Task DeleteBooking(Booking booking, CancellationToken cancellationToken)
         {
              dbContext.Bookings.Remove(booking);
+        }
+
+        public async Task<List<Booking>> GetExpiredBookingsAsync(CancellationToken cancellationToken)
+        {
+            var expirableStatuses = new[]
+            {
+                BookingStatus.Pending,
+                BookingStatus.AcceptedAwaitingPayment,
+                BookingStatus.MarkAsPaid,
+                BookingStatus.AwaitingClientStartConfirmation,
+                BookingStatus.InProgress,
+                BookingStatus.AwaitingClientConfirmation
+            };
+
+            return await dbContext.Bookings
+                .Include(x => x.Client)
+                .Include(x => x.Worker)
+                .Include(x => x.ServiceType)
+                .Where(x => (expirableStatuses.Contains(x.BookingStatus) && x.DateOfService.Date < DateTime.UtcNow.Date)
+                    || (x.BookingStatus == BookingStatus.Expired && x.PaymentStatus == PaymentStatus.Successful))
+                .ToListAsync(cancellationToken);
         }
     }
 }

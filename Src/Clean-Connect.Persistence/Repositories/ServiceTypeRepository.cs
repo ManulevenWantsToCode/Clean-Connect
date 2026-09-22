@@ -51,6 +51,11 @@ namespace Clean_Connect.Persistence.Repositories
 
         public async Task<List<ServiceType>> GetAllAsync(CancellationToken cancellationToken)
         {
+            return await context.ServiceTypes.Where(s => !s.IsDeleted).ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<ServiceType>> GetAllIncludingDeletedAsync(CancellationToken cancellationToken)
+        {
             return await context.ServiceTypes.ToListAsync(cancellationToken);
         }
     }

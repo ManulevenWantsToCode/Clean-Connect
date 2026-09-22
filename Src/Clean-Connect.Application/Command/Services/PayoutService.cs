@@ -119,7 +119,7 @@ namespace Clean_Connect.Application.Command.Services
                 var wallet = await _repo.Wallets.GetByWorkerId(booking.WorkerId, cancellationToken)
                     ?? throw new InvalidOperationException($"Wallet for worker {booking.WorkerId} was not found.");
 
-                if (wallet.Balance < escrow.Amount)
+                if (wallet.Balance < escrow.WorkerShare)
                 {
                     return new PayoutResult(false, "Worker wallet balance is insufficient for this payout.", null);
                 }
@@ -129,11 +129,11 @@ namespace Clean_Connect.Application.Command.Services
                 _logger.LogInformation("Transfer recipient created. RecipientCode: {RecipientCode}", recipient.RecipientCode);
 
                 var reason = $"Payout for booking {booking.Id}";
-                _logger.LogDebug("Initiating transfer for booking: {BookingId}, amount: {Amount}", booking.Id, escrow.Amount);
-                var transferResult = await _paystackService.InitiateTransferAsync(recipient.RecipientCode, escrow.Amount, reason, cancellationToken);
+                _logger.LogDebug("Initiating transfer for booking: {BookingId}, amount: {Amount}", booking.Id, escrow.WorkerShare);
+                var transferResult = await _paystackService.InitiateTransferAsync(recipient.RecipientCode, escrow.WorkerShare, reason, cancellationToken);
                 _logger.LogInformation("Transfer initiated. TransferCode: {TransferCode}, Status: {Status}", transferResult.TransferCode, transferResult.Status);
 
-                wallet.Debit(escrow.Amount, modifiedBy);
+                wallet.Debit(escrow.WorkerShare, modifiedBy);
                 escrow.MarkPaidOut(transferResult.TransferCode, modifiedBy);
 
                 await _repo.Wallets.UpdateWallet(wallet, cancellationToken);

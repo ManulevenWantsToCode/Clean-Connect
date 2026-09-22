@@ -3,23 +3,32 @@
     ViewData["Title"] = "Error";
 }
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<div class="error-page">
+    <div class="error-page__card">
+        <div class="error-page__icon">
+            <i class="fa-solid @(Model.StatusCode == 404 ? "fa-compass" : Model.StatusCode == 403 ? "fa-lock" : Model.StatusCode == 401 ? "fa-user-lock" : "fa-circle-exclamation")"></i>
+        </div>
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
-    </p>
-}
+        <span class="error-page__code">@(Model.StatusCode == 0 ? "500" : Model.StatusCode.ToString())</span>
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+        <h1>@Model.Title</h1>
+        <p>@Model.Message</p>
+
+        @if (Model.ShowRequestId)
+        {
+            <div class="error-page__trace">
+                <span>Request ID</span>
+                <code>@Model.RequestId</code>
+            </div>
+        }
+
+        <div class="error-page__actions">
+            <a asp-controller="Home" asp-action="Index" class="btn btn-success rounded-pill px-4">
+                <i class="fa-solid fa-house me-2"></i>Back to Home
+            </a>
+            <button type="button" onclick="history.back()" class="btn btn-outline-success rounded-pill px-4">
+                <i class="fa-solid fa-arrow-left me-2"></i>Go Back
+            </button>
+        </div>
+    </div>
+</div>

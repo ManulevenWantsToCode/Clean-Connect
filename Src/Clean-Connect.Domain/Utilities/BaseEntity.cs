@@ -61,6 +61,16 @@ namespace Clean_Connect.Domain.Utilities
 
         }
 
+        public virtual void Restore(string? restoredBy = null)
+        {
+            if (!IsDeleted)
+                throw new InvalidOperationException("Entity is not marked as deleted.");
+
+            IsDeleted = false;
+            ModifiedBy = restoredBy;
+            DateModified = DateTime.Now;
+        }
+
         public virtual void UpdateMetadata(string?modifiedBy = null)
         {
             ModifiedBy = modifiedBy;

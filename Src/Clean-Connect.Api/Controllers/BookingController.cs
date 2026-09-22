@@ -41,7 +41,7 @@ namespace Clean_Connect.Api.Controllers
             return Ok(result);
         }
         [HttpPost("{bookingId}/Job-In-Progress")]
-        public async Task<IActionResult> JobInProgress(Guid bookingId, [FromBody] JobInProgressCommand command, CancellationToken cancellationToken)
+        public async Task<IActionResult> JobInProgress(Guid bookingId, [FromBody] RequestJobStartCommand command, CancellationToken cancellationToken)
         {
             command = command with { BookingId = bookingId };
 

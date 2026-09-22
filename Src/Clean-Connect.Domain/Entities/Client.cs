@@ -148,9 +148,10 @@ namespace Clean_Connect.Domain.Entities
             UpdateMetadata(modifiedBy);
         }
 
-        public void UpdateGender(Gender gender, string? modifiedBy = null)
-        { 
-             
+public void UpdateGender(Gender gender, string? modifiedBy = null)
+        {
+            Gender = gender;
+            UpdateMetadata(modifiedBy);
         }
 
 

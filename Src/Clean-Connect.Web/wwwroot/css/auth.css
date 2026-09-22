@@ -1,4 +1,4 @@
-﻿/* ==========================================
+/* ==========================================
    CLEAN CONNECT AUTHENTICATION
    PART 1
 ========================================== */
@@ -625,3 +625,95 @@ body.auth-body {
         font-size: 4rem;
         color: #2563eb;
     }
+
+/* ==========================================
+   DARK MODE OVERRIDES FOR AUTH
+========================================== */
+
+[data-theme="dark"] body.auth-body,
+[data-theme="dark"] .auth-right {
+    background: var(--bg-body);
+    color: var(--text-body);
+}
+
+[data-theme="dark"] .login-card {
+    background: rgba(30, 41, 59, 0.85);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-card);
+}
+
+[data-theme="dark"] .login-card h2 {
+    color: var(--text-body);
+}
+
+[data-theme="dark"] .login-card p {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .form-label {
+    color: var(--text-body);
+}
+
+[data-theme="dark"] .input-group-text {
+    background: var(--bg-input-group-text);
+    border-color: var(--border-color);
+    color: var(--primary);
+}
+
+[data-theme="dark"] .form-control {
+    background: var(--bg-input);
+    border-color: var(--border-color);
+    color: var(--text-body);
+}
+
+[data-theme="dark"] .form-control:focus {
+    background: var(--bg-input);
+    border-color: var(--primary);
+    color: var(--text-body);
+}
+
+[data-theme="dark"] #togglePassword {
+    background: var(--bg-input-group-text);
+    border-color: var(--border-color);
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] #togglePassword:hover {
+    background: var(--border-color);
+    color: var(--text-body);
+}
+
+[data-theme="dark"] .google-btn {
+    background: #1e293b;
+    border-color: var(--border-color) !important;
+    color: var(--text-body);
+}
+
+[data-theme="dark"] .google-btn:hover {
+    background: #334155;
+    color: var(--text-body);
+}
+
+[data-theme="dark"] .role-card {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-body);
+}
+
+[data-theme="dark"] .role-card p {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .role-card.active {
+    border-color: var(--primary);
+    background: rgba(16, 185, 129, 0.15);
+}
+
+[data-theme="dark"] .divider::before,
+[data-theme="dark"] .divider::after {
+    background: var(--border-color);
+}
+
+[data-theme="dark"] .divider span {
+    color: var(--text-muted);
+}

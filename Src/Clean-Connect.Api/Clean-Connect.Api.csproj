@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Clean_Connect.Api</RootNamespace>
+    <UserSecretsId>d8a6b3c6-a2a7-41d7-946f-fc1993d9c3eb</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,6 +1,7 @@
 using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Domain.Entities;
 using Clean_Connect.Domain.Enums;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Clean_Connect.Application.Command.Services
@@ -9,11 +10,13 @@ namespace Clean_Connect.Application.Command.Services
     {
         private readonly IUnitOfWork repo;
         private readonly ILogger<EscrowService> logger;
+        private readonly IConfiguration configuration;
 
-        public EscrowService(IUnitOfWork repo, ILogger<EscrowService> logger)
+        public EscrowService(IUnitOfWork repo, ILogger<EscrowService> logger, IConfiguration configuration)
         {
             this.repo = repo;
             this.logger = logger;
+            this.configuration = configuration;
         }
 
         public async Task HoldPaymentInEscrowAsync(Booking booking, Payment payment, CancellationToken cancellationToken)
@@ -31,11 +34,16 @@ namespace Clean_Connect.Application.Command.Services
                 return;
             }
 
+            var commissionRate = configuration.GetValue<decimal?>("Commission:Rate") ?? 10m;
+            var commissionAmount = Math.Round(booking.OriginalAmount * (commissionRate / 100m), 2);
+
             var escrow = Escrow.Create(
                 booking.Id,
                 payment.Id,
                 booking.WorkerId,
-                booking.OriginalAmount);
+                booking.OriginalAmount,
+                commissionRate,
+                commissionAmount);
 
             await repo.Escrows.CreateEscrow(escrow, cancellationToken);
 
@@ -73,23 +81,29 @@ namespace Clean_Connect.Application.Command.Services
                 throw new InvalidOperationException($"Escrow cannot be released from {escrow.Status} status.");
 
             var wallet = await repo.Wallets.GetByWorkerId(booking.WorkerId, cancellationToken);
+            var isNewWallet = false;
             if (wallet == null)
             {
                 wallet = Wallet.Create(booking.WorkerId, modifiedBy);
                 await repo.Wallets.CreateWallet(wallet, cancellationToken);
+                isNewWallet = true;
             }
 
-            wallet.Credit(escrow.Amount, modifiedBy);
+            wallet.Credit(escrow.WorkerShare, modifiedBy);
             escrow.Release(modifiedBy);
 
-            await repo.Wallets.UpdateWallet(wallet, cancellationToken);
+            if (!isNewWallet)
+            {
+                await repo.Wallets.UpdateWallet(wallet, cancellationToken);
+            }
             await repo.Escrows.UpdateEscrow(escrow, cancellationToken);
 
             logger.LogInformation(
-                "Released {Amount} from escrow for booking {BookingId} to worker {WorkerId}",
-                escrow.Amount,
+                "Released {Amount} from escrow for booking {BookingId} to worker {WorkerId} (commission {CommissionAmount})",
+                escrow.WorkerShare,
                 booking.Id,
-                booking.WorkerId);
+                booking.WorkerId,
+                escrow.CommissionAmount);
         }
     }
 }

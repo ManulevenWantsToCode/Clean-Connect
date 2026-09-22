@@ -23,10 +23,15 @@ namespace Clean_Connect.Persistence.Repositories
             return await dbContext.Clients.FindAsync(name.Trim(), cancellationToken);
         }
 
-        public async Task<Client> GetByEmail(string email, CancellationToken cancellationToken)
+public async Task<Client> GetByEmail(string email, CancellationToken cancellationToken)
         {
             var normalized = email.Trim().ToLowerInvariant();
-            return await dbContext.Clients.FirstOrDefaultAsync(x => x.Email.Value == normalized);
+            return await dbContext.Clients
+                .Include(c => c.Bookings)
+                .ThenInclude(c => c.ServiceType)
+                .Include(c => c.Bookings)
+                .ThenInclude(c => c.Worker)
+                .FirstOrDefaultAsync(x => x.Email.Value == normalized);
             
         }
         public async Task<Client> GetClientById(Guid clientId, CancellationToken cancellationToken)

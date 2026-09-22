@@ -1,5 +1,6 @@
 ﻿using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.Interface.Services;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -31,11 +32,13 @@ namespace Clean_Connect.Application.Command.WorkerCommands
     {
         private readonly AcceptBookingService _acceptBookingService;
         private readonly IUnitOfWork _repo;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<AcceptBookingHandler> _logger;
-        public RejectBookingHandler(AcceptBookingService acceptBookingService, IUnitOfWork repo, ILogger<AcceptBookingHandler> logger)
+        public RejectBookingHandler(AcceptBookingService acceptBookingService, IUnitOfWork repo, INotificationService notificationService, ILogger<AcceptBookingHandler> logger)
         {
             _acceptBookingService = acceptBookingService;
             _repo = repo;
+            _notificationService = notificationService;
             _logger = logger;
         }
         public async Task<bool> Handle(RejectBookingCommand request, CancellationToken cancellationToken)
@@ -48,6 +51,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
 
             booking.Reject();
             await _repo.SaveChangesAsync(cancellationToken);
+            await _notificationService.BookingRejectedAsync(booking, cancellationToken);
 
             _logger.LogInformation("Booking {BookingId} Rejected by worker {WorkerId}", request.BookingId, request.WorkerId);
 

@@ -1,0 +1,401 @@
+@model List<Clean_Connect.Application.DTO.AdminClientDto>
+@{
+    ViewData["Title"] = "Clients";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    string FormatNaira(decimal amount) => $"₦{amount:N0}";
+    var avgSpend = Model.Count > 0 ? Model.Average(c => c.TotalSpent) : 0;
+    var activeCount = Model.Count(c => c.TotalBookings > 0);
+    var activeRate = Model.Count > 0 ? (double)activeCount / Model.Count * 100d : 0d;
+}
+
+<div class="admin-page-header">
+    <div class="admin-page-title-wrap">
+        <h2>Clients Directory</h2>
+        <p>Manage customer profiles, booking frequency, account statuses, and transaction histories.</p>
+    </div>
+    <div class="admin-page-actions">
+        <button class="btn btn-admin-primary" data-bs-toggle="modal" data-bs-target="#addClientModal">
+            <i class="fa-solid fa-user-plus me-1"></i> Add Client
+        </button>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Total Registered</span>
+                <div class="stat-icon-wrapper stat-icon-sky">
+                    <i class="fa-solid fa-user-group"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@Model.Count.ToString("N0")</div>
+            <div class="stat-card-meta">
+                <span class="trend-badge trend-badge-up"><i class="fa-solid fa-arrow-up"></i> @Model.Count</span>
+                <span>registered clients</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Active Accounts</span>
+                <div class="stat-icon-wrapper stat-icon-emerald">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@activeCount.ToString("N0")</div>
+            <div class="stat-card-meta">
+                <span class="text-success fw-bold">@activeRate.ToString("0.0")%</span>
+                <span>active user rate</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">With Bookings</span>
+                <div class="stat-icon-wrapper stat-icon-rose">
+                    <i class="fa-solid fa-calendar-check"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@Model.Count(c => c.TotalBookings > 0).ToString("N0")</div>
+            <div class="stat-card-meta">
+                <span class="text-danger fw-bold">@Model.Count(c => c.TotalBookings == 0)</span>
+                <span>yet to book</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Avg Lifetime Spend</span>
+                <div class="stat-icon-wrapper stat-icon-purple">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@FormatNaira(avgSpend)</div>
+            <div class="stat-card-meta">
+                <span class="trend-badge trend-badge-up"><i class="fa-solid fa-arrow-trend-up"></i> per client</span>
+                <span>lifetime value</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table Container Wrapped for Empty State Toggle -->
+<div id="clients-data">
+    <!-- Filter Toolbar -->
+    <div class="admin-filter-bar">
+        <div class="filter-left-group">
+            <div class="filter-search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" class="filter-search-input" data-table-search="clientsTable" placeholder="Search by name, email, or city..." />
+            </div>
+
+            <select class="filter-select" data-table-filter="clientsTable" data-filter-col="4">
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="suspended">Suspended</option>
+            </select>
+
+            <select class="filter-select" data-table-filter="clientsTable" data-filter-col="2">
+                <option value="all">All Locations</option>
+                <option value="Lagos">Lagos</option>
+                <option value="Abuja">Abuja</option>
+                <option value="Port Harcourt">Port Harcourt</option>
+            </select>
+
+            <button class="btn btn-sm btn-admin-secondary" data-reset-filter="clientsTable">
+                <i class="fa-solid fa-filter-circle-xmark me-1"></i> Reset
+            </button>
+        </div>
+
+        <div class="filter-right-group">
+            <span class="results-counter" id="clientsTable-counter">Showing @Model.Count of @Model.Count records</span>
+        </div>
+    </div>
+
+    <!-- Data Table Card -->
+    <div class="admin-card">
+        <div class="admin-table-responsive">
+            <table class="admin-table" id="clientsTable">
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>Contact</th>
+                        <th>City</th>
+                        <th>Bookings</th>
+                        <th>Status</th>
+                        <th>Total Spent</th>
+                        <th>Joined</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-user-group fs-3 mb-2 d-block text-secondary"></i>
+                                No clients registered yet.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @for (var i = 0; i < Model.Count; i++)
+                        {
+                            var c = Model[i];
+                            var statusClass = c.Status == "Active" ? "badge-status-success" : (c.Status == "Suspended" ? "badge-status-danger" : "badge-status-warning");
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar-initials bg-info-subtle text-info">@c.Initials</div>
+                                        <div class="user-details">
+                                            <span class="user-name">@c.Name</span>
+                                            <span class="user-subtext">ID: @string.Concat("#CL-", c.Id.ToString("N").Substring(0, 4).ToUpper())</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="user-details">
+                                        <span class="small fw-semibold">@c.Email</span>
+                                        <span class="user-subtext">@c.Phone</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-secondary-subtle text-dark border">@c.City</span></td>
+                                <td><span class="fw-bold">@c.TotalBookings</span> bookings</td>
+                                <td>
+                                    <span class="badge-status @statusClass">
+                                        <span class="badge-status-dot"></span> @c.Status
+                                    </span>
+                                </td>
+                                <td class="fw-bold text-success">@FormatNaira(c.TotalSpent)</td>
+                                <td class="small text-muted">@c.DateJoined.ToString("MMM dd, yyyy")</td>
+                                <td class="text-end">
+                                    <div class="table-actions justify-content-end">
+                                        <button class="btn-action-icon" onclick="openClientModal(@i)" title="View Profile">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button class="btn-action-icon" data-bs-toggle="modal" data-bs-target="#addClientModal" title="Edit Client">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button class="btn-action-icon text-danger" title="Suspend Client">
+                                            <i class="fa-solid fa-ban"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+
+                    <!-- Filter Empty Row -->
+                    <tr id="clientsTable-no-results" style="display: none;">
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-magnifying-glass fs-3 mb-2 d-block text-secondary"></i>
+                            No clients match your filter criteria. Try adjusting your search query.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="admin-pagination-wrapper" data-paginate="clientsTable" data-page-size="6">
+            <span class="pagination-info" data-pagination-info>Showing all @Model.Count clients</span>
+            <ul class="admin-pagination" data-pagination-list></ul>
+        </div>
+    </div>
+</div>
+
+<!-- Empty State Container -->
+<div id="clients-empty" class="d-none">
+    <div class="admin-card">
+        <div class="admin-empty-state">
+            <div class="empty-state-icon">
+                <i class="fa-solid fa-user-group"></i>
+            </div>
+            <h4 class="empty-state-title">No Clients Registered Yet</h4>
+            <p class="empty-state-desc">When customers create accounts or book cleaning services, their full contact details and history will appear here.</p>
+            <button class="btn btn-admin-primary" data-bs-toggle="modal" data-bs-target="#addClientModal">
+                <i class="fa-solid fa-plus me-1"></i> Register First Client
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Client Details Modal -->
+<div class="modal fade" id="clientDetailsModal" tabindex="-1" aria-labelledby="clientDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clientDetailsModalLabel">
+                    <i class="fa-solid fa-circle-user text-primary me-2"></i>
+                    Client Profile
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4 text-center border-end">
+                        <div class="user-avatar-initials bg-info-subtle text-info rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center fw-bold" id="cd-initials" style="width: 100px; height: 100px; font-size: 2rem; border: 3px solid #10b981;"></div>
+                        <h5 class="fw-bold mb-1" id="cd-name">—</h5>
+                        <div class="text-muted small mb-2" id="cd-since">Member since —</div>
+                        <span class="badge-status badge-status-success" id="cd-status">
+                            <span class="badge-status-dot"></span> Active Account
+                        </span>
+                    </div>
+                    <div class="col-md-8">
+                        <h6 class="fw-bold mb-3 text-uppercase small text-muted">Customer Summary</h6>
+                        <div class="row g-3 small">
+                            <div class="col-6">
+                                <span class="text-muted d-block">Email Address</span>
+                                <span class="fw-bold" id="cd-email">—</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">Phone Number</span>
+                                <span class="fw-bold" id="cd-phone">—</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">City / State</span>
+                                <span class="fw-bold" id="cd-city">—</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">Total Completed Bookings</span>
+                                <span class="fw-bold text-success" id="cd-bookings">0 bookings</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">Total Amount Spent</span>
+                                <span class="fw-bold text-success fs-6" id="cd-spent">₦0</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">Preferred Service</span>
+                                <span class="badge bg-secondary-subtle text-dark" id="cd-service">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold mb-2">Recent Booking Activity</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Booking ID</th>
+                                <th>Service</th>
+                                <th>Worker</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cd-recent">
+                            <tr><td colspan="6" class="text-center text-muted">No recent bookings.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-admin-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add / Edit Client Modal -->
+<div class="modal fade" id="addClientModal" tabindex="-1" aria-labelledby="addClientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addClientModalLabel">
+                    <i class="fa-solid fa-user-plus text-success me-2"></i>
+                    Register New Client
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addClientForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-control" placeholder="e.g. Sarah" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-control" placeholder="e.g. Jenkins" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-control" placeholder="sarah@example.com" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone Number</label>
+                            <input type="text" class="form-control" placeholder="+234 800 000 0000" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">City / State</label>
+                            <select class="form-select">
+                                <option>Lagos</option>
+                                <option>Abuja</option>
+                                <option>Port Harcourt</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Street Address</label>
+                            <textarea class="form-control" rows="2" placeholder="Full residential or office address..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-admin-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-admin-primary" data-save-feedback data-bs-dismiss="modal">Create Client</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const clientsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
+
+        function openClientModal(index) {
+            const c = clientsData[index];
+            if (!c) return;
+            document.getElementById('cd-name').textContent = c.name;
+            document.getElementById('cd-initials').textContent = c.initials;
+            document.getElementById('cd-since').textContent = 'Member since ' + new Date(c.dateJoined).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            document.getElementById('cd-email').textContent = c.email;
+            document.getElementById('cd-phone').textContent = c.phone;
+            document.getElementById('cd-city').textContent = c.city;
+            document.getElementById('cd-bookings').textContent = c.totalBookings + ' bookings';
+            document.getElementById('cd-spent').textContent = '\u20A6' + c.totalSpent.toLocaleString();
+            document.getElementById('cd-service').textContent = c.preferredService || '—';
+
+            const tbody = document.getElementById('cd-recent');
+            tbody.innerHTML = '';
+            if (c.recentBookings && c.recentBookings.length > 0) {
+                c.recentBookings.forEach(rb => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = '<td class="fw-bold">' + rb.bookingId + '</td>' +
+                        '<td>' + rb.service + '</td>' +
+                        '<td>' + rb.worker + '</td>' +
+                        '<td>' + new Date(rb.date).toDateString() + '</td>' +
+                        '<td>\u20A6' + rb.amount.toLocaleString() + '</td>' +
+                        '<td><span class="badge bg-success">' + rb.status + '</span></td>';
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No recent bookings.</td></tr>';
+            }
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('clientDetailsModal')).show();
+        }
+    </script>
+}

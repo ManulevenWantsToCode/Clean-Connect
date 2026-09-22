@@ -82,6 +82,10 @@ namespace Clean_Connect.Infrastructure.Configuration
                 .IsRequired()
                 .HasMaxLength(15);
 
+            builder.Property(x => x.IsAvailable)
+                .IsRequired()
+                .HasDefaultValue(true);
+
             builder.Property(x => x.DateOfBirth)
                 .IsRequired();
 

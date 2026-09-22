@@ -1,0 +1,235 @@
+@model Clean_Connect.Web.Models.CreateBookingViewModel
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Create Booking";
+    Layout = "_DashboardLayout";
+    var workerCardsJson = JsonSerializer.Serialize(ViewBag.WorkerCards);
+}
+
+<div class="dash-page booking-workflow-page">
+    <div class="container">
+        <div class="booking-hero">
+            <div>
+                <span class="booking-kicker">
+                    <i class="fa-solid fa-calendar-plus"></i>
+                    New Booking
+                </span>
+                <h1>Book a trusted cleaner with confidence</h1>
+                <p>Choose the service, match with a worker, confirm your location, and send the request for a fast response.</p>
+            </div>
+            <div class="booking-hero__summary">
+                <span>Secure request</span>
+                <strong>No payment until the worker accepts</strong>
+            </div>
+        </div>
+
+        <form asp-action="Create" asp-controller="Booking" method="post" id="createBookingForm" class="booking-shell">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <section class="booking-panel">
+                <div class="booking-panel__head">
+                    <div>
+                        <h2>Service details</h2>
+                        <p>Select the cleaning type and preferred professional.</p>
+                    </div>
+                    <span class="booking-step">01</span>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <label asp-for="ServiceTypeId" class="form-label">Cleaning service</label>
+                        <select asp-for="ServiceTypeId" asp-items="ViewBag.ServiceTypes" class="form-select form-select-lg" id="serviceTypeSelect">
+                            <option value="">Choose service</option>
+                        </select>
+                        <span asp-validation-for="ServiceTypeId" class="text-danger"></span>
+                    </div>
+                    <div class="col-lg-6">
+                        <label asp-for="WorkerId" class="form-label">Preferred worker</label>
+                        <input type="hidden" asp-for="WorkerId" id="workerIdInput" />
+                        <a asp-action="ChooseWorker" asp-controller="Booking"
+                           asp-route-serviceTypeId="@(Model.ServiceTypeId == Guid.Empty ? null : Model.ServiceTypeId.ToString())"
+                           asp-route-dateOfService="@Model.DateOfService.ToString("yyyy-MM-dd")"
+                           asp-route-timeRange="@Model.TimeRange"
+                           asp-route-latitude="@Model.Latitude"
+                           asp-route-longitude="@Model.Longitude"
+                           class="btn btn-outline-success btn-lg w-100 rounded-pill d-flex align-items-center justify-content-center gap-2" id="chooseWorkerBtn">
+                            <i class="fa-solid fa-user-check"></i>
+                            Choose a worker
+                        </a>
+                        <span class="form-text d-block mt-2">Available cleaners who are free on your service date are shown, closest first.</span>
+                        <span asp-validation-for="WorkerId" class="text-danger"></span>
+                    </div>
+                    <div class="col-lg-6">
+                        <label asp-for="DateOfService" class="form-label">Service date</label>
+                        <input asp-for="DateOfService" type="date" class="form-control form-control-lg" />
+                        <span asp-validation-for="DateOfService" class="text-danger"></span>
+                    </div>
+                    <div class="col-lg-6">
+                        <label asp-for="TimeRange" class="form-label">Time range</label>
+                        <select asp-for="TimeRange" asp-items="ViewBag.TimeRanges" class="form-select form-select-lg"></select>
+                        <span asp-validation-for="TimeRange" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div id="workerPreview" class="worker-preview mt-4 d-none">
+                    <div class="worker-preview__avatar">
+                        <i class="fa-solid fa-user-check"></i>
+                    </div>
+                    <div>
+                        <strong id="workerPreviewName"></strong>
+                        <span id="workerPreviewMeta"></span>
+                    </div>
+                    <div class="worker-preview__price" id="workerPreviewPrice"></div>
+                </div>
+            </section>
+
+            <section class="booking-panel">
+                <div class="booking-panel__head">
+                    <div>
+                        <h2>Location and offer</h2>
+                        <p>Use your current location for accurate availability and address validation.</p>
+                    </div>
+                    <span class="booking-step">02</span>
+                </div>
+
+                <div class="location-detect-banner mb-4">
+                    <div class="location-detect-banner__icon">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                    </div>
+                    <div class="location-detect-banner__text">
+                        <strong>Detect service location</strong>
+                        <span>Clean Connect will use these coordinates to validate the Nigerian address.</span>
+                    </div>
+                    <button type="button" id="detectBookingLocationBtn" class="btn btn-success booking-action-btn rounded-pill px-4">
+                        <i class="fa-solid fa-location-crosshairs me-2"></i>Use my location
+                    </button>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <label asp-for="Latitude" class="form-label">Latitude</label>
+                        <input asp-for="Latitude" id="bookingLatitude" class="form-control form-control-lg" />
+                        <span asp-validation-for="Latitude" class="text-danger"></span>
+                    </div>
+                    <div class="col-lg-4">
+                        <label asp-for="Longitude" class="form-label">Longitude</label>
+                        <input asp-for="Longitude" id="bookingLongitude" class="form-control form-control-lg" />
+                        <span asp-validation-for="Longitude" class="text-danger"></span>
+                    </div>
+                    <div class="col-lg-4">
+                        <label asp-for="CouponCode" class="form-label">Coupon code</label>
+                        <input asp-for="CouponCode" class="form-control form-control-lg" placeholder="Optional" />
+                        <span asp-validation-for="CouponCode" class="text-danger"></span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="booking-submit-bar">
+                <div>
+                    <strong>Ready to send?</strong>
+                    <span>The worker will receive a realtime booking request.</span>
+                </div>
+                <button type="submit" id="submitBookingBtn" class="btn btn-success btn-lg booking-action-btn rounded-pill px-5">
+                    <i class="fa-solid fa-paper-plane me-2"></i>Send Booking Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const workerCards = @Html.Raw(workerCardsJson);
+            const workerIdInput = document.getElementById("workerIdInput");
+            const serviceTypeSelect = document.getElementById("serviceTypeSelect");
+            const serviceDateInput = document.querySelector('[name="DateOfService"]');
+            const timeRangeSelect = document.querySelector('[name="TimeRange"]');
+            const chooseWorkerBtn = document.getElementById("chooseWorkerBtn");
+            const preview = document.getElementById("workerPreview");
+            const previewName = document.getElementById("workerPreviewName");
+            const previewMeta = document.getElementById("workerPreviewMeta");
+            const previewPrice = document.getElementById("workerPreviewPrice");
+            const detectBtn = document.getElementById("detectBookingLocationBtn");
+            const latInput = document.getElementById("bookingLatitude");
+            const lngInput = document.getElementById("bookingLongitude");
+            const form = document.getElementById("createBookingForm");
+            const submitBtn = document.getElementById("submitBookingBtn");
+
+            function syncWorkerPreview() {
+                const selected = workerCards.find(x => x.Id === workerIdInput.value);
+                if (!selected) {
+                    preview.classList.add("d-none");
+                    return;
+                }
+
+                previewName.textContent = selected.Name;
+                previewMeta.textContent = `${selected.ServiceName} in ${selected.State || "your area"} | Rating ${Number(selected.Rating || 0).toFixed(1)}`;
+                previewPrice.textContent = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(selected.Amount || 0);
+                preview.classList.remove("d-none");
+            }
+
+            function updateChooseWorkerUrl() {
+                if (!chooseWorkerBtn) return;
+                const url = new URL(chooseWorkerBtn.href, window.location.origin);
+                if (serviceTypeSelect?.value) url.searchParams.set("serviceTypeId", serviceTypeSelect.value);
+                const date = serviceDateInput?.value;
+                if (date) url.searchParams.set("dateOfService", date);
+                if (timeRangeSelect?.value) url.searchParams.set("timeRange", timeRangeSelect.value);
+                if (latInput?.value) url.searchParams.set("latitude", latInput.value);
+                if (lngInput?.value) url.searchParams.set("longitude", lngInput.value);
+                chooseWorkerBtn.href = url.toString();
+            }
+
+            if (serviceTypeSelect || serviceDateInput || timeRangeSelect) {
+                [serviceTypeSelect, serviceDateInput, timeRangeSelect].forEach(el => {
+                    if (el) el.addEventListener("change", updateChooseWorkerUrl);
+                });
+            }
+
+            if (latInput && lngInput) {
+                [latInput, lngInput].forEach(el => el.addEventListener("input", updateChooseWorkerUrl));
+            }
+
+            syncWorkerPreview();
+
+            if (detectBtn) {
+                detectBtn.addEventListener("click", function () {
+                    if (!navigator.geolocation) {
+                        alert("Geolocation is not supported by your browser.");
+                        return;
+                    }
+
+                    detectBtn.disabled = true;
+                    detectBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Detecting';
+                    navigator.geolocation.getCurrentPosition(
+                        function (position) {
+                            latInput.value = position.coords.latitude.toFixed(6);
+                            lngInput.value = position.coords.longitude.toFixed(6);
+                            detectBtn.disabled = false;
+                            detectBtn.innerHTML = '<i class="fa-solid fa-circle-check me-2"></i>Location ready';
+                            detectBtn.classList.add("booking-action-btn--complete");
+                        },
+                        function () {
+                            detectBtn.disabled = false;
+                            detectBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2"></i>Use my location';
+                            detectBtn.classList.remove("booking-action-btn--complete");
+                            alert("Unable to retrieve your location.");
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                });
+            }
+
+            if (form) {
+                form.addEventListener("submit", function () {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending request';
+                });
+            }
+        });
+    </script>
+}

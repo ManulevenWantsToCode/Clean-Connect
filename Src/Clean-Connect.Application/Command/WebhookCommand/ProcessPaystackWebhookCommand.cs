@@ -21,14 +21,16 @@ namespace Clean_Connect.Application.Command.WebhookCommand
         private readonly ILogger<ProcessPaystackWebhookCommandHandler> logger;
         private readonly IPaystackService paystackService;
         private readonly EscrowService escrowService;
+        private readonly INotificationService notificationService;
 
         private readonly IUnitOfWork unitOfWork;
         private readonly IConfiguration configuration;
-        public ProcessPaystackWebhookCommandHandler(ILogger<ProcessPaystackWebhookCommandHandler> _logger, IPaystackService _paystackService, EscrowService escrowService, IUnitOfWork _unitOfWork, IConfiguration _configuration)
+        public ProcessPaystackWebhookCommandHandler(ILogger<ProcessPaystackWebhookCommandHandler> _logger, IPaystackService _paystackService, EscrowService escrowService, INotificationService notificationService, IUnitOfWork _unitOfWork, IConfiguration _configuration)
         {
             logger = _logger;
             paystackService = _paystackService;
             this.escrowService = escrowService;
+            this.notificationService = notificationService;
 
             unitOfWork = _unitOfWork;
             configuration = _configuration;
@@ -114,6 +116,7 @@ namespace Clean_Connect.Application.Command.WebhookCommand
             await unitOfWork.Payments.UpdatePayment(payment, cancellationToken);
             await unitOfWork.Bookings.UpdateBooking(booking, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
+            await notificationService.PaymentConfirmedAsync(booking, cancellationToken);
 
             return Unit.Value;
         }

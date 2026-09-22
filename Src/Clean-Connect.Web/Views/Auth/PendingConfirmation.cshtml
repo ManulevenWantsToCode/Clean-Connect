@@ -1,54 +1,38 @@
-﻿
+
 @model string
 @{
     ViewData["Title"] = "Verify Your Email";
     Layout = "~/Views/Shared/_AuthLayout.cshtml";
 }
 
-<div class="auth-right w-100">
+<div class="auth-right w-100 min-vh-100 d-flex align-items-center justify-content-center py-5">
 
-    <div class="login-card text-center">
+    <div class="login-card shadow-lg text-center" data-aos="fade-up">
 
-        <div class="pending-icon">
-
+        <div class="pending-icon mb-3">
             <i class="fa-solid fa-envelope-circle-check"></i>
-
         </div>
 
-        <h2>Verify Your Email</h2>
+        <h2 class="fw-bold">Verify Your Email</h2>
 
-        <p class="mb-4">
-
-            We've sent a verification link to <strong>@Model</strong>.
-
-            Please check your inbox and click the confirmation link
-            to activate your Clean Connect account.
-
+        <p class="mb-4 text-muted">
+            We've sent a verification link to <strong class="text-success">@Model</strong>.<br />
+            Please check your inbox and click the confirmation link to activate your Clean Connect account.
         </p>
 
-        <div class="alert alert-light border">
-
-            <strong>Didn't receive the email?</strong>
-
-            <br />
-
-            • Check your Spam/Junk folder
-
-            <br />
-
-            • Make sure your email address is correct
-
-            <br />
-
-            • Wait a few minutes before requesting another email
-
+        <div class="alert alert-light border text-start">
+            <strong class="d-block mb-2 text-dark"><i class="fa-solid fa-circle-info text-primary me-2"></i>Didn't receive the email?</strong>
+            <div class="small text-muted">
+                • Check your Spam or Junk folder<br />
+                • Make sure your email address was typed correctly<br />
+                • Wait a few minutes before requesting a new link
+            </div>
         </div>
 
         <div class="d-grid gap-3 mt-4">
 
             <form asp-action="ResendConfirmationEmail"
-                  method="post"
-                  class="mt-4">
+                  method="post">
 
                 @Html.AntiForgeryToken()
 
@@ -57,18 +41,17 @@
                        value="@Model" />
 
                 <button type="submit"
-                        class="btn btn-primary w-100">
-                    <i class="fas fa-paper-plane me-2"></i>
+                        class="btn btn-success login-btn w-100 py-3">
+                    <i class="fa-solid fa-paper-plane me-2"></i>
                     Resend Verification Email
                 </button>
             </form>
 
             <a asp-action="Login"
                asp-controller="Auth"
-               class="btn btn-outline-secondary">
-
+               class="btn btn-outline-secondary w-100 py-3 rounded-3">
+                <i class="fa-solid fa-arrow-left me-2"></i>
                 Back to Login
-
             </a>
 
         </div>

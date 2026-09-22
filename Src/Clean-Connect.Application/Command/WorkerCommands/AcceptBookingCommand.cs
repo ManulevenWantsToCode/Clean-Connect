@@ -1,5 +1,6 @@
 ﻿using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.Interface.Services;
 using Clean_Connect.Domain.Entities;
 using FluentValidation;
 using MediatR;
@@ -33,11 +34,13 @@ namespace Clean_Connect.Application.Command.WorkerCommands
     {
         private readonly AcceptBookingService _acceptBookingService;
         private readonly IUnitOfWork _repo;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<AcceptBookingHandler> _logger;
-        public AcceptBookingHandler(AcceptBookingService acceptBookingService, IUnitOfWork repo, ILogger<AcceptBookingHandler> logger)
+        public AcceptBookingHandler(AcceptBookingService acceptBookingService, IUnitOfWork repo, INotificationService notificationService, ILogger<AcceptBookingHandler> logger)
         {
             _acceptBookingService = acceptBookingService;
             _repo = repo;
+            _notificationService = notificationService;
             _logger = logger;
         }
         public async Task<bool> Handle(AcceptBookingCommand request, CancellationToken cancellationToken)
@@ -52,6 +55,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             _logger.LogInformation("Worker {WorkerId} accepted  booking now awaiting payment{BookingId}", request.WorkerId, request.BookingId);
 
             await _repo.SaveChangesAsync(cancellationToken);
+            await _notificationService.BookingAcceptedAsync(booking, cancellationToken);
 
             _logger.LogInformation("Booking {BookingId} accepted by worker now awaiting payment {WorkerId}", request.BookingId, request.WorkerId);
 

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -16,6 +16,9 @@
     <link rel="stylesheet"
           href="~/css/site.css"
           asp-append-version="true" />
+
+    <link rel="stylesheet"
+          href="~/lib/notyf/notyf.min.css" />
 </head>
 
 <body>
@@ -25,7 +28,9 @@
         <div class="container">
 
             <a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">
-                <i class="fas fa-broom me-2"></i>
+                <span class="navbar-brand-icon">
+                    <i class="fas fa-broom"></i>
+                </span>
                 Clean Connect
             </a>
 
@@ -45,7 +50,8 @@
                     <li class="nav-item">
                         <a class="nav-link"
                            asp-controller="Home"
-                           asp-action="Index">
+                           asp-action="Index"
+                           asp-route-id="">
                             Home
                         </a>
                     </li>
@@ -66,14 +72,35 @@
                         </a>
                     </li>
 
+                    <li class="nav-divider" aria-hidden="true"></li>
+
                     @if (User.Identity!.IsAuthenticated)
                     {
                         <li class="nav-item">
-                            <a class="nav-link"
-                               asp-controller="Dashboard"
-                               asp-action="Index">
-                                Dashboard
-                            </a>
+                            @if (User.IsInRole("Worker"))
+                            {
+                                <a class="nav-link"
+                                   asp-controller="Worker"
+                                   asp-action="Dashboard">
+                                    Dashboard
+                                </a>
+                            }
+                            else if (User.IsInRole("Client"))
+                            {
+                                <a class="nav-link"
+                                   asp-controller="Client"
+                                   asp-action="Dashboard">
+                                    Dashboard
+                                </a>
+                            }
+                            else
+                            {
+                                <a class="nav-link"
+                                   asp-controller="Dashboard"
+                                   asp-action="Index">
+                                    Dashboard
+                                </a>
+                            }
                         </li>
 
                         <li class="nav-item">
@@ -82,8 +109,8 @@
                                   asp-action="Logout">
 
                                 <button type="submit"
-                                        class="btn btn-danger ms-2">
-                                    Logout
+                                        class="btn btn-nav-logout ms-1">
+                                    <i class="fas fa-sign-out-alt me-1"></i>Logout
                                 </button>
 
                             </form>
@@ -104,6 +131,29 @@
                                asp-controller="Auth"
                                asp-action="Register">
                                 Register
+                            </a>
+                        </li>
+                    }
+
+                    <li class="nav-item">
+                        <button id="themeToggle"
+                                class="btn btn-nav-theme ms-2"
+                                title="Toggle theme"
+                                aria-label="Toggle theme">
+                            <i id="themeIcon" class="fa-solid fa-moon"></i>
+                        </button>
+                    </li>
+
+                    @if (User.Identity!.IsAuthenticated)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link nav-link-notifications"
+                               asp-controller="Notifications"
+                               asp-action="Index"
+                               title="Notifications"
+                               aria-label="Notifications">
+                                <i class="fa-solid fa-bell"></i>
+                                <span class="nav-notification-badge" id="notificationBadge" data-count="0">0</span>
                             </a>
                         </li>
                     }
@@ -136,9 +186,21 @@
                     <h5>Quick Links</h5>
 
                     <ul class="list-unstyled">
-                        <li><a href="#">Home</a></li>
-                        <li><a href="#">Services</a></li>
-                        <li><a href="#">Contact</a></li>
+                        <li>
+                            <a asp-controller="Home" asp-action="Index">
+                                Home
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Home" asp-action="About">
+                                About
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Home" asp-action="Contact">
+                                Contact
+                            </a>
+                        </li>
                     </ul>
                 </div>
 
@@ -175,6 +237,7 @@
             asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
+    <script src="~/lib/notyf/notyf.min.js"></script>
     @await Component.InvokeAsync("Notyf")
 
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>

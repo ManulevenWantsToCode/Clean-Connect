@@ -1,5 +1,6 @@
 ﻿using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Domain.Entities;
+using Clean_Connect.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -76,6 +77,12 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             {
                 logger.LogWarning("Rating creation failed. ClientId does not match : {ClientId}", request.ClientId);
                 throw new ValidationException("ClientId does not match");
+            }
+
+            if (checkBooking.BookingStatus != BookingStatus.Completed)
+            {
+                logger.LogWarning("Rating creation failed. Booking {BookingId} is not completed.", request.BookingId);
+                throw new ValidationException("Booking must be completed before it can be rated.");
             }
 
             if (request.RatingValue < 1 || request.RatingValue > 5)

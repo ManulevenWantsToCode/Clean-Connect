@@ -1,0 +1,313 @@
+@model List<Clean_Connect.Application.DTO.AdminReviewDto>
+@{
+    ViewData["Title"] = "Reviews";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    var avg = Model.Count > 0 ? Model.Average(r => (double)r.RatingValue) : 0d;
+    var fiveStarCount = Model.Count(r => r.RatingValue == 5);
+    var fiveStarRate = Model.Count > 0 ? (double)fiveStarCount / Model.Count * 100d : 0d;
+    var lowRatings = Model.Count(r => r.RatingValue <= 2);
+}
+
+<div class="admin-page-header">
+    <div class="admin-page-title-wrap">
+        <h2>Client Reviews & Satisfaction</h2>
+        <p>Monitor service quality ratings, review feedback, and moderator action queues across completed bookings.</p>
+    </div>
+    <div class="admin-page-actions">
+        <button class="btn btn-admin-secondary">
+            <i class="fa-solid fa-download me-1"></i> Export Reviews
+        </button>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Average Platform Rating</span>
+                <div class="stat-icon-wrapper stat-icon-emerald">
+                    <i class="fa-solid fa-star"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">
+                @avg.ToString("0.0")
+                <span class="fs-6 text-muted">/ 5.0</span>
+            </div>
+            <div class="stat-card-meta">
+                <span class="review-stars-mini">
+                    @for (var s = 1; s <= 5; s++)
+                    {
+                        <i class="fa-solid fa-star @((int)Math.Round(avg) >= s ? "text-warning" : "text-muted opacity-25")"></i>
+                    }
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Total Reviews</span>
+                <div class="stat-icon-wrapper stat-icon-sky">
+                    <i class="fa-solid fa-comment-dots"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@Model.Count.ToString("N0")</div>
+            <div class="stat-card-meta">
+                <span class="text-info fw-bold">@Model.Count(r => r.Comment != null && r.Comment.Trim().Length > 0).ToString("N0")</span>
+                <span>with written feedback</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">5-Star Reviews</span>
+                <div class="stat-icon-wrapper stat-icon-amber">
+                    <i class="fa-solid fa-medal"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@fiveStarRate.ToString("0")%</div>
+            <div class="stat-card-meta">
+                <span class="text-warning fw-bold">@fiveStarCount.ToString("N0")</span>
+                <span>top-rated experiences</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Low-Rating Alerts</span>
+                <div class="stat-icon-wrapper stat-icon-rose">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@lowRatings.ToString("N0")</div>
+            <div class="stat-card-meta">
+                <span class="text-danger fw-bold">1-2 stars</span>
+                <span>reviews flagged for follow-up</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Toolbar -->
+<div class="admin-filter-bar">
+    <div class="filter-left-group">
+        <div class="filter-search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="filter-search-input" data-table-search="reviewsTable" placeholder="Search cleaner, client, or comment..." />
+        </div>
+
+        <select class="filter-select" data-table-filter="reviewsTable" data-filter-col="1">
+            <option value="all">All Ratings</option>
+            <option value="5">5 Stars</option>
+            <option value="4">4 Stars</option>
+            <option value="3">3 Stars</option>
+            <option value="2">2 Stars</option>
+            <option value="1">1 Star</option>
+        </select>
+
+        <select class="filter-select" data-table-filter="reviewsTable" data-filter-col="6">
+            <option value="all">All Moderation</option>
+            <option value="Approved">Approved</option>
+            <option value="Pending">Pending</option>
+            <option value="Flagged">Flagged</option>
+        </select>
+
+        <button class="btn btn-sm btn-admin-secondary" data-reset-filter="reviewsTable">
+            <i class="fa-solid fa-filter-circle-xmark me-1"></i> Reset
+        </button>
+    </div>
+
+    <div class="filter-right-group">
+        <span class="results-counter" id="reviewsTable-counter">Showing @Model.Count of @Model.Count records</span>
+    </div>
+</div>
+
+<!-- Reviews Table -->
+<div class="admin-card">
+    <div class="admin-table-responsive">
+        <table class="admin-table" id="reviewsTable">
+            <thead>
+                <tr>
+                    <th>Cleaner</th>
+                    <th>Rating</th>
+                    <th>Review</th>
+                    <th>Client</th>
+                    <th>Service</th>
+                    <th class="text-center">Moderation</th>
+                    <th>Date</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-comment-dots fs-3 mb-2 d-block text-secondary"></i>
+                            No reviews recorded yet.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @for (var i = 0; i < Model.Count; i++)
+                    {
+                        var r = Model[i];
+                        var modClass = r.ModerationStatus == "Approved" ? "badge bg-success-subtle text-success border border-success-subtle"
+                            : (r.ModerationStatus == "Pending" ? "badge bg-warning-subtle text-dark border border-warning-subtle"
+                            : "badge bg-danger-subtle text-danger border border-danger-subtle");
+                        <tr>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar-initials bg-success-subtle text-success">@r.WorkerInitials</div>
+                                    <div class="user-details">
+                                        <span class="user-name">@r.WorkerName</span>
+                                        <span class="user-subtext">@r.WorkerId</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="review-stars">
+                                    @for (var s = 1; s <= 5; s++)
+                                    {
+                                        <i class="fa-solid fa-star @(s <= r.RatingValue ? "text-warning" : "text-muted opacity-25")"></i>
+                                    }
+                                </div>
+                                <div class="small text-muted">@r.RatingValue.ToString("0") / 5</div>
+                            </td>
+                            <td class="review-cell">
+                                @if (!string.IsNullOrWhiteSpace(r.Comment))
+                                {
+                                    <div class="review-comment">@r.Comment</div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small fst-italic">No written feedback</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar-initials bg-info-subtle text-info">@r.ClientInitials</div>
+                                    <div class="user-details">
+                                        <span class="user-name">@r.ClientName</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-secondary-subtle text-dark border">@r.ServiceType</span></td>
+                            <td class="text-center">
+                                <span class="@modClass">@r.ModerationStatus</span>
+                            </td>
+                            <td>
+                                <div class="small fw-semibold">@r.Date.ToString("MMM d, yyyy")</div>
+                                <span class="user-subtext">@r.Date.ToString("HH:mm")</span>
+                            </td>
+                            <td class="text-end">
+                                <div class="table-actions justify-content-end">
+                                    <button class="btn-action-icon" onclick="openReviewModal(@i)" title="Review Feedback">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+
+                <tr id="reviewsTable-no-results" style="display: none;">
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-magnifying-glass fs-3 mb-2 d-block text-secondary"></i>
+                        No reviews match your selected criteria.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="admin-pagination-wrapper" data-paginate="reviewsTable" data-page-size="8">
+        <span class="pagination-info" data-pagination-info>Showing all @Model.Count reviews</span>
+        <ul class="admin-pagination" data-pagination-list></ul>
+    </div>
+</div>
+
+<!-- Review Moderation Modal -->
+<div class="modal fade" id="reviewModerationModal" tabindex="-1" aria-labelledby="reviewModerationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reviewModerationModalLabel">
+                    <i class="fa-solid fa-shield-halved text-success me-2"></i>
+                    Review Moderation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-center gap-3 p-3 rounded bg-light dark-bg-dark mb-4">
+                    <div class="user-avatar-initials bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center" id="rm-worker-initials" style="width: 44px; height: 44px;">—</div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold fs-6" id="rm-worker">—</div>
+                        <div class="small text-muted" id="rm-worker-id">—</div>
+                    </div>
+                    <div id="rm-stars" class="fs-5 text-warning"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small text-uppercase fw-bold">Client Feedback</label>
+                    <div class="p-3 border rounded bg-white dark-bg-card" id="rm-comment">—</div>
+                </div>
+
+                <div class="row g-3 small">
+                    <div class="col-md-6">
+                        <span class="text-muted d-block">Reviewed By</span>
+                        <div class="fw-semibold" id="rm-client">—</div>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted d-block">Service</span>
+                        <div class="fw-semibold" id="rm-service">—</div>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted d-block">Submitted</span>
+                        <div class="fw-semibold" id="rm-date">—</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-admin-secondary" data-save-feedback data-bs-dismiss="modal">
+                    <i class="fa-solid fa-flag me-1"></i> Flag Review
+                </button>
+                <button type="button" class="btn btn-admin-primary" data-save-feedback data-bs-dismiss="modal">
+                    <i class="fa-solid fa-check me-1"></i> Approve
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const reviewsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
+
+        function openReviewModal(index) {
+            const r = reviewsData[index];
+            if (!r) return;
+            document.getElementById('reviewModerationModalLabel').textContent = 'Review Moderation';
+            document.getElementById('rm-worker').textContent = r.workerName;
+            document.getElementById('rm-worker-initials').textContent = r.workerInitials;
+            document.getElementById('rm-worker-id').textContent = r.workerId;
+            let stars = '';
+            for (let s = 1; s <= 5; s++) {
+                stars += '<i class="fa-solid fa-star' + (s <= r.ratingValue ? ' text-warning' : ' text-muted opacity-25') + '"></i> ';
+            }
+            document.getElementById('rm-stars').innerHTML = stars;
+            document.getElementById('rm-comment').textContent = r.comment || 'No written feedback.';
+            document.getElementById('rm-client').textContent = r.clientName;
+            document.getElementById('rm-service').textContent = r.serviceType || '—';
+            document.getElementById('rm-date').textContent = new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('reviewModerationModal')).show();
+        }
+    </script>
+}

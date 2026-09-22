@@ -8,6 +8,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Clean_Connect.Web.Controllers
 {
@@ -20,14 +21,16 @@ namespace Clean_Connect.Web.Controllers
         private readonly INotyfService _notyf;
         private readonly UserManager<ApplicationUser> _user;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(ILogger<AuthController> logger, IMediator mediator, INotyfService notyf, UserManager<ApplicationUser> user, SignInManager<ApplicationUser> signInManager)
+        public AuthController(ILogger<AuthController> logger, IMediator mediator, INotyfService notyf, UserManager<ApplicationUser> user, SignInManager<ApplicationUser> signInManager, IConfiguration configuration)
         {
             _logger = logger;
             _mediator = mediator;
             _notyf = notyf;
             _user = user;
             _signInManager = signInManager;
+            _configuration = configuration;
         }
 
         [HttpGet("Login")]
@@ -109,13 +112,22 @@ namespace Clean_Connect.Web.Controllers
                     return RedirectToAction(nameof(WorkerController.CreateWorkerProfile), "Worker");
                 }
 
-                //if (result.RequiresClientProfileCompletion)
-                //{
-                //    _logger.LogInformation("Redirecting to client profile creation.");
-                //    return RedirectToAction(nameof(CreateClientProfile), "Clients");
-                //}
+                if (result.RequiresClientProfileCompletion)
+                {
+                    _logger.LogInformation("Redirecting to client profile creation.");
+                    return RedirectToAction(nameof(ClientController.CreateClientProfile), "Client");
+                }
 
                 _notyf.Success("Login successful. Welcome back!");
+
+                if (result.Roles.Contains("Admin"))
+                    return RedirectToAction(nameof(AdminController.Index), "Admin");
+
+                if (result.Roles.Contains("Worker"))
+                    return RedirectToAction(nameof(WorkerController.Dashboard), "Worker");
+
+                if (result.Roles.Contains("Client"))
+                    return RedirectToAction(nameof(ClientController.Dashboard), "Client");
 
                 return RedirectToAction("Index", "Home");
             }
@@ -132,9 +144,189 @@ namespace Clean_Connect.Web.Controllers
                 return View(model);
             }
         }
-        [HttpGet("Register-User")]
-        public IActionResult Register()
+        [HttpGet("Google-Login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleLogin(string? returnUrl = null, string? role = null)
         {
+            var googleConfig = _configuration.GetSection("Authentication:Google");
+            if (string.IsNullOrWhiteSpace(googleConfig["ClientId"]) || string.IsNullOrWhiteSpace(googleConfig["ClientSecret"]))
+            {
+                _notyf.Error("Google sign-in is not configured. Please sign in with your email and password.");
+                return RedirectToAction(nameof(Login));
+            }
+
+            if (string.Equals(role, "Worker", StringComparison.OrdinalIgnoreCase))
+            {
+                Response.Cookies.Append("GoogleSignupRole", "Worker", new CookieOptions
+                {
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.Lax,
+                    MaxAge = TimeSpan.FromMinutes(5)
+                });
+            }
+            else if (string.Equals(role, "Client", StringComparison.OrdinalIgnoreCase))
+            {
+                Response.Cookies.Append("GoogleSignupRole", "Client", new CookieOptions
+                {
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.Lax,
+                    MaxAge = TimeSpan.FromMinutes(5)
+                });
+            }
+
+            var callbackUrl = Url.Action(nameof(GoogleCallback), "Auth", new { returnUrl });
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties(
+                "Google", callbackUrl);
+            return Challenge(properties, "Google");
+        }
+
+        [HttpGet("Google-Callback")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleCallback(string? returnUrl = null, string? remoteError = null)
+        {
+            if (!string.IsNullOrWhiteSpace(remoteError))
+            {
+                _logger.LogWarning("Google OAuth failed with error: {RemoteError}", remoteError);
+                _notyf.Error("There was a problem signing in with Google. Please try again.");
+                return RedirectToAction(nameof(Login));
+            }
+
+            var info = await _signInManager.GetExternalLoginInfoAsync();
+            if (info == null)
+            {
+                _logger.LogWarning("Google OAuth callback received no external login info.");
+                _notyf.Error("Unable to sign in with Google. Please try again.");
+                return RedirectToAction(nameof(Login));
+            }
+
+            var result = await _signInManager.ExternalLoginSignInAsync(
+                info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
+
+            if (result.Succeeded)
+            {
+                Response.Cookies.Delete("GoogleSignupRole");
+                _logger.LogInformation("User signed in via {Provider}.", info.LoginProvider);
+                _notyf.Success("Login successful. Welcome back!");
+                return RedirectToDashboard(returnUrl);
+            }
+
+            var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                _logger.LogWarning("Google OAuth did not provide an email address.");
+                _notyf.Error("Google did not provide an email address. Please sign in with your email and password instead.");
+                return RedirectToAction(nameof(Login));
+            }
+
+            email = email.Trim().ToLowerInvariant();
+            var user = await _user.FindByEmailAsync(email);
+
+            if (user == null)
+            {
+                user = ApplicationUser.Create(email);
+                user.EmailConfirmed = true;
+
+                var createResult = await _user.CreateAsync(user);
+                if (!createResult.Succeeded)
+                {
+                    var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                    _logger.LogError("Failed to create user from Google login for {Email}. Errors: {Errors}", email, errors);
+                    _notyf.Error("Unable to create your account from the Google login.");
+                    return RedirectToAction(nameof(Login));
+                }
+
+                var role = "Client";
+                if (Request.Cookies.TryGetValue("GoogleSignupRole", out var cookieRole) &&
+                    string.Equals(cookieRole, "Worker", StringComparison.OrdinalIgnoreCase))
+                {
+                    role = "Worker";
+                }
+                Response.Cookies.Delete("GoogleSignupRole");
+
+                var roleResult = await _user.AddToRoleAsync(user, role);
+                if (!roleResult.Succeeded)
+                {
+                    _logger.LogError("Failed to assign {Role} role after Google login for {Email}.", role, email);
+                }
+
+                _logger.LogInformation("Created user {Email} with role {Role} via Google OAuth.", email, role);
+            }
+            else
+            {
+                Response.Cookies.Delete("GoogleSignupRole");
+
+                if (!user.EmailConfirmed)
+                {
+                    user.EmailConfirmed = true;
+                    await _user.UpdateAsync(user);
+                    _logger.LogInformation("Confirmed email for existing user {Email} via Google OAuth.", email);
+                }
+            }
+
+            var loginInfo = new UserLoginInfo(info.LoginProvider, info.ProviderKey, info.LoginProvider);
+            var linkResult = await _user.AddLoginAsync(user, loginInfo);
+            if (!linkResult.Succeeded)
+            {
+                var errors = string.Join(", ", linkResult.Errors.Select(e => e.Description));
+                _logger.LogWarning("Failed to link Google login to {Email}. Errors: {Errors}", email, errors);
+            }
+
+            await _signInManager.SignInAsync(user, isPersistent: false);
+
+            if (!Url.IsLocalUrl(returnUrl))
+                returnUrl = null;
+
+            if (await _user.IsInRoleAsync(user, "Worker"))
+            {
+                if (!user.IsWorkerProfileCompleted)
+                {
+                    _notyf.Information("Please complete your profile.");
+                    return RedirectToAction(nameof(WorkerController.CreateWorkerProfile), "Worker");
+                }
+                return RedirectToAction(nameof(WorkerController.Dashboard), "Worker");
+            }
+
+            if (!user.IsClientProfileCompleted)
+            {
+                _notyf.Information("Please complete your profile.");
+                return RedirectToAction(nameof(ClientController.CreateClientProfile), "Client");
+            }
+
+            return RedirectToAction(nameof(ClientController.Dashboard), "Client");
+        }
+
+        private IActionResult RedirectToDashboard(string? returnUrl)
+        {
+            if (Url.IsLocalUrl(returnUrl))
+                return Redirect(returnUrl);
+
+            if (User.IsInRole("Admin"))
+                return RedirectToAction(nameof(AdminController.Index), "Admin");
+            if (User.IsInRole("Worker"))
+                return RedirectToAction(nameof(WorkerController.Dashboard), "Worker");
+            if (User.IsInRole("Client"))
+                return RedirectToAction(nameof(ClientController.Dashboard), "Client");
+            return RedirectToAction("Index", "Home");
+        }
+
+        [HttpGet("Register-User")]
+        public IActionResult Register([FromQuery(Name = "refCode")] string? refCode)
+        {
+            if (!string.IsNullOrWhiteSpace(refCode))
+            {
+                Response.Cookies.Append(
+                    "ReferralCode",
+                    refCode.Trim(),
+                    new CookieOptions
+                    {
+                        HttpOnly = true,
+                        SameSite = SameSiteMode.Lax,
+                        MaxAge = TimeSpan.FromDays(30)
+                    });
+
+                ViewData["ReferralCode"] = refCode.Trim();
+            }
+
             return View();
         }
         [HttpPost("Register-User")]

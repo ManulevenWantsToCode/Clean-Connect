@@ -124,7 +124,19 @@ namespace Clean_Connect.Application.Command.WorkerCommands
 
             }
 
-            var newAddress = await geocodingService.GetAddressAsync(request.Latitude, request.Longitude);
+            string newAddress;
+            try
+            {
+                newAddress = await geocodingService.GetAddressAsync(request.Latitude, request.Longitude);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Geocoding failed for lat={Lat}, lng={Lng}, falling back to State-based address", request.Latitude, request.Longitude);
+                newAddress = $"{request.State}, Nigeria";
+            }
+
+            if (!newAddress.Contains("Nigeria"))
+                newAddress = $"{request.State}, Nigeria";
 
             worker.UpdateName(request.LastName, request.FirstName, request.ModifiedBy);
             worker.UpdateLocation(request.Latitude, request.Longitude);

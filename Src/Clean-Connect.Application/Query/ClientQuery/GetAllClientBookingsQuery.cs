@@ -37,6 +37,7 @@ namespace Clean_Connect.Application.Query.ClientQuery
 
             var bookings = check.Bookings.Select(b => new BookingDto
             {
+                Id = b.Id,
                 ServiceName = b.ServiceType.Name,
                 ClientName = check.FullName,
                 WorkersName = b.Worker.FullName,

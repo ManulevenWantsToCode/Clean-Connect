@@ -1,0 +1,323 @@
+@model Clean_Connect.Application.Query.ClientsQuery.ClientDashboardDto
+
+@{
+    ViewData["Title"] = "Client Dashboard";
+    Layout = "_DashboardLayout";
+}
+
+<div class="dash-page">
+    <div class="container">
+
+        <!-- Header -->
+        <div class="dash-header d-flex flex-wrap align-items-center justify-content-between mb-4">
+            <div>
+                <h1>Welcome back, @Model.ClientName</h1>
+                <p>Here's an overview of your cleaning service bookings and account activity.</p>
+            </div>
+            <div class="d-flex gap-3 mt-3 mt-lg-0">
+                <span class="dash-badge">
+                    <i class="fa-solid fa-circle-check"></i>
+                    @Model.ActiveBookings Active Booking(s)
+                </span>
+            </div>
+        </div>
+
+        <!-- Top Stats Row -->
+        <div class="stats-grid mb-5">
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fa-solid fa-briefcase"></i>
+                </div>
+                <div class="stat-number">@Model.TotalJobs</div>
+                <p class="stat-label">Total Jobs</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon amber">
+                    <i class="fa-solid fa-spinner"></i>
+                </div>
+                <div class="stat-number">@Model.ActiveBookings</div>
+                <p class="stat-label">Active Bookings</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div class="stat-number">@Model.CompletedBookings</div>
+                <p class="stat-label">Completed Bookings</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <div class="stat-number">&#8358;@Model.TotalSpent.ToString("N0")</div>
+                <p class="stat-label">Total Spent</p>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Content Grid -->
+        <div class="dash-grid mb-5">
+
+            <!-- Recent Bookings -->
+            <div class="dash-card">
+                <div class="card-head d-flex align-items-center justify-content-between">
+                    <h4>
+                        <i class="fa-solid fa-clock-rotate-left me-2"></i>Recent Bookings
+                    </h4>
+                    <a asp-controller="Booking" asp-action="ClientResponses" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-semibold">
+                        View All <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentBookings == null || Model.RecentBookings.Count == 0)
+                    {
+                        <div class="empty-state py-4 text-center">
+                            <i class="fa-solid fa-calendar-xmark fs-1 text-muted mb-3"></i>
+                            <p class="mb-3 text-muted">No recent bookings found.</p>
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-sm btn-success px-4 rounded-pill">
+                                <i class="fa-solid fa-plus me-1"></i> Book a Service
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0 recent-bookings-table">
+                                <thead>
+                                    <tr>
+                                        <th>Worker</th>
+                                        <th>Service</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Payment</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var booking in Model.RecentBookings)
+                                    {
+                                        <tr class="recent-booking-row" onclick="window.location.href='/Client-Booking-Details/@booking.BookingId'">
+                                            <td class="fw-semibold">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="recent-booking-avatar">
+                                                        <i class="fa-solid fa-user text-success"></i>
+                                                    </div>
+                                                    <span>@booking.WorkerName</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="recent-booking-service"><i class="fa-solid fa-broom me-1 text-muted"></i>@booking.ServiceName</span>
+                                            </td>
+                                            <td class="small text-muted">@booking.DateOfService.ToString("MMM dd, yyyy")</td>
+                                            <td>
+                                                <span class="booking-status-badge @(booking.BookingStatus.ToLower())">
+                                                    @booking.BookingStatus
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="payment-status-badge @(booking.PaymentStatus.ToLower())">
+                                                    @booking.PaymentStatus
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <a asp-controller="Booking" asp-action="Details" asp-route-bookingId="@booking.BookingId" class="btn btn-sm btn-light rounded-circle shadow-sm px-2 py-1" onclick="event.stopPropagation();">
+                                                    <i class="fa-solid fa-chevron-right text-muted small"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Referral & Quick Actions Column -->
+            <div class="d-flex flex-column gap-4">
+
+                <!-- Referral Card -->
+                <div class="dash-card">
+                    <div class="card-head">
+                        <h4>
+                            <i class="fa-solid fa-gift"></i>
+                            Referral Program
+                        </h4>
+                    </div>
+                    <div class="card-body text-center p-4">
+                        <p class="text-muted small mb-3">Share your link and earn rewards when friends book cleaning services!</p>
+
+                        <label class="form-label small text-muted mb-1">Your referral link</label>
+                        <div class="input-group mb-3 referral-link-group">
+                            <input type="text" id="referralLinkInput"
+                                   class="form-control text-truncate referral-link-input"
+                                   value="@Url.Action("Register", "Auth", new { refCode = Model.ReferralCode }, Context.Request.Scheme)"
+                                   readonly />
+                            <button type="button" id="copyReferralLinkBtn" class="btn btn-success" title="Copy referral link">
+                                <i class="fa-solid fa-link me-1"></i> Copy
+                            </button>
+                        </div>
+
+                        <div class="d-flex justify-content-center gap-2 mb-3 referral-share-row">
+                            <a href="#" id="shareWhatsAppBtn" class="share-btn share-whatsapp" target="_blank" rel="noopener" title="Share on WhatsApp">
+                                <i class="fa-brands fa-whatsapp"></i>
+                            </a>
+                            <a href="#" id="shareTelegramBtn" class="share-btn share-telegram" target="_blank" rel="noopener" title="Share on Telegram">
+                                <i class="fa-brands fa-telegram"></i>
+                            </a>
+                            <a href="#" id="shareXBtn" class="share-btn share-x" target="_blank" rel="noopener" title="Share on X">
+                                <i class="fa-brands fa-x-twitter"></i>
+                            </a>
+                            <a href="#" id="shareEmailBtn" class="share-btn share-email" target="_blank" rel="noopener" title="Share via Email">
+                                <i class="fa-solid fa-envelope"></i>
+                            </a>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between referral-divider">
+                            <span class="flex-grow-1 small text-muted">or share your code</span>
+                            <span class="referral-code-badge"><i class="fa-solid fa-venus-mars"></i></span>
+                        </div>
+
+                        <div class="input-group mb-3 mt-2">
+                            <input type="text" id="referralCodeInput" class="form-control text-center fw-bold fs-5 referral-code-box" value="@Model.ReferralCode" readonly />
+                            <button type="button" id="copyReferralBtn" class="btn btn-outline-success">
+                                <i class="fa-solid fa-copy me-1"></i> Copy
+                            </button>
+                        </div>
+                        <div class="d-flex justify-content-center align-items-center gap-2 mt-3 pt-2 border-top">
+                            <i class="fa-solid fa-users text-success"></i>
+                            <span class="fw-semibold">Successful Referrals:</span>
+                            <span class="badge bg-success rounded-pill px-3 fs-6">@Model.SuccessfulReferralCount</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="dash-card">
+                    <div class="card-head">
+                        <h4>
+                            <i class="fa-solid fa-bolt"></i>
+                            Quick Actions
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="action-grid">
+                            <a href="/Update-Client-Details" class="action-btn">
+                                <div class="a-icon purple">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </div>
+                                <div class="a-text">
+                                    Edit Profile
+                                    <small>Update details</small>
+                                </div>
+                            </a>
+
+                            <a asp-controller="Booking" asp-action="Create" class="action-btn">
+                                <div class="a-icon green">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                </div>
+                                <div class="a-text">
+                                    Create Booking
+                                    <small>Request a cleaner</small>
+                                </div>
+                            </a>
+
+                            <a asp-controller="Booking" asp-action="ClientResponses" class="action-btn">
+                                <div class="a-icon blue">
+                                    <i class="fa-solid fa-bell"></i>
+                                </div>
+                                <div class="a-text">
+                                    Worker Responses
+                                    <small>Pay or review status</small>
+                                </div>
+                            </a>
+
+                            <a asp-controller="Notifications" asp-action="Index" class="action-btn">
+                                <div class="a-icon amber">
+                                    <i class="fa-solid fa-bell"></i>
+                                </div>
+                                <div class="a-text">
+                                    Notifications
+                                    <small>See every update</small>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const copyBtn = document.getElementById("copyReferralBtn");
+            const referralInput = document.getElementById("referralCodeInput");
+
+            function showCopyFeedback(btn, label) {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Copied!';
+                btn.classList.remove("btn-outline-success");
+                btn.classList.add("btn-success", "text-white");
+                setTimeout(function () {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove("btn-success", "text-white");
+                    btn.classList.add("btn-outline-success");
+                }, 2000);
+            }
+
+            if (copyBtn && referralInput) {
+                copyBtn.addEventListener("click", function () {
+                    referralInput.select();
+                    navigator.clipboard.writeText(referralInput.value).then(function () {
+                        showCopyFeedback(copyBtn);
+                    });
+                });
+            }
+
+            const linkInput = document.getElementById("referralLinkInput");
+            const copyLinkBtn = document.getElementById("copyReferralLinkBtn");
+
+            if (copyLinkBtn && linkInput) {
+                copyLinkBtn.addEventListener("click", function () {
+                    linkInput.select();
+                    navigator.clipboard.writeText(linkInput.value).then(function () {
+                        const originalText = copyLinkBtn.innerHTML;
+                        copyLinkBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Copied!';
+                        setTimeout(function () {
+                            copyLinkBtn.innerHTML = originalText;
+                        }, 2000);
+                    });
+                });
+            }
+
+            const message = "Hey! Join me on Clean Connect and book trusted cleaning services. Use my referral link: " + (linkInput ? linkInput.value : "");
+
+            const shareWhatsAppBtn = document.getElementById("shareWhatsAppBtn");
+            if (shareWhatsAppBtn) {
+                shareWhatsAppBtn.href = "https://wa.me/?text=" + encodeURIComponent(message);
+            }
+
+            const shareTelegramBtn = document.getElementById("shareTelegramBtn");
+            if (shareTelegramBtn) {
+                shareTelegramBtn.href = "https://t.me/share/url?url=" + encodeURIComponent(linkInput ? linkInput.value : "") + "&text=" + encodeURIComponent("Hey! Join me on Clean Connect and book trusted cleaning services.");
+            }
+
+            const shareXBtn = document.getElementById("shareXBtn");
+            if (shareXBtn) {
+                shareXBtn.href = "https://twitter.com/intent/tweet?url=" + encodeURIComponent(linkInput ? linkInput.value : "") + "&text=" + encodeURIComponent("Join me on Clean Connect and book trusted cleaning services!");
+            }
+
+            const shareEmailBtn = document.getElementById("shareEmailBtn");
+            if (shareEmailBtn) {
+                shareEmailBtn.href = "mailto:?subject=" + encodeURIComponent("Join me on Clean Connect!") + "&body=" + encodeURIComponent(message);
+            }
+        });
+    </script>
+}

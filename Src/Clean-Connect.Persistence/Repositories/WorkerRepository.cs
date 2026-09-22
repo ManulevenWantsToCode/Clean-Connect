@@ -1,5 +1,6 @@
 ﻿using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Domain.Entities;
+using Clean_Connect.Domain.Enums;
 using Clean_Connect.Domain.Helper;
 using Clean_Connect.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -67,9 +68,132 @@ namespace Clean_Connect.Persistence.Repositories
                 })
                 .ToList(); // ✅ now normal LINQ
         }
+
+        public async Task<List<WorkerWithDistance>> GetNearbyWorkersWithBookingsAsync(double latitude, double longitude, double radiusInMeters, CancellationToken cancellationToken)
+        {
+            var location = new Point(longitude, latitude)
+            {
+                SRID = 4326
+            };
+
+            var result = await dbContext.Workers
+                .Include(s => s.ServiceType)
+                .Include(s => s.Bookings)
+                .Where(w => w.Location != null &&
+                            w.Location.Point.IsWithinDistance(location, radiusInMeters))
+                .Select(w => new
+                {
+                    Worker = w,
+                    Distance = w.Location.Point.Distance(location) / 1000.0
+                })
+                .OrderBy(x => x.Distance)
+                .ToListAsync(cancellationToken);
+
+            return result
+                .Select(x => new WorkerWithDistance
+                {
+                    Worker = x.Worker,
+                    DistanceInKm = Math.Round(x.Distance, 2)
+                })
+                .ToList();
+        }
+        public async Task<List<WorkerWithDistance>> GetAllWorkersWithDistanceAsync(double latitude, double longitude, CancellationToken cancellationToken)
+        {
+            var location = new Point(longitude, latitude)
+            {
+                SRID = 4326
+            };
+
+            var result = await dbContext.Workers
+                .Include(s => s.ServiceType)
+                .Include(s => s.Bookings)
+                .Where(w => w.Location != null)
+                .Select(w => new
+                {
+                    Worker = w,
+                    Distance = w.Location.Point.Distance(location) / 1000.0
+                })
+                .OrderBy(x => x.Distance)
+                .ToListAsync(cancellationToken);
+
+            return result
+                .Select(x => new WorkerWithDistance
+                {
+                    Worker = x.Worker,
+                    DistanceInKm = Math.Round(x.Distance, 2)
+                })
+                .ToList();
+        }
+
+        public async Task<List<WorkerWithDistance>> GetAvailableWorkersWithDistanceAsync(double? latitude, double? longitude, double? radiusInMeters, Guid? serviceTypeId, DateTime dateOfService, CancellationToken cancellationToken)
+        {
+            var activeStatuses = new[] { BookingStatus.Pending, BookingStatus.AcceptedAwaitingPayment, BookingStatus.MarkAsPaid, BookingStatus.AwaitingClientStartConfirmation, BookingStatus.InProgress, BookingStatus.AwaitingClientConfirmation };
+
+            var query = dbContext.Workers
+                .Include(s => s.ServiceType)
+                .Where(w => w.IsAvailable)
+                .Where(w => !w.Bookings.Any(b =>
+                    b.DateOfService.Date == dateOfService.Date &&
+                    activeStatuses.Contains(b.BookingStatus)));
+
+            if (serviceTypeId.HasValue)
+                query = query.Where(w => w.ServiceTypeId == serviceTypeId.Value);
+
+            var hasOrigin = latitude.HasValue && longitude.HasValue;
+
+            if (!hasOrigin)
+            {
+                var workers = await query
+                    .OrderByDescending(w => w.AverageRating)
+                    .ThenBy(w => w.FullName.FirstName)
+                    .ToListAsync(cancellationToken);
+
+                return workers.Select(w => new WorkerWithDistance
+                {
+                    Worker = w,
+                    DistanceInKm = 0
+                }).ToList();
+            }
+
+            var location = new Point(longitude!.Value, latitude!.Value)
+            {
+                SRID = 4326
+            };
+
+            if (radiusInMeters.HasValue && radiusInMeters.Value > 0)
+                query = query.Where(w => w.Location != null && w.Location.Point.IsWithinDistance(location, radiusInMeters.Value));
+
+            var result = await query
+                .Where(w => w.Location != null)
+                .Select(w => new
+                {
+                    Worker = w,
+                    Distance = w.Location.Point.Distance(location) / 1000.0
+                })
+                .OrderBy(x => x.Distance)
+                .ThenByDescending(x => x.Worker.AverageRating)
+                .ToListAsync(cancellationToken);
+
+            return result
+                .Select(x => new WorkerWithDistance
+                {
+                    Worker = x.Worker,
+                    DistanceInKm = Math.Round(x.Distance, 2)
+                })
+                .ToList();
+        }
+
         public async Task<IEnumerable<Worker>> GetAllWorkers(CancellationToken cancellationToken)
         {
             return await dbContext.Workers.Include(s => s.ServiceType).ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<Worker>> GetAllWorkersWithBookingsAsync(CancellationToken cancellationToken)
+        {
+            return await dbContext.Workers
+                .Include(s => s.ServiceType)
+                .Include(s => s.Bookings)
+                .ToListAsync(cancellationToken);
         }
 
         public async Task UpdateWorker(Worker worker, CancellationToken cancellationToken)

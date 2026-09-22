@@ -1,5 +1,6 @@
 using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.Interface.Services;
 using Clean_Connect.Application.Query.WorkersQuery;
 using Clean_Connect.Domain.Entities;
 using Clean_Connect.Domain.Enums;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Clean_Connect.Application.Command.BookingCommand
 {
-    public record CreateBookingCommand(Guid ClientId, Guid WorkerId, double Latitude, double Longitude, double RadiusInMeters, Guid ServiceTypeId, DateTime DateOfService, string TimeRange, string? CouponCode = null, string? CreatedBy = null) : IRequest<bool>;
+    public record CreateBookingCommand(Guid ClientId, Guid WorkerId, double Latitude, double Longitude, double RadiusInMeters, Guid ServiceTypeId, DateTime DateOfService, string TimeRange, string? CouponCode = null, string? CreatedBy = null) : IRequest<Guid>;
 
     public class CreateBookingValidator : AbstractValidator<CreateBookingCommand>
     {
@@ -48,9 +49,9 @@ namespace Clean_Connect.Application.Command.BookingCommand
 
     }
 
-    public class CreateBookingHandler(IUnitOfWork repo, BookingRuleService bookingRuleService, GeocodingService geocodingService, ILogger<CreateBookingHandler> logger) : IRequestHandler<CreateBookingCommand, bool>
+    public class CreateBookingHandler(IUnitOfWork repo, BookingRuleService bookingRuleService, GeocodingService geocodingService, INotificationService notificationService, ILogger<CreateBookingHandler> logger) : IRequestHandler<CreateBookingCommand, Guid>
     {
-        public async Task<bool> Handle(CreateBookingCommand request, CancellationToken cancellationToken)
+        public async Task<Guid> Handle(CreateBookingCommand request, CancellationToken cancellationToken)
         {
 
 
@@ -114,6 +115,7 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 .ValidateBookingAsync(request.WorkerId,
                 request.ClientId,
                 request.ServiceTypeId,
+                originalAmount,
                 amount,
                 request.DateOfService,
                 timeRange,
@@ -144,7 +146,9 @@ namespace Clean_Connect.Application.Command.BookingCommand
 
             await repo.SaveChangesAsync(cancellationToken);
 
-            return true;
+            await notificationService.NewBookingRequestAsync(newBooking, cancellationToken);
+
+            return newBooking.Id;
         }
     }
 }

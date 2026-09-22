@@ -83,6 +83,18 @@ namespace Clean_Connect.Domain.Entities
             UpdateMetadata(modifiedBy);
         }
 
+        public void MarkAsRefunded(string? reason, string? modifiedBy = null)
+        {
+            if (Status != PaymentStatus.Successful && Status != PaymentStatus.Pending)
+            {
+                throw new InvalidOperationException($"Cannot refund a payment in {Status} status.");
+            }
+
+            Status = PaymentStatus.Refunded;
+            FailureReason = reason;
+            UpdateMetadata(modifiedBy);
+        }
+
         public static void ValidateBookingId(Guid bookingId)
         {
             if (bookingId == Guid.Empty)

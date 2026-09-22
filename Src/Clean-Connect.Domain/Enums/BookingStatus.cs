@@ -5,10 +5,12 @@
         Pending,
         AcceptedAwaitingPayment,
         MarkAsPaid,
+        AwaitingClientStartConfirmation,
         InProgress,
         AwaitingClientConfirmation,
         Rejected,
         Cancelled,
-        Completed
+        Completed,
+        Expired
     }
 }

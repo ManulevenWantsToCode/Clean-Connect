@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>@ViewData["Title"] - Clean Connect</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+    <link rel="stylesheet"
+          href="~/css/site.css"
+          asp-append-version="true" />
+
+    <link rel="stylesheet"
+          href="~/css/dashboard.css"
+          asp-append-version="true" />
+
+    <link rel="stylesheet"
+          href="~/lib/notyf/notyf.min.css" />
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
+        <div class="container">
+
+            <a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">
+                <span class="navbar-brand-icon">
+                    <i class="fas fa-broom"></i>
+                </span>
+                Clean Connect
+            </a>
+
+            <button class="navbar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#mainNavbar">
+
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse"
+                 id="mainNavbar">
+
+                <ul class="navbar-nav ms-auto">
+
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           asp-controller="Home"
+                           asp-action="Index">
+                            Home
+                        </a>
+                    </li>
+
+                    <li class="nav-divider" aria-hidden="true"></li>
+
+                    @if (User.Identity!.IsAuthenticated)
+                    {
+                        <li class="nav-item">
+                            @if (User.IsInRole("Worker"))
+                            {
+                                <a class="nav-link"
+                                   asp-controller="Worker"
+                                   asp-action="Dashboard">
+                                    Dashboard
+                                </a>
+                            }
+                            else if (User.IsInRole("Client"))
+                            {
+                                <a class="nav-link"
+                                   asp-controller="Client"
+                                   asp-action="Dashboard">
+                                    Dashboard
+                                </a>
+                            }
+                            else
+                            {
+                                <a class="nav-link"
+                                   asp-controller="Dashboard"
+                                   asp-action="Index">
+                                    Dashboard
+                                </a>
+                            }
+                        </li>
+
+                        <li class="nav-item">
+                            <form method="post"
+                                  asp-controller="Auth"
+                                  asp-action="Logout">
+
+                                <button type="submit"
+                                        class="btn btn-nav-logout ms-1">
+                                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                                </button>
+
+                            </form>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item">
+                            <a class="btn btn-login ms-2"
+                               asp-controller="Auth"
+                               asp-action="Login">
+                                Login
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="btn btn-register ms-2"
+                               asp-controller="Auth"
+                               asp-action="Register">
+                                Register
+                            </a>
+                        </li>
+                    }
+
+                    <li class="nav-item">
+                        <button id="themeToggle"
+                                class="btn btn-nav-theme ms-2"
+                                title="Toggle theme"
+                                aria-label="Toggle theme">
+                            <i id="themeIcon" class="fa-solid fa-moon"></i>
+                        </button>
+                    </li>
+
+                    @if (User.Identity!.IsAuthenticated)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link nav-link-notifications"
+                               asp-controller="Notifications"
+                               asp-action="Index"
+                               title="Notifications"
+                               aria-label="Notifications">
+                                <i class="fa-solid fa-bell"></i>
+                                <span class="nav-notification-badge" id="notificationBadge" data-count="0">0</span>
+                            </a>
+                        </li>
+                    }
+
+                </ul>
+            </div>
+
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        @RenderBody()
+    </main>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+    <script src="~/lib/notyf/notyf.min.js"></script>
+    @await Component.InvokeAsync("Notyf")
+
+</body>
+</html>

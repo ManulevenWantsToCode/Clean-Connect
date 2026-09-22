@@ -1,0 +1,117 @@
+@model Clean_Connect.Web.Models.NotificationPageViewModel
+
+@{
+    ViewData["Title"] = "Notifications";
+    Layout = "_DashboardLayout";
+}
+
+<div class="dash-page notifications-page">
+    <div class="container">
+        @Html.AntiForgeryToken()
+        <div class="notifications-hero">
+            <div>
+                <span class="booking-kicker">
+                    <i class="fa-solid fa-bell"></i>
+                    @Model.Audience Notifications
+                </span>
+                <h1>Notifications</h1>
+                <p>Booking updates, worker responses, payment steps, and job progress live here.</p>
+            </div>
+            <div class="notifications-tools">
+                @if (Model.Items.Count > 0)
+                {
+                    <form method="post" asp-action="MarkAllAsRead" asp-controller="Notifications" class="d-inline">
+                        <button type="submit" class="notifications-tools__clear" id="markAllReadBtn">
+                            <i class="fa-solid fa-circle-check me-1"></i>Mark all as read
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+
+        @if (Model.Items == null || Model.Items.Count == 0)
+        {
+            <div class="booking-empty">
+                <i class="fa-solid fa-bell-slash"></i>
+                <h2>No notifications yet</h2>
+                <p>When booking activity happens, updates will appear here automatically.</p>
+                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-success rounded-pill px-4 mt-3">
+                    <i class="fa-solid fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="notifications-layout">
+                <aside class="notifications-side">
+                    <div class="notifications-side__card">
+                        <div class="notifications-side__icon">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <div class="notifications-side__info">
+                            <span>Total Updates</span>
+                            <strong>@Model.Items.Count</strong>
+                        </div>
+                    </div>
+                    @if (Model.NeedsAttentionCount > 0)
+                    {
+                        <div class="notifications-side__card needs-attention">
+                            <div class="notifications-side__icon attention">
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                            </div>
+                            <div class="notifications-side__info">
+                                <span>Action Needed</span>
+                                <strong>@Model.NeedsAttentionCount</strong>
+                            </div>
+                        </div>
+                    }
+                </aside>
+
+                <section class="notifications-list">
+                    @foreach (var item in Model.Items)
+                    {
+                        <article class="notification-row @(item.NeedsAttention ? "needs-attention" : "") @(item.IsRead ? "is-read" : "is-unread")"
+                                 data-notification-id="@item.NotificationId"
+                                 data-action-url="@item.ActionUrl"
+                                 tabindex="0"
+                                 role="@(string.IsNullOrWhiteSpace(item.ActionUrl) ? "button" : "link")"
+                                 aria-label="@(string.IsNullOrWhiteSpace(item.ActionUrl) ? "Mark as read: " + item.Title : "Open: " + item.Title)">
+                            
+                            @if (!item.IsRead)
+                            {
+                                <span class="notification-row__unread-indicator" title="Unread"></span>
+                            }
+
+                            <div class="notification-row__icon @item.Tone">
+                                <i class="fa-solid @item.Icon"></i>
+                            </div>
+
+                            <div class="notification-row__body">
+                                <div class="notification-row__top">
+                                    <h2>@item.Title</h2>
+                                    @if (item.NeedsAttention)
+                                    {
+                                        <span class="notification-priority">Action needed</span>
+                                    }
+                                </div>
+                                <p>@item.Message</p>
+                                <div class="notification-row__meta">
+                                    <span class="booking-status-badge @item.Status.ToLowerInvariant()">@item.Status</span>
+                                    <span><i class="fa-regular fa-calendar me-1"></i>@item.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(item.ActionUrl))
+                            {
+                                <span class="notification-row__action-hint">
+                                    @item.ActionText
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                </span>
+                            }
+                        </article>
+                    }
+                </section>
+            </div>
+        }
+    </div>
+</div>

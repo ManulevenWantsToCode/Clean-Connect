@@ -1,7 +1,7 @@
-﻿@model IEnumerable<Clean_Connect.Application.DTO.ServiceTypeDto>
+@model IEnumerable<Clean_Connect.Application.DTO.ServiceTypeDto>
 
 @{
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = "Service Types";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
@@ -48,17 +48,18 @@
 
     <div class="row mb-4">
 
-        <div class="col-lg-6" >
+        <div class="col-lg-6">
 
             <div class="input-group">
 
-                <span class="input-group-text bg-white">
+                <span class="input-group-text">
 
                     <i class="fa-solid fa-magnifying-glass"></i>
 
                 </span>
 
                 <input type="text"
+                       id="serviceSearchInput"
                        class="form-control"
                        placeholder="Search service type..." />
 
@@ -73,7 +74,7 @@
 
         <div class="table-responsive">
 
-            <table class="table align-middle">
+            <table class="table align-middle" id="serviceTypeTable">
 
                 <thead>
 
@@ -114,7 +115,7 @@
 
                             <td>
 
-                                <div class="fw-bold">
+                                <div class="fw-bold service-name-cell">
 
                                     @item.Name
 
@@ -142,19 +143,11 @@
 
                                 <div class="action-buttons justify-content-center">
 
-                                    <a asp-action="EditServiceType"
-                                       @* asp-route-id="@item.Id" *@
-                                       class="edit">
+                                    <a asp-action="UpdateServiceType"
+                                       class="edit"
+                                       title="Edit Service Type">
 
                                         <i class="fa-solid fa-pen"></i>
-
-                                    </a>
-
-                                    <a asp-action="DeleteServiceType"
-                                       @* asp-route-id="@item.Id" *@
-                                       class="delete">
-
-                                        <i class="fa-solid fa-trash"></i>
 
                                     </a>
 
@@ -216,3 +209,24 @@
     }
 
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const searchInput = document.getElementById("serviceSearchInput");
+            const table = document.getElementById("serviceTypeTable");
+
+            if (searchInput && table) {
+                searchInput.addEventListener("input", function () {
+                    const filter = searchInput.value.toLowerCase().trim();
+                    const rows = table.querySelectorAll("tbody tr");
+
+                    rows.forEach(function (row) {
+                        const text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(filter) ? "" : "none";
+                    });
+                });
+            }
+        });
+    </script>
+}

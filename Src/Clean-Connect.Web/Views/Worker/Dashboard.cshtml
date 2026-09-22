@@ -1,0 +1,322 @@
+@model Clean_Connect.Application.DTO.WorkerDashboardDto
+
+@{
+    ViewData["Title"] = "Worker Dashboard";
+    Layout = "_DashboardLayout";
+}
+
+<div class="dash-page">
+    <div class="container">
+
+        <!-- Header -->
+        <div class="dash-header d-flex flex-wrap align-items-center justify-content-between">
+            <div>
+                <div class="dash-eyebrow mb-1">
+                    <i class="fa-solid fa-broom me-2"></i>Worker Portal
+                </div>
+                <h1>Welcome back, @Model.WorkerName 👋</h1>
+                <p>
+                    @if (!string.IsNullOrEmpty(Model.ServiceType))
+                    {
+                        <text><i class="fa-solid fa-screwdriver-wrench me-1"></i>@Model.ServiceType &nbsp;&middot;&nbsp; <i class="fa-solid fa-map-pin me-1"></i>@Model.State</text>
+                    }
+                    else
+                    {
+                        <text>Here's what's happening with your business today.</text>
+                    }
+                </p>
+            </div>
+            <div class="d-flex flex-column flex-sm-row gap-2 mt-3 mt-lg-0 align-items-start align-items-sm-center">
+                <span class="dash-badge @(Model.IsAvailable ? "" : "dash-badge--muted")">
+                    <i class="fa-solid @(Model.IsAvailable ? "fa-circle-check" : "fa-circle-pause")"></i>
+                    @if (Model.PendingBookings > 0)
+                    {
+                        <text>@Model.PendingBookings pending request(s)</text>
+                    }
+                    else if (Model.IsAvailable)
+                    {
+                        <text>Available for Jobs</text>
+                    }
+                    else
+                    {
+                        <text>Unavailable for new jobs</text>
+                    }
+                </span>
+                <a href="/Update-Worker-Details" class="dash-edit-btn">
+                    <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card stat-card--featured">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <div class="stat-number">&#8358;@Model.TotalEarnings.ToString("N0")</div>
+                <p class="stat-label">Total Earnings</p>
+                <div class="stat-trend positive">
+                    <i class="fa-solid fa-arrow-trend-up"></i> All time
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-briefcase"></i>
+                </div>
+                <div class="stat-number">@Model.TotalJobs</div>
+                <p class="stat-label">Completed Jobs</p>
+                <div class="stat-trend neutral">
+                    <i class="fa-solid fa-circle-check"></i> Finished
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <div class="stat-number">@Model.ActiveBookings</div>
+                <p class="stat-label">Active Bookings</p>
+                <div class="stat-trend neutral">
+                    <i class="fa-solid fa-spinner"></i> In progress
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon amber">
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <div class="stat-number">@Model.AverageRating.ToString("F1")</div>
+                <p class="stat-label">Avg Rating &middot; @Model.TotalRating reviews</p>
+                <div class="rating-stars-sm">
+                    @{
+                        var fullStars = (int)Math.Floor(Model.AverageRating);
+                        var halfStar = Model.AverageRating - fullStars >= 0.5;
+                        for (int i = 1; i <= 5; i++)
+                        {
+                            if (i <= fullStars)
+                            {
+                                <i class="fa-solid fa-star"></i>
+                            }
+                            else if (i == fullStars + 1 && halfStar)
+                            {
+                                <i class="fa-solid fa-star-half-stroke"></i>
+                            }
+                            else
+                            {
+                                <i class="fa-regular fa-star"></i>
+                            }
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Wallet + Balance Banner -->
+        <div class="wallet-banner mb-5">
+            <div class="wallet-banner__left">
+                <div class="wallet-banner__icon">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <div>
+                    <div class="wallet-banner__label">Wallet Balance</div>
+                    <div class="wallet-banner__amount">&#8358;@Model.WalletBalance.ToString("N0")</div>
+                </div>
+            </div>
+            <div class="wallet-banner__right">
+                <div class="wallet-pending">
+                    <span class="wallet-pending__label"><i class="fa-solid fa-clock me-1"></i>Pending Jobs</span>
+                    <span class="wallet-pending__value">@Model.PendingBookings</span>
+                </div>
+                <a href="/Withdraw" class="btn btn-wallet-withdraw">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                    Withdraw
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="dash-grid">
+
+            <!-- Recent Bookings -->
+            <div class="dash-card">
+                <div class="card-head d-flex align-items-center justify-content-between">
+                    <h4>
+                        <i class="fa-solid fa-clock-rotate-left me-2"></i>Recent Bookings
+                    </h4>
+                    <a asp-controller="Booking" asp-action="Responses" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-semibold">
+                        View All <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentBookings.Count == 0)
+                    {
+                        <div class="empty-state py-4 text-center">
+                            <i class="fa-solid fa-calendar-xmark fs-1 text-muted mb-3"></i>
+                            <p class="text-muted">No bookings yet. Once clients book your service, they'll appear here.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="booking-items-list">
+                            @foreach (var b in Model.RecentBookings)
+                            {
+                                <div class="booking-item clickable-booking-item" onclick="window.location.href='/Worker-Booking-Details/@b.BookingId'">
+                                    <div class="b-icon">
+                                        <i class="fa-solid fa-broom"></i>
+                                    </div>
+                                    <div class="b-info">
+                                        <div class="b-title">@b.ServiceName — @b.ClientName</div>
+                                        <div class="b-meta">
+                                            <i class="fa-solid fa-map-pin me-1"></i>@b.Address &middot;
+                                            <i class="fa-solid fa-calendar me-1"></i>@b.DateOfService.ToString("MMM dd, yyyy") &middot;
+                                            @b.TimeRange
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="b-status @b.BookingStatus.ToLower()">@b.BookingStatus</span>
+                                        <i class="fa-solid fa-chevron-right text-muted small ms-1"></i>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Right column -->
+            <div class="d-flex flex-column gap-4">
+
+                <!-- Quick Actions -->
+                <div class="dash-card">
+                    <div class="card-head">
+                        <h4>
+                            <i class="fa-solid fa-bolt"></i>
+                            Quick Actions
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="action-grid">
+                            <a asp-controller="Booking" asp-action="Responses" class="action-btn">
+                                <div class="a-icon green">
+                                    <i class="fa-solid fa-broom"></i>
+                                </div>
+                                <div class="a-text">
+                                    Booking Requests
+                                    <small>Accept or decline</small>
+                                </div>
+                            </a>
+
+                            <a asp-controller="Notifications" asp-action="Index" class="action-btn">
+                                <div class="a-icon amber">
+                                    <i class="fa-solid fa-bell"></i>
+                                </div>
+                                <div class="a-text">
+                                    Notifications
+                                    <small>Booking updates</small>
+                                </div>
+                            </a>
+
+                            <a href="/Update-Worker-Details" class="action-btn">
+                                <div class="a-icon purple">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </div>
+                                <div class="a-text">
+                                    Edit Profile
+                                    <small>Update your details</small>
+                                </div>
+                            </a>
+
+                            <a href="#" class="action-btn">
+                                <div class="a-icon amber">
+                                    <i class="fa-solid fa-headset"></i>
+                                </div>
+                                <div class="a-text">
+                                    Support
+                                    <small>Get help fast</small>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rating Summary -->
+                <div class="dash-card">
+                    <div class="card-head">
+                        <h4>
+                            <i class="fa-solid fa-star"></i>
+                            Rating Overview
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        @{
+                            var totalRatingCount = Model.OneStarCount + Model.TwoStarCount + Model.ThreeStarCount + Model.FourStarCount + Model.FiveStarCount;
+                        }
+                        @if (totalRatingCount == 0)
+                        {
+                            <div class="empty-state">
+                                <i class="fa-solid fa-star"></i>
+                                <p>No ratings yet. Complete jobs to earn reviews from clients.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center gap-4">
+                                <div class="text-center">
+                                    <div class="rating-number">@Model.AverageRating.ToString("F1")</div>
+                                    <div class="rating-stars">
+                                        @{
+                                            var fs2 = (int)Math.Floor(Model.AverageRating);
+                                            var hs2 = Model.AverageRating - fs2 >= 0.5;
+                                            for (int i = 1; i <= 5; i++)
+                                            {
+                                                if (i <= fs2)
+                                                {
+                                                    <i class="fa-solid fa-star"></i>
+                                                }
+                                                else if (i == fs2 + 1 && hs2)
+                                                {
+                                                    <i class="fa-solid fa-star-half-stroke"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fa-regular fa-star"></i>
+                                                }
+                                            }
+                                        }
+                                    </div>
+                                    <div class="rating-label mt-1">@totalRatingCount reviews</div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    @{
+                                        void RenderRatingBar(int star, int count)
+                                        {
+                                            var pct = totalRatingCount > 0 ? (count * 100.0 / totalRatingCount) : 0;
+                                            var barClass = star >= 4 ? "bg-success" : star >= 3 ? "bg-warning" : "bg-danger";
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <span class="text-muted small" style="width:20px;">@star</span>
+                                                <div class="progress flex-grow-1" style="height:8px;border-radius:50px;">
+                                                    <div class="progress-bar @barClass" style="width:@(pct)%;border-radius:50px;"></div>
+                                                </div>
+                                                <span class="text-muted small">@count</span>
+                                            </div>
+                                        }
+                                    }
+                                    @{ RenderRatingBar(5, Model.FiveStarCount); }
+                                    @{ RenderRatingBar(4, Model.FourStarCount); }
+                                    @{ RenderRatingBar(3, Model.ThreeStarCount); }
+                                    @{ RenderRatingBar(2, Model.TwoStarCount); }
+                                    @{ RenderRatingBar(1, Model.OneStarCount); }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>

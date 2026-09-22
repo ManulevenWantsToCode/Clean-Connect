@@ -39,6 +39,11 @@ namespace Clean_Connect.Persistence.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<List<Escrow>> GetAllEscrowsAsync(CancellationToken cancellationToken)
+        {
+            return await dbContext.Escrows.ToListAsync(cancellationToken);
+        }
+
         public Task UpdateEscrow(Escrow escrow, CancellationToken cancellationToken)
         {
             dbContext.Escrows.Update(escrow);

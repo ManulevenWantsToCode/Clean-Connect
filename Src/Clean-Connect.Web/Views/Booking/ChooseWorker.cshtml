@@ -1,0 +1,142 @@
+@model Clean_Connect.Web.Models.ChooseWorkerViewModel
+@using System.Text.Json
+@using Clean_Connect.Web.Helpers
+
+@{
+    ViewData["Title"] = "Choose a Worker";
+    Layout = "_DashboardLayout";
+}
+
+<div class="dash-page booking-workflow-page">
+    <div class="container">
+        <a asp-controller="Booking" asp-action="Create" class="booking-back-link mb-4">
+            <i class="fa-solid fa-arrow-left"></i>
+            Back to booking
+        </a>
+
+        <div class="booking-hero booking-hero--detail">
+            <div>
+                <span class="booking-kicker">
+                    <i class="fa-solid fa-user-check"></i>
+                    Choose a Worker
+                </span>
+                <h1>Cleaners ready for @Model.DateOfService.ToString("MMM dd, yyyy")</h1>
+                <p>Every available professional is shown, closest first. Use the filters to narrow by service, date, or distance.</p>
+            </div>
+            <div class="booking-hero__summary">
+                <span>@Model.AvailableCount available</span>
+                <strong>Distance shown for each worker</strong>
+            </div>
+        </div>
+
+        <form asp-action="WorkerResults" asp-controller="Booking" method="get" class="choose-worker-filters mb-4" id="chooseWorkerFilters">
+            <div>
+                <label class="form-label" for="cwService">Service</label>
+                <select name="serviceTypeId" id="cwService" class="form-select">
+                    <option value="">All services</option>
+                    @foreach (var s in Model.ServiceTypes)
+                    {
+                        <option value="@s.Value" selected="@(s.Value == Model.SelectedServiceTypeId?.ToString())">@s.Text</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="cwDate">Service date</label>
+                <input type="date" name="dateOfService" id="cwDate" class="form-control" value="@Model.DateOfService.ToString("yyyy-MM-dd")" />
+            </div>
+            <div>
+                <label class="form-label" for="cwTime">Time</label>
+                <select name="timeRange" id="cwTime" class="form-select">
+                    @foreach (var t in Model.TimeRanges)
+                    {
+                        <option value="@t.Value" selected="@(t.Value == Model.TimeRange)">@t.Text</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="cwRadius">Distance</label>
+                <select name="radiusInMeters" id="cwRadius" class="form-select">
+                    @foreach (var r in Model.RadiusOptions)
+                    {
+                        var isSelected = string.IsNullOrEmpty(r.Value)
+                            ? !Model.SelectedRadiusInMeters.HasValue
+                            : (r.Value == Model.SelectedRadiusInMeters?.ToString());
+                        <option value="@r.Value" selected="@isSelected">@r.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="choose-worker-filters__action">
+                <button type="submit" class="btn btn-success booking-action-btn rounded-pill px-4" id="showCleanersBtn">
+                    <i class="fa-solid fa-filter me-2"></i>Show cleaners
+                </button>
+            </div>
+        </form>
+
+        <div id="workerResultsContainer">
+            @await Html.PartialAsync("_WorkerResults", Model)
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.getElementById("chooseWorkerFilters");
+            const container = document.getElementById("workerResultsContainer");
+            const dateInput = document.getElementById("cwDate");
+            const serviceSelect = document.getElementById("cwService");
+            const timeSelect = document.getElementById("cwTime");
+            const radiusSelect = document.getElementById("cwRadius");
+            const showBtn = document.getElementById("showCleanersBtn");
+
+            if (dateInput) dateInput.min = new Date().toISOString().split("T")[0];
+
+            let requestId = 0;
+
+            function refreshResults() {
+                if (!form || !container) return;
+
+                const id = ++requestId;
+                const params = new URLSearchParams(new FormData(form)).toString();
+                const url = form.action.split("?")[0] + (params ? "?" + params : "");
+
+                if (showBtn) {
+                    showBtn.disabled = true;
+                    showBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading';
+                }
+
+                fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error("failed");
+                        return res.text();
+                    })
+                    .then(function (html) {
+                        if (id !== requestId) return;
+                        container.innerHTML = html;
+                    })
+                    .catch(function (err) {
+                        if (id !== requestId) return;
+                        console.debug("Could not refresh workers.", err);
+                    })
+                    .finally(function () {
+                        if (id !== requestId) return;
+                        if (showBtn) {
+                            showBtn.disabled = false;
+                            showBtn.innerHTML = '<i class="fa-solid fa-filter me-2"></i>Show cleaners';
+                        }
+                    });
+            }
+
+            [serviceSelect, timeSelect, radiusSelect].forEach(function (el) {
+                if (el) el.addEventListener("change", refreshResults);
+            });
+
+            if (form) {
+                form.addEventListener("submit", function (e) {
+                    e.preventDefault();
+                    refreshResults();
+                });
+            }
+        });
+    </script>
+}

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -7,138 +7,250 @@
     <title>@ViewData["Title"] - Clean Connect Admin</title>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
-    <link rel="stylesheet"
-          href="~/css/admin.css"
-          asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/lib/notyf/notyf.min.css" />
 </head>
 
 <body>
 
     <div class="admin-wrapper">
 
-        <!-- Sidebar -->
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <aside class="sidebar">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="adminSidebar">
 
             <div class="sidebar-header">
-
-                <i class="fa-solid fa-broom"></i>
-
-                <span>Clean Connect</span>
-
+                <a asp-controller="Admin" asp-action="Index" class="sidebar-brand text-decoration-none">
+                    <span class="sidebar-brand-icon">
+                        <i class="fa-solid fa-broom"></i>
+                    </span>
+                    <div class="sidebar-brand-text">
+                        <span class="brand-name">Clean Connect</span>
+                        <span class="brand-badge">Admin Portal</span>
+                    </div>
+                </a>
             </div>
 
-            <ul>
+            <div class="sidebar-nav-container">
+                <div class="nav-section-label">MAIN NAVIGATION</div>
 
-                <li>
+                <ul class="sidebar-nav">
+                    <li class="@(ViewData["ActivePage"]?.ToString() == "Dashboard" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Index">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
 
-                    <a asp-controller="Dashboard"
-                       asp-action="Index">
+                    <li class="@(ViewData["ActivePage"]?.ToString() == "Clients" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Clients">
+                            <i class="fa-solid fa-user-group"></i>
+                            <span>Clients</span>
+                        </a>
+                    </li>
 
-                        <i class="fa-solid fa-chart-line"></i>
+                    <li class="@(ViewData["ActivePage"]?.ToString() == "Workers" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Workers">
+                            <i class="fa-solid fa-users-gear"></i>
+                            <span>Workers</span>
+                            <span class="badge rounded-pill bg-warning text-dark ms-auto sidebar-pill">3 pending</span>
+                        </a>
+                    </li>
 
-                        Dashboard
+                    <li class="@(ViewData["ActivePage"]?.ToString() == "ServiceTypes" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="ServiceTypes">
+                            <i class="fa-solid fa-layer-group"></i>
+                            <span>Service Types</span>
+                        </a>
+                    </li>
 
-                    </a>
+                    <li class="@(ViewData["ActivePage"]?.ToString() == "Bookings" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Bookings">
+                            <i class="fa-solid fa-calendar-check"></i>
+                            <span>Bookings</span>
+                            <span class="badge rounded-pill bg-success text-white ms-auto sidebar-pill">14 new</span>
+                        </a>
+                    </li>
 
-                </li>
+                    <li class="@(ViewData["ActivePage"]?.ToString() == "Payments" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Payments">
+                            <i class="fa-solid fa-money-bill-wave"></i>
+                            <span>Payments & Escrow</span>
+                        </a>
+                    </li>
 
-                <li>
+                    <li class="@(ViewData["ActivePage"]?.ToString() == "Reviews" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Reviews">
+                            <i class="fa-solid fa-star-half-stroke"></i>
+                            <span>Reviews</span>
+                            <span class="badge rounded-pill bg-danger text-white ms-auto sidebar-pill">2 flagged</span>
+                        </a>
+                    </li>
 
-                    <a asp-controller="ServiceType"
-                       asp-action="Index">
+                    <li class="nav-divider"></li>
 
-                        <i class="fa-solid fa-layer-group"></i>
+                    <div class="nav-section-label">SYSTEM</div>
 
-                        Service Types
+                    <li class="@(ViewData["ActivePage"]?.ToString() == "Settings" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Settings">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
 
-                    </a>
+                    <li>
+                        <a asp-controller="Home" asp-action="Index" target="_blank" class="sidebar-link-external">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            <span>View Public Site</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
 
-                </li>
-
-                <li>
-
-                    <a asp-controller="Worker"
-                       asp-action="Index">
-
-                        <i class="fa-solid fa-users"></i>
-
-                        Workers
-
-                    </a>
-
-                </li>
-
-                <li>
-
-                    <a asp-controller="Booking"
-                       asp-action="Index">
-
-                        <i class="fa-solid fa-calendar-check"></i>
-
-                        Bookings
-
-                    </a>
-
-                </li>
-
-                <li>
-
-                    <a asp-controller="Account"
-                       asp-action="Logout">
-
-                        <i class="fa-solid fa-right-from-bracket"></i>
-
-                        Logout
-
-                    </a>
-
-                </li>
-
-            </ul>
+            <div class="sidebar-footer">
+                <div class="sidebar-admin-profile">
+                    <div class="profile-avatar">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Admin" />
+                        <span class="status-online"></span>
+                    </div>
+                    <div class="profile-meta">
+                        <span class="profile-name">Alexander S.</span>
+                        <span class="profile-role">Super Administrator</span>
+                    </div>
+                </div>
+                <form method="post" asp-controller="Auth" asp-action="Logout" class="mt-2">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-logout-sidebar w-100" title="Logout">
+                        <i class="fa-solid fa-right-from-bracket me-2"></i>
+                        <span>Sign Out</span>
+                    </button>
+                </form>
+            </div>
 
         </aside>
 
         <!-- Main Content -->
-
         <div class="content">
 
             <!-- Top Bar -->
-
             <header class="topbar">
 
-                <div>
-
-                    <h4>@ViewData["Title"]</h4>
-
+                <div class="topbar-left">
+                    <button type="button" class="btn btn-topbar-toggle" id="adminSidebarToggle" aria-label="Toggle Navigation">
+                        <i class="fa-solid fa-bars-staggered"></i>
+                    </button>
+                    <div class="topbar-breadcrumb">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="breadcrumb-root">Admin</span>
+                            <i class="fa-solid fa-chevron-right breadcrumb-separator"></i>
+                            <h4 class="topbar-page-title mb-0">@ViewData["Title"]</h4>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="admin-user">
+                <div class="topbar-right">
+                    <!-- Global Search -->
+                    <div class="topbar-search d-none d-md-flex">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="globalAdminSearch" class="form-control topbar-search-input" placeholder="Search bookings, users, services..." />
+                        <span class="search-shortcut">⌘K</span>
+                    </div>
 
-                    <i class="fa-solid fa-user-circle"></i>
+                    <!-- Theme Toggle -->
+                    <button id="themeToggle" class="btn btn-topbar-icon" title="Toggle Light / Dark theme" aria-label="Toggle theme">
+                        <i id="themeIcon" class="fa-solid fa-moon"></i>
+                    </button>
 
-                    <span>@User.Identity?.Name</span>
+                    <!-- Notifications Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-topbar-icon position-relative" type="button" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
+                            <i class="fa-solid fa-bell"></i>
+                            <span class="notification-indicator" style="display:none"></span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end notif-dropdown-menu shadow-lg border-0" aria-labelledby="notifDropdown">
+                            <div class="notif-header d-flex justify-content-between align-items-center">
+                                <span class="fw-bold">Notifications</span>
+                                <span id="adminNotifBadge" class="badge bg-success-subtle text-success rounded-pill d-none">new</span>
+                            </div>
+                            <div id="adminNotifList" class="notif-list">
+                                <div class="notif-loading text-center py-3">
+                                    <span class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></span>
+                                </div>
+                            </div>
+                            <div class="notif-footer text-center">
+                                <a href="/Admin" class="text-decoration-none small text-success fw-semibold">Go to Dashboard Overview</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Profile Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-admin-profile" type="button" id="adminUserDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="admin-avatar-small">
+                                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80" alt="Avatar" />
+                            </div>
+                            <div class="admin-user-info d-none d-lg-block text-start">
+                                <div class="admin-user-name">Alexander S.</div>
+                                <div class="admin-user-badge">Super Admin</div>
+                            </div>
+                            <i class="fa-solid fa-angle-down ms-1 text-muted small d-none d-lg-inline"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end admin-user-dropdown shadow-lg border-0" aria-labelledby="adminUserDropdown">
+                            <li class="dropdown-header">
+                                <div class="fw-bold text-dark dark-text-light">Signed in as</div>
+                                <div class="small text-muted">admin@cleanconnect.com</div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Admin" asp-action="Settings">
+                                    <i class="fa-solid fa-sliders text-muted"></i>
+                                    <span>Platform Settings</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Home" asp-action="Index">
+                                    <i class="fa-solid fa-globe text-muted"></i>
+                                    <span>Public Website</span>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" asp-controller="Auth" asp-action="Logout" class="px-2">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="dropdown-item text-danger d-flex align-items-center gap-2 rounded">
+                                        <i class="fa-solid fa-right-from-bracket"></i>
+                                        <span>Logout</span>
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
 
                 </div>
 
             </header>
 
             <main>
-
                 @RenderBody()
-
             </main>
 
         </div>
 
     </div>
 
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/admin.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
+    <script src="~/lib/notyf/notyf.min.js"></script>
+    @await Component.InvokeAsync("Notyf")
 
 </body>
 </html>
