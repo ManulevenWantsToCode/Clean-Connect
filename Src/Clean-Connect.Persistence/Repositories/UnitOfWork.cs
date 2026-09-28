@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Clean_Connect.Persistence.Repositories
 {
-    public class UnitOfWork(ApplicationDbContext dbContext, IWorkerRepository workerRepository,IRatingRepository ratingRepository, IPaymentRepository paymentRepository, IBookingRepository bookingRepository, IClientRepository clientRepository, IServiceTypeRepository serviceTypeRepository, IWalletRepository walletRepository, IEscrowRepository escrowRepository, ICouponRepository couponRepository, INotificationRepository notificationRepository) : IUnitOfWork
+    public class UnitOfWork(ApplicationDbContext dbContext, IWorkerRepository workerRepository,IRatingRepository ratingRepository, IPaymentRepository paymentRepository, IBookingRepository bookingRepository, IClientRepository clientRepository, IServiceTypeRepository serviceTypeRepository, IWorkerBankDetailRepository workerBankDetailRepository, IEscrowRepository escrowRepository, ICouponRepository couponRepository, INotificationRepository notificationRepository) : IUnitOfWork
     {
        
         public IWorkerRepository Workers { get;  } = workerRepository;
@@ -18,7 +18,7 @@ namespace Clean_Connect.Persistence.Repositories
 
         public IBookingRepository Bookings { get; } = bookingRepository;
 
-        public IWalletRepository Wallets { get; } = walletRepository;
+        public IWorkerBankDetailRepository WorkerBankDetails { get; } = workerBankDetailRepository;
 
         public IEscrowRepository Escrows { get; } = escrowRepository;
 

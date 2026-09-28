@@ -36,9 +36,9 @@
 
         <div class="login-card shadow-lg" data-aos="fade-left">
 
-            <div class="text-center mb-4">
+            <div class="text-center mb-2">
 
-                <h2 class="fw-bold">Create Account 👋</h2>
+                <h2 class="fw-bold">Create Account</h2>
 
                 <p class="text-muted">
                     Fill in the details below to get started
@@ -75,7 +75,8 @@
                         </span>
                         <input asp-for="Email"
                                class="form-control"
-                               placeholder="Enter your email" />
+                               placeholder="Enter your email"
+                               autocomplete="email" />
                     </div>
 
                     <span asp-validation-for="Email"
@@ -85,7 +86,7 @@
 
                 <!-- Password -->
 
-                <div class="mb-4">
+                <div class="mb-3">
 
                     <label asp-for="Password" class="form-label"></label>
 
@@ -98,7 +99,8 @@
                                id="password"
                                type="password"
                                class="form-control"
-                               placeholder="Create a password" />
+                               placeholder="Create a password"
+                               autocomplete="new-password" />
 
                         <button class="btn btn-outline-secondary"
                                 type="button"
@@ -115,9 +117,42 @@
 
                 </div>
 
+                <!-- Confirm Password -->
+
+                <div class="mb-3">
+
+                    <label asp-for="ConfirmPassword" class="form-label"></label>
+
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+
+                        <input asp-for="ConfirmPassword"
+                               id="confirmPassword"
+                               type="password"
+                               class="form-control"
+                               placeholder="Re-enter your password"
+                               autocomplete="new-password" />
+
+                        <button class="btn btn-outline-secondary"
+                                type="button"
+                                data-toggle-target="confirmPassword">
+
+                            <i class="fa-solid fa-eye"></i>
+
+                        </button>
+
+                    </div>
+
+                    <span asp-validation-for="ConfirmPassword"
+                          class="text-danger"></span>
+
+                </div>
+
                 <!-- Role -->
 
-                <div class="mb-4">
+                <div class="mb-3">
 
                     <label class="form-label fw-bold">
                         Choose Your Account Type
@@ -127,7 +162,7 @@
                            type="hidden"
                            id="SelectedRole" />
 
-                    <div class="row g-3">
+                    <div class="row g-2">
 
                         <div class="col-md-6">
 
@@ -177,7 +212,7 @@
                 </div>
 
                 <button type="submit"
-                        class="btn btn-success login-btn w-100 py-3">
+                        class="btn btn-success login-btn w-100 py-2">
                     <i class="fa-solid fa-user-plus me-2"></i>
                     Create Account
                 </button>
@@ -200,7 +235,7 @@
 
                 </a>
 
-                <div class="text-center mt-4">
+                <div class="text-center mt-3">
 
                     <span class="text-muted me-1">Already have an account?</span>
 
@@ -262,19 +297,6 @@
                     }
                 });
             });
-
-            // Password toggle
-            const toggleBtn = document.getElementById("togglePassword");
-            const passwordInput = document.getElementById("password");
-            if (toggleBtn && passwordInput) {
-                toggleBtn.addEventListener("click", function () {
-                    const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
-                    passwordInput.setAttribute("type", type);
-                    toggleBtn.querySelector("i").className = type === "password"
-                        ? "fa-solid fa-eye"
-                        : "fa-solid fa-eye-slash";
-                });
-            }
         });
     </script>
-}
+}

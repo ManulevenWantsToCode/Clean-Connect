@@ -338,16 +338,51 @@ namespace Clean_Connect.Web.Controllers
                 _notyf.Error("Please correct the errors in the form.");
                 return View(request);
             }
-            var result = await _mediator.Send(request, cancellationToken);
-            // Fix: 'result' is a Guid, not an object with 'Success' property.
-            // Assume registration is successful if Guid is not empty.
-            if (result != Guid.Empty)
+
+            try
             {
-                _notyf.Success("User registered successfully!");
-                return RedirectToAction(nameof(PendingConfirmation));
+                var result = await _mediator.Send(request, cancellationToken);
+                // Fix: 'result' is a Guid, not an object with 'Success' property.
+                // Assume registration is successful if Guid is not empty.
+                if (result != Guid.Empty)
+                {
+                    _notyf.Success("User registered successfully!");
+                    return RedirectToAction(nameof(PendingConfirmation));
+                }
+
+                _notyf.Error("Failed to register user.");
+                return View("Error", null);
             }
-            _notyf.Error("Failed to register user.");
-            return View("Error", null);
+            catch (FluentValidation.ValidationException vex)
+            {
+                _logger.LogWarning(vex, "Registration validation failed.");
+                var failures = vex.Errors?.ToList() ?? new List<FluentValidation.Results.ValidationFailure>();
+
+                if (failures.Count == 0)
+                {
+                    ModelState.AddModelError(string.Empty, vex.Message);
+                    failures.Add(new FluentValidation.Results.ValidationFailure(string.Empty, vex.Message));
+                }
+                else
+                {
+                    foreach (var failure in failures)
+                        ModelState.AddModelError(failure.PropertyName, failure.ErrorMessage);
+                }
+
+                var isDuplicateEmail = failures.Any(f =>
+                    f.ErrorMessage.IndexOf("already exists", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                _notyf.Error(isDuplicateEmail
+                    ? "User with this email already exists."
+                    : "Please fix the errors below and try again.");
+                return View(request);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Registration failed.");
+                _notyf.Error("Something went wrong while creating your account. Please try again.");
+                return View(request);
+            }
         }
 
         [HttpGet("PendingConfirmation")]

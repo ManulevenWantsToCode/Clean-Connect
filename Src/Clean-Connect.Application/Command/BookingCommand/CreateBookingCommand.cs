@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Clean_Connect.Application.Command.BookingCommand
 {
-    public record CreateBookingCommand(Guid ClientId, Guid WorkerId, double Latitude, double Longitude, double RadiusInMeters, Guid ServiceTypeId, DateTime DateOfService, string TimeRange, string? CouponCode = null, string? CreatedBy = null) : IRequest<Guid>;
+    public record CreateBookingCommand(Guid ClientId, Guid WorkerId, double Latitude, double Longitude, double RadiusInMeters, Guid ServiceTypeId, DateTime DateOfService, string TimeRange, DateTime StartTime, DateTime EndTime, string? CouponCode = null, string? CreatedBy = null) : IRequest<Guid>;
 
     public class CreateBookingValidator : AbstractValidator<CreateBookingCommand>
     {
@@ -42,6 +42,18 @@ namespace Clean_Connect.Application.Command.BookingCommand
             RuleFor(x => x.Longitude)
                 .InclusiveBetween(-180, 180)
                 .WithMessage("Longitude must be between 2.5 and 15.5.");
+
+            RuleFor(x => x.StartTime)
+                .NotEmpty()
+                .WithMessage("Start time is required");
+
+            RuleFor(x => x.EndTime)
+                .NotEmpty()
+                .WithMessage("End time is required");
+
+            RuleFor(x => x.EndTime)
+                .GreaterThan(x => x.StartTime)
+                .WithMessage("End time must be after start time.");
 
 
         }
@@ -75,8 +87,21 @@ namespace Clean_Connect.Application.Command.BookingCommand
 
             var location = Location.Create(request.Latitude, request.Longitude);
 
-            var amount = checkServiceType.Amount;
-            var originalAmount = amount;
+            var worker = await repo.Workers.GetWorkerById(request.WorkerId, cancellationToken);
+            if (worker == null)
+                throw new ValidationException("Worker with Id not found");
+
+            var startTime = request.DateOfService.Date.Add(request.StartTime.TimeOfDay);
+            var endTime = request.DateOfService.Date.Add(request.EndTime.TimeOfDay);
+            var durationHours = (endTime - startTime).TotalHours;
+            if (durationHours <= 0)
+                throw new ValidationException("End time must be after start time.");
+
+            var hourlyRate = worker.HourlyRate;
+            var totalAmount = Math.Round(hourlyRate * (decimal)durationHours, 2);
+
+            var originalAmount = totalAmount;
+            var amount = totalAmount;
             Guid? couponId = null;
 
             if (!string.IsNullOrWhiteSpace(request.CouponCode))
@@ -115,8 +140,10 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 .ValidateBookingAsync(request.WorkerId,
                 request.ClientId,
                 request.ServiceTypeId,
-                originalAmount,
+                totalAmount,
                 amount,
+                hourlyRate,
+                durationHours,
                 request.DateOfService,
                 timeRange,
                 cancellationToken);
@@ -131,6 +158,10 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 location,
                 request.DateOfService,
                 DateTime.UtcNow,
+                startTime,
+                endTime,
+                hourlyRate,
+                totalAmount,
                 amount,
                 originalAmount,
                 timeRange,

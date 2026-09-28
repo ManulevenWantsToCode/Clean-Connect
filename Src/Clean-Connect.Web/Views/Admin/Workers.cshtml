@@ -308,8 +308,8 @@
                         <span class="fw-bold" id="wp-jobs">—</span>
                     </div>
                     <div class="col-6">
-                        <span class="text-muted d-block">Payout Balance:</span>
-                        <span class="fw-bold text-success" id="wp-balance">₦0</span>
+                        <span class="text-muted d-block">Payout Details:</span>
+                        <span class="fw-bold text-success" id="wp-payout">—</span>
                     </div>
                     <div class="col-6 mt-2">
                         <span class="text-muted d-block">Primary City:</span>
@@ -344,7 +344,7 @@
                 ratingEl.innerHTML = '<span class="text-muted fw-bold">New Worker</span>';
             }
             document.getElementById('wp-jobs').textContent = w.completedJobs + ' cleanings';
-            document.getElementById('wp-balance').textContent = '\u20A6' + w.balance.toLocaleString();
+            document.getElementById('wp-payout').textContent = w.hasBankDetails ? w.payoutAccount : 'No bank details';
             document.getElementById('wp-city').textContent = w.city || '—';
             document.getElementById('wp-joined').textContent = new Date(w.dateJoined).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             document.getElementById('wp-kyc').textContent = w.kycStatus;

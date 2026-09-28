@@ -10,10 +10,6 @@ namespace Clean_Connect.Application.Command.PaymentCommand
     public record RequestPayoutCommand(
         Guid BookingId,
         Guid WorkerId,
-        string? AccountNumber = null,
-        string? BankCode = null,
-        string? AccountName = null,
-        string Currency = "NGN",
         string? ModifiedBy = null) : IRequest<PayoutResult>;
 
     public class RequestPayoutCommandValidator : AbstractValidator<RequestPayoutCommand>
@@ -27,24 +23,6 @@ namespace Clean_Connect.Application.Command.PaymentCommand
             RuleFor(x => x.WorkerId)
                 .NotEmpty()
                 .WithMessage("WorkerId is required.");
-
-            // If any bank field is provided, all required bank fields must be present
-            When(x => !string.IsNullOrWhiteSpace(x.AccountNumber)
-                    || !string.IsNullOrWhiteSpace(x.BankCode)
-                    || !string.IsNullOrWhiteSpace(x.AccountName), () =>
-                    {
-                        RuleFor(x => x.AccountNumber)
-                            .NotEmpty()
-                            .WithMessage("AccountNumber is required for external payout.");
-
-                        RuleFor(x => x.BankCode)
-                            .NotEmpty()
-                            .WithMessage("BankCode is required for external payout.");
-
-                        RuleFor(x => x.AccountName)
-                            .NotEmpty()
-                            .WithMessage("AccountName is required for external payout.");
-                    });
         }
     }
 
@@ -82,24 +60,11 @@ namespace Clean_Connect.Application.Command.PaymentCommand
                     $"Worker with ID {request.WorkerId} is not assigned to booking {request.BookingId}.");
             }
 
-            // Build bank account DTO only if external payout details are provided
-            WorkerBankAccountDto? bankAccount = null;
-            if (!string.IsNullOrWhiteSpace(request.AccountNumber)
-                && !string.IsNullOrWhiteSpace(request.BankCode)
-                && !string.IsNullOrWhiteSpace(request.AccountName))
-            {
-                bankAccount = new WorkerBankAccountDto(
-                    request.AccountNumber,
-                    request.BankCode,
-                    request.AccountName,
-                    request.Currency);
-            }
-
             _logger.LogInformation(
-                "Delegating payout to PayoutService for booking {BookingId}, external: {IsExternal}",
-                request.BookingId, bankAccount != null);
+                "Delegating payout to PayoutService for booking {BookingId} using stored bank details.",
+                request.BookingId);
 
-            return await _payoutService.PayoutAsync(booking, bankAccount, request.ModifiedBy, cancellationToken);
+            return await _payoutService.PayoutAsync(booking, request.ModifiedBy, cancellationToken);
         }
     }
 }

@@ -64,8 +64,8 @@ namespace Clean_Connect.Domain.Entities
             if (Status == EscrowStatus.PaidOut)
                 throw new InvalidOperationException("Escrow has already been paid out.");
 
-            if (Status != EscrowStatus.Released)
-                throw new InvalidOperationException("Escrow must be released before it can be paid out.");
+            if (Status != EscrowStatus.Held && Status != EscrowStatus.Released)
+                throw new InvalidOperationException($"Escrow cannot be paid out from {Status} status.");
 
             if (string.IsNullOrWhiteSpace(paystackTransferCode))
                 throw new ArgumentException("Paystack transfer code is required.", nameof(paystackTransferCode));

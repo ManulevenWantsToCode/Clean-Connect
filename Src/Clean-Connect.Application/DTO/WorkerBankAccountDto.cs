@@ -39,4 +39,25 @@ namespace Clean_Connect.Application.DTO
     }
 
     public record PayoutResult(bool Success, string Message, string? ProviderReference = null);
+
+    public class PaystackResolveAccountData
+    {
+        [JsonPropertyName("account_number")]
+        public string? AccountNumber { get; set; }
+
+        [JsonPropertyName("account_name")]
+        public string? AccountName { get; set; }
+
+        [JsonPropertyName("bank_id")]
+        public int? BankId { get; set; }
+    }
+
+    public class PaystackResolveAccountResponse
+    {
+        public bool Status { get; set; }
+
+        public string? Message { get; set; }
+
+        public PaystackResolveAccountData? Data { get; set; }
+    }
 }

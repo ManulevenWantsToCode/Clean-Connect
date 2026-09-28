@@ -80,7 +80,7 @@
                 {
                     <div class="booking-inactive">
                         <i class="fa-solid fa-arrow-rotate-left"></i>
-                        <a asp-controller="Booking" asp-action="Create" class="btn btn-success rounded-pill px-4">
+                        <a asp-controller="Booking" asp-action="ChooseWorker" class="btn btn-success rounded-pill px-4">
                             <i class="fa-solid fa-magnifying-glass me-2"></i>Find Another Worker
                         </a>
                     </div>
@@ -171,7 +171,7 @@
                         }
                         else if (isRejected)
                         {
-                            <a asp-controller="Booking" asp-action="Create" class="btn btn-outline-success rounded-pill px-4">
+                            <a asp-controller="Booking" asp-action="ChooseWorker" class="btn btn-outline-success rounded-pill px-4">
                                 <i class="fa-solid fa-magnifying-glass me-2"></i>Find Another Worker
                             </a>
                         }

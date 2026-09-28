@@ -147,6 +147,31 @@ namespace Clean_Connect.Application.Command.Services
             return paystackResponse.Data;
         }
 
+        public async Task<PaystackResolveAccountResponse?> ResolveAccountAsync(string accountNumber, string bankCode, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Resolving Paystack account for bank code: {BankCode}", bankCode);
+
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
+
+            var response = await _httpClient.GetAsync(
+                $"{_paystackBase}/bank/resolve?account_number={Uri.EscapeDataString(accountNumber)}&bank_code={Uri.EscapeDataString(bankCode)}",
+                cancellationToken);
+
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Paystack account resolve failed. Response: {Content}", content);
+                return null;
+            }
+
+            var paystackResponse = JsonSerializer.Deserialize<PaystackResolveAccountResponse>(content, JsonOptions);
+
+            _logger.LogInformation("Paystack account resolve result for bank code {BankCode}: status {Status}", bankCode, paystackResponse?.Status);
+
+            return paystackResponse;
+        }
+
         public async Task<TransferInitiationResponse> InitiateTransferAsync(string recipientCode, decimal amount, string reason, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Initiating transfer to recipient: {RecipientCode}, amount: {Amount}, reason: {Reason}", recipientCode, amount, reason);

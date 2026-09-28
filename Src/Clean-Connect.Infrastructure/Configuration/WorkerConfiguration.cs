@@ -89,6 +89,10 @@ namespace Clean_Connect.Infrastructure.Configuration
             builder.Property(x => x.DateOfBirth)
                 .IsRequired();
 
+            builder.Property(x => x.HourlyRate)
+                .IsRequired()
+                .HasColumnType("decimal(18,2)");
+
             builder.Property(x => x.Gender)
                 .HasConversion<string>()
                 .IsRequired();

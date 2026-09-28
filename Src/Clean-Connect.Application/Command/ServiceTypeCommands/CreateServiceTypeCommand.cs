@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Clean_Connect.Application.Command.ServiceTypeCommands
 {
-    public record CreateServiceTypeCommand(string Name, string Description, decimal Amount, string? CreatedBy = null) : IRequest<OperationResult>;
+    public record CreateServiceTypeCommand(string Name, string Description, string? CreatedBy = null) : IRequest<OperationResult>;
 
     public class CreateServiceValidator : AbstractValidator<CreateServiceTypeCommand>
     {
@@ -25,14 +25,6 @@ namespace Clean_Connect.Application.Command.ServiceTypeCommands
                 .WithMessage("Description is required")
                 .Length(10, 200)
                 .WithMessage("Service name must be between 10 - 200 character");
-
-            RuleFor(x => x.Amount)
-                .GreaterThan(0)
-                .LessThanOrEqualTo(1_000_000)
-                .PrecisionScale(18, 2, true)
-                .WithMessage("Invalid amount");
-
-
 
 
         }
@@ -65,7 +57,6 @@ namespace Clean_Connect.Application.Command.ServiceTypeCommands
                     var serviceType = ServiceType.Create(
                         request.Name,
                         request.Description,
-                        request.Amount,
                         request.CreatedBy
                     );
 

@@ -39,7 +39,6 @@ namespace Clean_Connect.Application.Query.ServiceTypeQuery
            {
                Name = serviceType.Name,
                Description = serviceType.Description,
-               Amount = serviceType.Amount,
                ModifiedBy = serviceType.CreatedBy
            };
 

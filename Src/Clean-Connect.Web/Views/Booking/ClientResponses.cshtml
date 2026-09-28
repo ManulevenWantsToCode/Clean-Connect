@@ -23,7 +23,7 @@
                 <h1>Your client bookings</h1>
                 <p>Track each request after the worker responds, secure payment, or choose another professional when a request is declined.</p>
             </div>
-            <a asp-controller="Booking" asp-action="Create" class="booking-hero__link">
+            <a asp-controller="Booking" asp-action="ChooseWorker" class="booking-hero__link">
                 <i class="fa-solid fa-calendar-plus"></i>
                 New Booking
             </a>
@@ -35,7 +35,7 @@
                 <i class="fa-solid fa-inbox"></i>
                 <h2>No bookings yet</h2>
                 <p>Once a worker accepts or declines your booking request, the response will appear here.</p>
-                <a asp-controller="Booking" asp-action="Create" class="btn btn-success rounded-pill px-4 mt-3">
+                <a asp-controller="Booking" asp-action="ChooseWorker" class="btn btn-success rounded-pill px-4 mt-3">
                     <i class="fa-solid fa-calendar-plus me-2"></i>Create a booking
                 </a>
             </div>

@@ -290,57 +290,76 @@ document.addEventListener("DOMContentLoaded", function () {
             adminNotifList.innerHTML = '<div class="notif-empty text-center py-3"><i class="fa-solid fa-bell-slash text-muted"></i><div class="small text-muted mt-1">' + msg + "</div></div>";
         }
 
-        fetch("/Admin/Notifications/Feed", { headers: { "X-Requested-With": "XMLHttpRequest" } })
-            .then(r => {
-                if (!r.ok) throw new Error("feed failed");
-                return r.json();
-            })
-            .then(items => {
-                if (!items || items.length === 0) {
-                    renderEmpty("No activity yet on the platform.");
-                    return;
-                }
+        function loadAdminNotifications() {
+            fetch("/Admin/Notifications/Feed", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+                .then(r => {
+                    if (!r.ok) throw new Error("feed failed");
+                    return r.json();
+                })
+                .then(items => {
+                    if (!items || items.length === 0) {
+                        renderEmpty("No activity yet on the platform.");
+                        return;
+                    }
 
-                adminNotifList.innerHTML = "";
-                if (indicator) indicator.style.display = "block";
-                if (badge) {
-                    badge.textContent = items.length + " new";
-                    badge.classList.remove("d-none");
-                }
+                    adminNotifList.innerHTML = "";
+                    if (indicator) indicator.style.display = "block";
+                    if (badge) {
+                        badge.textContent = items.length + " new";
+                        badge.classList.remove("d-none");
+                    }
 
-                items.forEach(item => {
-                    const a = document.createElement("a");
-                    a.href = item.href;
-                    a.className = "notif-item unread";
+                    items.forEach(item => {
+                        const a = document.createElement("a");
+                        a.href = item.href;
+                        a.className = "notif-item unread";
 
-                    const icon = document.createElement("div");
-                    icon.className = "notif-icon " + (variantClass[item.variant] || variantClass.sky);
-                    icon.innerHTML = '<i class="fa-solid ' + (item.icon || "fa-bell") + '"></i>';
+                        const icon = document.createElement("div");
+                        icon.className = "notif-icon " + (variantClass[item.variant] || variantClass.sky);
+                        icon.innerHTML = '<i class="fa-solid ' + (item.icon || "fa-bell") + '"></i>';
 
-                    const content = document.createElement("div");
-                    content.className = "notif-content";
+                        const content = document.createElement("div");
+                        content.className = "notif-content";
 
-                    const title = document.createElement("div");
-                    title.className = "notif-title";
-                    title.textContent = item.title;
+                        const title = document.createElement("div");
+                        title.className = "notif-title";
+                        title.textContent = item.title;
 
-                    const desc = document.createElement("div");
-                    desc.className = "notif-desc";
-                    desc.textContent = item.message;
+                        const desc = document.createElement("div");
+                        desc.className = "notif-desc";
+                        desc.textContent = item.message;
 
-                    const time = document.createElement("div");
-                    time.className = "notif-time";
-                    time.textContent = item.timeAgo;
+                        const time = document.createElement("div");
+                        time.className = "notif-time";
+                        time.textContent = item.timeAgo;
 
-                    content.appendChild(title);
-                    content.appendChild(desc);
-                    content.appendChild(time);
-                    a.appendChild(icon);
-                    a.appendChild(content);
-                    adminNotifList.appendChild(a);
-                });
-            })
-            .catch(() => renderEmpty("Could not load notifications."));
+                        content.appendChild(title);
+                        content.appendChild(desc);
+                        content.appendChild(time);
+                        a.appendChild(icon);
+                        a.appendChild(content);
+                        adminNotifList.appendChild(a);
+                    });
+                })
+                .catch(() => renderEmpty("Could not load notifications."));
+        }
+
+        loadAdminNotifications();
+
+        // Live refresh while the admin is on any admin page
+        if (window.signalR) {
+            const hub = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/notifications")
+                .withAutomaticReconnect()
+                .build();
+
+            hub.on("bookingNotification", loadAdminNotifications);
+            hub.on("adminNotification", loadAdminNotifications);
+
+            hub.start().catch(function (err) {
+                console.debug("Admin realtime notifications unavailable.", err);
+            });
+        }
     }
 
     // --------------------------------------------------------------------------

@@ -29,7 +29,7 @@ namespace Clean_Connect.Application.Command.Services
         }
 
 
-        public async Task ValidateBookingAsync(Guid workerId, Guid clientId, Guid serviceTypeId, decimal originalAmount, decimal amount, DateTime dateOfService, TimeRange timeRange, CancellationToken cancellationToken)
+        public async Task ValidateBookingAsync(Guid workerId, Guid clientId, Guid serviceTypeId, decimal totalAmount, decimal amount, decimal hourlyRate, double durationHours, DateTime dateOfService, TimeRange timeRange, CancellationToken cancellationToken)
         {
             var checkWorkerId = await _repo.Workers.GetWorkerById(workerId, cancellationToken);
 
@@ -72,13 +72,13 @@ namespace Clean_Connect.Application.Command.Services
 
             }
 
-            if (originalAmount != checkServiceType.Amount)
+            if (hourlyRate <= 0 || totalAmount != Math.Round(hourlyRate * (decimal)durationHours, 2))
             {
-                _logger.LogWarning("Booking creation failed. Amount does not match service type price: {Amount}", originalAmount);
-                throw new ValidationException("Amount does not match service type price");
+                _logger.LogWarning("Booking creation failed. Total does not match hourly rate and duration: {TotalAmount}", totalAmount);
+                throw new ValidationException("Total amount does not match the worker's hourly rate and duration");
             }
 
-            if (amount <= 0 || amount > originalAmount)
+            if (amount <= 0 || amount > totalAmount)
             {
                 _logger.LogWarning("Booking creation failed. Invalid amount after discount: {Amount}", amount);
                 throw new ValidationException("Invalid booking amount");

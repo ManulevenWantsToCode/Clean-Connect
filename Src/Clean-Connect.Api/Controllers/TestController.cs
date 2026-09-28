@@ -77,8 +77,7 @@ namespace Clean_Connect.Api.Controllers
                 // 4. Create ServiceType
                 var serviceType = ServiceType.Create(
                     name: $"House Cleaning Service {Guid.NewGuid().ToString().Substring(0, 8)}",
-                    description: "High quality premium deep house cleaning service with experienced cleaners.",
-                    amount: 15000.00m
+                    description: "High quality premium deep house cleaning service with experienced cleaners."
                 );
                 _context.ServiceTypes.Add(serviceType);
 
@@ -107,13 +106,19 @@ namespace Clean_Connect.Api.Controllers
                     serviceTypeId: serviceType.Id,
                     email: Email.Create(workerEmailStr),
                     state: "Lagos",
-                    dob: DateTime.Today.AddYears(-24)
+                    dob: DateTime.Today.AddYears(-24),
+                    hourlyRate: 2000.00m
                 );
                 worker.Id = workerUser.Id; // map worker entity to user id
                 _context.Workers.Add(worker);
 
                 // 7. Save Client, Worker, ServiceType changes to DB
                 await _context.SaveChangesAsync(cancellationToken);
+
+                var hourlyRate = 2000.00m;
+                var startTime = DateTime.Today.AddDays(2).AddHours(9);
+                var endTime = DateTime.Today.AddDays(2).AddHours(12);
+                var totalAmount = Math.Round(hourlyRate * (decimal)(endTime - startTime).TotalHours, 2);
 
                 // 8. Create Booking in AcceptedAwaitingPayment state
                 var booking = Booking.Create(
@@ -122,8 +127,12 @@ namespace Clean_Connect.Api.Controllers
                     location: Location.Create(6.5244, 3.3792),
                     dateOfService: DateTime.Today.AddDays(2),
                     dateOfBooking: DateTime.UtcNow,
-                    amount: serviceType.Amount,
-                    originalAmount: serviceType.Amount,
+                    startTime: startTime,
+                    endTime: endTime,
+                    hourlyRate: hourlyRate,
+                    totalAmount: totalAmount,
+                    amount: totalAmount,
+                    originalAmount: totalAmount,
                     timeRange: TimeRange.Morning,
                     address: Address.Create("123 Lagos Way, Lagos, Nigeria"),
                     bookingStatus: BookingStatus.AcceptedAwaitingPayment,
@@ -149,7 +158,7 @@ namespace Clean_Connect.Api.Controllers
                     clientId = client.Id,
                     workerId = worker.Id,
                     bookingId = booking.Id,
-                    amount = serviceType.Amount,
+                    amount = totalAmount,
                     paymentResponse = paymentResponse
                 });
             }

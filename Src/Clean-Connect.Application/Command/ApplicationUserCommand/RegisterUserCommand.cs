@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Clean_Connect.Application.Command.ApplicationUserCommand
 {
-    public record RegisterUserCommand(string Email, string Password, string Role = "Client") : IRequest<Guid>;
+    public record RegisterUserCommand(string Email, string Password, string ConfirmPassword = "", string Role = "Client") : IRequest<Guid>;
 
     public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
     {
@@ -39,6 +39,12 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 .WithMessage("Password must contain at least one digit")
                 .Matches("[^a-zA-Z0-9]")
                 .WithMessage("Password must contain at least one special character");
+
+            RuleFor(x => x.ConfirmPassword)
+                .NotEmpty()
+                .WithMessage("Please confirm your password")
+                .Equal(x => x.Password)
+                .WithMessage("Passwords do not match");
 
             RuleFor(x => x.Role)
                 .NotEmpty()

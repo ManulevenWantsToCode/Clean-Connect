@@ -8,32 +8,28 @@ using Microsoft.Extensions.Logging;
 namespace Clean_Connect.Application.Command.Services
 {
     /// <summary>
-    /// Orchestrates payout workflow: determines internal wallet credit vs external transfer,
-    /// delegates to PaystackService for provider calls, manages escrow release, and persists changes.
+    /// Orchestrates direct Paystack bank transfers to workers on job completion.
+    /// Transfers are automatic once the worker has stored payout bank details;
+    /// otherwise they remain pending (Held escrow) and complete automatically
+    /// when bank details are added. Transfer failures never break the completion flow.
     /// </summary>
     public class PayoutService
     {
         private readonly IUnitOfWork _repo;
         private readonly IPaystackService _paystackService;
-        private readonly WalletService _walletService;
-        private readonly EscrowService _escrowService;
         private readonly ILogger<PayoutService> _logger;
 
         public PayoutService(
             IUnitOfWork repo,
             IPaystackService paystackService,
-            WalletService walletService,
-            EscrowService escrowService,
             ILogger<PayoutService> logger)
         {
             _repo = repo;
             _paystackService = paystackService;
-            _walletService = walletService;
-            _escrowService = escrowService;
             _logger = logger;
         }
 
-        public async Task<PayoutResult> PayoutAsync(Booking booking, WorkerBankAccountDto? bankAccount, string? modifiedBy, CancellationToken cancellationToken)
+        public async Task<PayoutResult> PayoutAsync(Booking booking, string? modifiedBy, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Starting payout orchestration for booking: {BookingId}, worker: {WorkerId}", booking.Id, booking.WorkerId);
 
@@ -56,99 +52,104 @@ namespace Clean_Connect.Application.Command.Services
                 throw new InvalidOperationException($"Escrow not found for booking {booking.Id}");
             }
 
-            if (bankAccount == null)
+            if (escrow.Status == EscrowStatus.PaidOut)
             {
-                _logger.LogInformation("No bank account provided for booking {BookingId}. Using internal wallet payout.", booking.Id);
-                return await PayoutToInternalWalletAsync(booking, escrow, modifiedBy, cancellationToken);
+                return new PayoutResult(false, "This payout has already been transferred to the worker bank account.", escrow.PaystackTransferCode);
             }
 
-            _logger.LogInformation("Bank account provided for booking {BookingId}. Initiating external transfer payout.", booking.Id);
-            return await PayoutToExternalTransferAsync(booking, bankAccount, escrow, modifiedBy, cancellationToken);
+            if (escrow.Status != EscrowStatus.Held)
+            {
+                return new PayoutResult(false, $"Escrow cannot be paid out from {escrow.Status} status.");
+            }
+
+            var bankDetail = await _repo.WorkerBankDetails.GetActiveByWorkerIdAsync(booking.WorkerId, cancellationToken);
+            if (bankDetail == null)
+            {
+                _logger.LogInformation("Worker {WorkerId} has no bank details yet. Booking {BookingId} payout deferred until bank details are added.", booking.WorkerId, booking.Id);
+                return new PayoutResult(false, "Worker has not added payout bank details. The transfer will be completed automatically once bank details are added.");
+            }
+
+            return await PayoutToExternalTransferAsync(booking, bankDetail, escrow, modifiedBy, cancellationToken);
         }
 
-        private async Task<PayoutResult> PayoutToInternalWalletAsync(Booking booking, Escrow escrow, string? modifiedBy, CancellationToken cancellationToken)
+        public async Task PayoutPendingForWorkerAsync(Guid workerId, string? modifiedBy, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Executing internal wallet payout for booking: {BookingId}", booking.Id);
+            var bankDetail = await _repo.WorkerBankDetails.GetActiveByWorkerIdAsync(workerId, cancellationToken);
+            if (bankDetail == null)
+            {
+                _logger.LogInformation("Worker {WorkerId} has no bank details yet; no pending payouts processed.", workerId);
+                return;
+            }
+
+            var escrows = await _repo.Escrows.GetByWorkerId(workerId, cancellationToken);
+            var paid = 0;
+            foreach (var escrow in escrows.Where(x => x.Status == EscrowStatus.Held).ToList())
+            {
+                var booking = await _repo.Bookings.GetBookingById(escrow.BookingId, cancellationToken);
+                if (booking.BookingStatus != BookingStatus.Completed || booking.PaymentStatus != PaymentStatus.Successful)
+                {
+                    continue;
+                }
+
+                var result = await PayoutAsync(booking, modifiedBy, cancellationToken);
+                if (result.Success)
+                {
+                    paid++;
+                }
+                else
+                {
+                    _logger.LogInformation("Pending payout for booking {BookingId} not completed: {Message}", booking.Id, result.Message);
+                }
+            }
+
+            _logger.LogInformation("Processed pending payouts for worker {WorkerId}: {Paid} paid out.", workerId, paid);
+        }
+
+        private async Task<PayoutResult> PayoutToExternalTransferAsync(Booking booking, WorkerBankDetail bankDetail, Escrow escrow, string? modifiedBy, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Executing direct transfer payout for booking: {BookingId}, account tail: {Tail}", booking.Id, Tail(bankDetail.AccountNumber));
 
             try
             {
-                if (escrow.Status == EscrowStatus.PaidOut)
+                var recipientCode = bankDetail.RecipientCode;
+                if (string.IsNullOrWhiteSpace(recipientCode))
                 {
-                    return new PayoutResult(false, "Booking payout has already been transferred to the worker bank account.", escrow.PaystackTransferCode);
+                    _logger.LogDebug("Creating transfer recipient for worker: {WorkerId}", booking.WorkerId);
+                    var bankAccount = new WorkerBankAccountDto(
+                        bankDetail.AccountNumber,
+                        bankDetail.BankCode,
+                        bankDetail.AccountName,
+                        bankDetail.Currency);
+                    var recipient = await _paystackService.CreateTransferRecipientAsync(bankAccount, cancellationToken);
+                    recipientCode = recipient.RecipientCode;
+                    bankDetail.SetRecipientCode(recipientCode, modifiedBy);
+                    await _repo.WorkerBankDetails.UpdateAsync(bankDetail, cancellationToken);
                 }
-
-                if (escrow.Status == EscrowStatus.Released)
-                {
-                    return new PayoutResult(true, "Escrow has already been released to the worker wallet.", null);
-                }
-
-                if (escrow.Status != EscrowStatus.Held)
-                {
-                    return new PayoutResult(false, $"Escrow cannot be released from {escrow.Status} status.", null);
-                }
-
-                await _escrowService.ReleaseEscrowToWorkerWalletAsync(booking, modifiedBy, cancellationToken);
-                await _repo.SaveChangesAsync(cancellationToken);
-
-                _logger.LogInformation("Internal wallet payout completed successfully for booking: {BookingId}. Amount: {Amount}", booking.Id, escrow.Amount);
-                return new PayoutResult(true, "Credited worker internal wallet.", null);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Internal wallet payout failed for booking: {BookingId}", booking.Id);
-                throw;
-            }
-        }
-
-        private async Task<PayoutResult> PayoutToExternalTransferAsync(Booking booking, WorkerBankAccountDto bankAccount, Escrow escrow, string? modifiedBy, CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Executing external transfer payout for booking: {BookingId}, account: {AccountName}", booking.Id, bankAccount.AccountName);
-
-            try
-            {
-                if (escrow.Status == EscrowStatus.PaidOut)
-                {
-                    return new PayoutResult(false, "Booking payout has already been transferred to the worker bank account.", escrow.PaystackTransferCode);
-                }
-
-                if (escrow.Status != EscrowStatus.Released)
-                {
-                    return new PayoutResult(false, "Escrow must be released to the worker wallet before bank payout.", null);
-                }
-
-                var wallet = await _repo.Wallets.GetByWorkerId(booking.WorkerId, cancellationToken)
-                    ?? throw new InvalidOperationException($"Wallet for worker {booking.WorkerId} was not found.");
-
-                if (wallet.Balance < escrow.WorkerShare)
-                {
-                    return new PayoutResult(false, "Worker wallet balance is insufficient for this payout.", null);
-                }
-
-                _logger.LogDebug("Creating transfer recipient for booking: {BookingId}", booking.Id);
-                var recipient = await _paystackService.CreateTransferRecipientAsync(bankAccount, cancellationToken);
-                _logger.LogInformation("Transfer recipient created. RecipientCode: {RecipientCode}", recipient.RecipientCode);
 
                 var reason = $"Payout for booking {booking.Id}";
                 _logger.LogDebug("Initiating transfer for booking: {BookingId}, amount: {Amount}", booking.Id, escrow.WorkerShare);
-                var transferResult = await _paystackService.InitiateTransferAsync(recipient.RecipientCode, escrow.WorkerShare, reason, cancellationToken);
+                var transferResult = await _paystackService.InitiateTransferAsync(recipientCode, escrow.WorkerShare, reason, cancellationToken);
                 _logger.LogInformation("Transfer initiated. TransferCode: {TransferCode}, Status: {Status}", transferResult.TransferCode, transferResult.Status);
 
-                wallet.Debit(escrow.WorkerShare, modifiedBy);
                 escrow.MarkPaidOut(transferResult.TransferCode, modifiedBy);
-
-                await _repo.Wallets.UpdateWallet(wallet, cancellationToken);
                 await _repo.Escrows.UpdateEscrow(escrow, cancellationToken);
                 await _repo.SaveChangesAsync(cancellationToken);
 
-                _logger.LogInformation("External transfer payout completed successfully for booking: {BookingId}. ProviderRef: {ProviderRef}", 
-                    booking.Id, transferResult.TransferCode);
-                return new PayoutResult(true, "External transfer initiated.", transferResult.TransferCode);
+                _logger.LogInformation("Direct transfer payout completed for booking: {BookingId}. ProviderRef: {ProviderRef}", booking.Id, transferResult.TransferCode);
+                return new PayoutResult(true, "Transfer initiated to worker bank account.", transferResult.TransferCode);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "External transfer payout failed for booking: {BookingId}", booking.Id);
-                throw;
+                _logger.LogError(ex, "Direct transfer payout failed for booking: {BookingId}. Payout deferred for retry.", booking.Id);
+                return new PayoutResult(false, "Transfer could not be completed right now. It will be retried automatically.");
             }
+        }
+
+        private static string Tail(string accountNumber)
+        {
+            if (string.IsNullOrEmpty(accountNumber) || accountNumber.Length < 4)
+                return accountNumber ?? string.Empty;
+            return accountNumber[^4..];
         }
     }
 }

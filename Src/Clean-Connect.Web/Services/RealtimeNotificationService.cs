@@ -28,5 +28,17 @@ namespace Clean_Connect.Web.Services
                 createdAt = DateTime.UtcNow
             });
         }
+
+        public async Task NotifyAdminAsync(string title, string message, string type = "info", string? url = null)
+        {
+            await _hubContext.Clients.Group("admins").SendAsync("adminNotification", new
+            {
+                title,
+                message,
+                type,
+                url,
+                createdAt = DateTime.UtcNow
+            });
+        }
     }
 }

@@ -129,10 +129,6 @@ namespace Clean_Connect.Api.Controllers
             var command = new RequestPayoutCommand(
                 bookingId,
                 request.WorkerId,
-                request.AccountNumber,
-                request.BankCode,
-                request.AccountName,
-                request.Currency,
                 request.ModifiedBy);
 
             var result = await mediator.Send(command, cancellationToken);

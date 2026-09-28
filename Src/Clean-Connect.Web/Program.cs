@@ -41,10 +41,10 @@ var jwtSettings = builder.Configuration.GetSection("Jwt");
 // --------------------
 // Add DbContext first
 // --------------------
-builder.Services.AddSqlServer<ApplicationDbContext>(
+builder.Services.AddNpgsql<ApplicationDbContext>(
     builder.Configuration.GetConnectionString("DefaultConnection"),
     b => b.UseNetTopologySuite()
-   .MigrationsAssembly("Clean-Connect.Persistence"));
+          .MigrationsAssembly("Clean-Connect.Persistence"));
 
 // --------------------
 // Identity Core for API
@@ -103,6 +103,7 @@ builder.Services.AddAuthorization();
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<Clean_Connect.Web.Services.IWorkerPresenceService, Clean_Connect.Web.Services.WorkerPresenceService>();
 
 
 // --------------------
@@ -123,7 +124,6 @@ builder.Services.AddScoped<MarkAsCompletedService>();
 builder.Services.AddScoped<EscrowService>();
 builder.Services.AddScoped<PayoutService>();
 builder.Services.AddScoped<RefundService>();
-builder.Services.AddScoped<WalletService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -144,7 +144,7 @@ builder.Services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
-builder.Services.AddScoped<IWalletRepository, WalletRepository>();
+builder.Services.AddScoped<IWorkerBankDetailRepository, WorkerBankDetailRepository>();
 builder.Services.AddScoped<IEscrowRepository, EscrowRepository>();
 builder.Services.AddScoped<ICouponRepository, CouponRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -210,11 +210,11 @@ using (var scope = app.Services.CreateScope())
     {
         var serviceTypes = new[]
         {
-            ServiceType.Create("Residential Cleaning", "Professional cleaning for homes and apartments", 100.00m),
-            ServiceType.Create("Commercial Cleaning", "Office and commercial space cleaning services", 200.00m),
-            ServiceType.Create("Deep Cleaning", "Thorough deep cleaning for all living spaces", 150.00m),
-            ServiceType.Create("Carpet Cleaning", "Professional carpet and upholstery cleaning", 120.00m),
-            ServiceType.Create("Move In/Out Cleaning", "Complete cleaning for move-in and move-out", 180.00m),
+            ServiceType.Create("Residential Cleaning", "Professional cleaning for homes and apartments"),
+            ServiceType.Create("Commercial Cleaning", "Office and commercial space cleaning services"),
+            ServiceType.Create("Deep Cleaning", "Thorough deep cleaning for all living spaces"),
+            ServiceType.Create("Carpet Cleaning", "Professional carpet and upholstery cleaning"),
+            ServiceType.Create("Move In/Out Cleaning", "Complete cleaning for move-in and move-out"),
         };
 
         foreach (var st in serviceTypes)

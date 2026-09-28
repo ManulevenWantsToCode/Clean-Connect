@@ -84,6 +84,13 @@
                         </a>
                     </li>
 
+                    <li class="@(ViewData["ActivePage"]?.ToString() == "Payouts" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Payouts">
+                            <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                            <span>Worker Payouts</span>
+                        </a>
+                    </li>
+
                     <li class="@(ViewData["ActivePage"]?.ToString() == "Reviews" ? "active" : "")">
                         <a asp-controller="Admin" asp-action="Reviews">
                             <i class="fa-solid fa-star-half-stroke"></i>
@@ -158,7 +165,7 @@
                     <div class="topbar-search d-none d-md-flex">
                         <i class="fa-solid fa-magnifying-glass search-icon"></i>
                         <input type="text" id="globalAdminSearch" class="form-control topbar-search-input" placeholder="Search bookings, users, services..." />
-                        <span class="search-shortcut">⌘K</span>
+                        <span class="search-shortcut">Ctrl K</span>
                     </div>
 
                     <!-- Theme Toggle -->
@@ -245,6 +252,7 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/signalr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/admin.js" asp-append-version="true"></script>
 

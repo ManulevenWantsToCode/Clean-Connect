@@ -14,7 +14,9 @@ namespace Clean_Connect.Application.DTO
         public int ActiveBookings { get; set; }
         public int PendingBookings { get; set; }
         public decimal TotalEarnings { get; set; }
-        public decimal WalletBalance { get; set; }
+        public bool HasBankDetails { get; set; }
+        public string PayoutAccount { get; set; } = string.Empty;
+        public int PendingPayouts { get; set; }
 
         public int FiveStarCount { get; set; }
         public int FourStarCount { get; set; }

@@ -15,6 +15,8 @@ namespace Clean_Connect.Application.Interface.Services
 
         Task<TransferRecipientResponse> CreateTransferRecipientAsync(WorkerBankAccountDto bankAccount, CancellationToken cancellationToken);
 
+        Task<PaystackResolveAccountResponse?> ResolveAccountAsync(string accountNumber, string bankCode, CancellationToken cancellationToken);
+
         Task<TransferInitiationResponse> InitiateTransferAsync(string recipientCode, decimal amount, string reason, CancellationToken cancellationToken);
 
         Task<bool> RefundTransactionAsync(string transactionReference, decimal amount, CancellationToken cancellationToken);

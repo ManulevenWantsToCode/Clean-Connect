@@ -28,6 +28,14 @@ namespace Clean_Connect.Web.Models
         [Required]
         public string TimeRange { get; set; } = "Morning";
 
+        [Required]
+        [DataType(DataType.Time)]
+        public DateTime StartTime { get; set; } = DateTime.Today.AddHours(9);
+
+        [Required]
+        [DataType(DataType.Time)]
+        public DateTime EndTime { get; set; } = DateTime.Today.AddHours(11);
+
         public string? CouponCode { get; set; }
     }
 }

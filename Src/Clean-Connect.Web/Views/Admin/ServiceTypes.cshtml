@@ -4,14 +4,13 @@
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
     string FormatNaira(decimal amount) => $"₦{amount:N0}";
     var activeServices = Model.Where(s => s.Status == "Active").ToList();
-    var avgRate = activeServices.Count > 0 ? activeServices.Average(s => s.BaseRate) : 0;
     var topService = Model.OrderByDescending(s => s.TotalBookings).FirstOrDefault();
 }
 
 <div class="admin-page-header">
     <div class="admin-page-title-wrap">
         <h2>Service Types Catalog</h2>
-        <p>Configure offered cleaning categories, base pricing in Naira, service durations, and catalog availability.</p>
+        <p>Configure offered cleaning categories, service durations, and catalog availability.</p>
     </div>
     <div class="admin-page-actions">
         <button class="btn btn-admin-primary" data-bs-toggle="modal" data-bs-target="#serviceTypeModal">
@@ -34,52 +33,6 @@
             <div class="stat-card-meta">
                 <span class="text-success fw-bold">@activeServices.Count</span>
                 <span>live on customer booking flow</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-sm-6">
-        <div class="stat-card">
-            <div class="stat-card-header">
-                <span class="stat-card-title">Workers on Platform</span>
-                <div class="stat-icon-wrapper stat-icon-amber">
-                    <i class="fa-solid fa-users-gear"></i>
-                </div>
-            </div>
-            <div class="stat-card-value">@Model.Sum(s => s.WorkerCount).ToString("N0")</div>
-            <div class="stat-card-meta">
-                <span class="text-muted">across all service categories</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-sm-6">
-        <div class="stat-card">
-            <div class="stat-card-header">
-                <span class="stat-card-title">Top Service Demand</span>
-                <div class="stat-icon-wrapper stat-icon-sky">
-                    <i class="fa-solid fa-fire"></i>
-                </div>
-            </div>
-            <div class="stat-card-value" style="font-size: 1.45rem;">@(topService?.Name ?? "—")</div>
-            <div class="stat-card-meta">
-                <span class="trend-badge trend-badge-up"><i class="fa-solid fa-arrow-up"></i> @(topService?.TotalBookings ?? 0)</span>
-                <span>bookings all-time</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-sm-6">
-        <div class="stat-card">
-            <div class="stat-card-header">
-                <span class="stat-card-title">Average Base Rate</span>
-                <div class="stat-icon-wrapper stat-icon-purple">
-                    <i class="fa-solid fa-naira-sign"></i>
-                </div>
-            </div>
-            <div class="stat-card-value">@FormatNaira(avgRate)</div>
-            <div class="stat-card-meta">
-                <span class="text-muted">Standard booking base</span>
             </div>
         </div>
     </div>
@@ -118,7 +71,6 @@
                     <tr>
                         <th>Service Name</th>
                         <th>Description</th>
-                        <th>Base Rate</th>
                         <th>Workers</th>
                         <th>Status</th>
                         <th>Total Bookings</th>
@@ -154,7 +106,6 @@
                                 <td>
                                     <span class="text-muted small">@s.Description</span>
                                 </td>
-                                <td><span class="fw-bold text-success fs-6">@FormatNaira(s.BaseRate)</span></td>
                                 <td><span class="fw-bold">@s.WorkerCount</span></td>
                                 <td>
                                     <span class="badge-status @(s.Status == "Active" ? "badge-status-success" : "badge-status-neutral")">
@@ -167,8 +118,7 @@
                                         <button class="btn-action-icon" data-bs-toggle="modal" data-bs-target="#serviceTypeModal" title="Edit Service"
                                                 data-service-id="@s.Id"
                                                 data-service-name="@s.Name"
-                                                data-service-desc="@s.Description"
-                                                data-service-rate="@s.BaseRate">
+                                                data-service-desc="@s.Description">
                                             <i class="fa-solid fa-pen-to-square"></i>
                                         </button>
                                         @if (s.Status == "Deactivated")
@@ -247,11 +197,6 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Base Rate (₦) <span class="text-muted small">(min ₦1)</span></label>
-                        <input type="number" id="serviceRate" class="form-control" min="1" max="1000000" step="0.01" placeholder="15000" required />
-                    </div>
-
-                    <div class="mb-3">
                         <label class="form-label">Detailed Description <span class="text-muted small">(10-200 chars)</span></label>
                         <textarea id="serviceDescription" class="form-control" rows="3" maxlength="200" placeholder="Briefly describe the service offering..."></textarea>
                     </div>
@@ -306,7 +251,6 @@
         const modalEl    = document.getElementById('serviceTypeModal');
         const idEl       = document.getElementById('serviceId');
         const nameEl     = document.getElementById('serviceName');
-        const rateEl     = document.getElementById('serviceRate');
         const descEl     = document.getElementById('serviceDescription');
         const feedbackEl = document.getElementById('serviceTypeFeedback');
         const saveBtn    = document.getElementById('serviceTypeSaveBtn');
@@ -319,11 +263,9 @@
             var id      = trigger && trigger.getAttribute('data-service-id');
             var name    = trigger && trigger.getAttribute('data-service-name');
             var desc    = trigger && trigger.getAttribute('data-service-desc');
-            var rate    = trigger && trigger.getAttribute('data-service-rate');
             editingMode = !!(id && id !== '');
             idEl.value      = id || '';
             nameEl.value    = name || '';
-            rateEl.value    = rate || '';
             descEl.value    = desc || '';
             feedbackEl.innerHTML = '';
             if (editingMode) {
@@ -332,7 +274,6 @@
             } else {
                 titleEl.textContent = 'Add Service Type';
                 nameEl.value = '';
-                rateEl.value = '';
                 descEl.value = '';
                 nameEl.focus();
             }
@@ -341,7 +282,6 @@
         modalEl.addEventListener('hidden.bs.modal', function () {
             idEl.value = '';
             nameEl.value = '';
-            rateEl.value = '';
             descEl.value = '';
             feedbackEl.innerHTML = '';
             editingMode = false;
@@ -349,14 +289,9 @@
 
         saveBtn.addEventListener('click', function () {
             var name = nameEl.value.trim();
-            var rate = parseFloat(rateEl.value);
             var desc = descEl.value.trim();
             if (name.length < 10 || name.length > 50) {
                 feedbackEl.innerHTML = '<div class="alert alert-danger py-2 mb-2">Service title must be between 10 and 50 characters.</div>';
-                return;
-            }
-            if (!rate || rate <= 0 || rate > 1000000) {
-                feedbackEl.innerHTML = '<div class="alert alert-danger py-2 mb-2">Base rate must be between ₦1 and ₦1,000,000.</div>';
                 return;
             }
             if (desc.length < 10 || desc.length > 200) {
@@ -368,7 +303,7 @@
             saveBtn.disabled = true;
 
             var endpoint = editingMode ? '/Admin/ServiceTypes/Edit' : '/Admin/ServiceTypes/Create';
-            var body = 'Name=' + encodeURIComponent(name) + '&Description=' + encodeURIComponent(desc) + '&Amount=' + encodeURIComponent(rate);
+            var body = 'Name=' + encodeURIComponent(name) + '&Description=' + encodeURIComponent(desc);
             if (editingMode) body += '&Id=' + encodeURIComponent(idEl.value);
 
             fetch(endpoint, { method: 'POST', headers: headers, body: body, credentials: 'same-origin' })

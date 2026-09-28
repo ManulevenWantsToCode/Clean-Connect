@@ -1,7 +1,9 @@
+using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.DTO;
 using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Domain.Entities;
 using Clean_Connect.Domain.Enums;
+using Clean_Connect.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +18,8 @@ namespace Clean_Connect.Web.Controllers
         private readonly ILogger<AdminController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _config;
+        private readonly IRealtimeNotificationService _notifications;
+        private readonly PayoutService _payoutService;
 
         private static readonly BookingStatus[] ActiveStatuses =
         {
@@ -27,12 +31,14 @@ namespace Clean_Connect.Web.Controllers
             BookingStatus.AwaitingClientConfirmation
         };
 
-        public AdminController(IUnitOfWork repo, ILogger<AdminController> logger, UserManager<ApplicationUser> userManager, IConfiguration config)
+        public AdminController(IUnitOfWork repo, ILogger<AdminController> logger, UserManager<ApplicationUser> userManager, IConfiguration config, IRealtimeNotificationService notifications, PayoutService payoutService)
         {
             _repo = repo;
             _logger = logger;
             _userManager = userManager;
             _config = config;
+            _notifications = notifications;
+            _payoutService = payoutService;
         }
 
         [HttpGet("")]
@@ -197,7 +203,7 @@ namespace Clean_Connect.Web.Controllers
 
             foreach (var w in workers.Where(w => !w.IsDeleted))
             {
-                var wallet = await _repo.Wallets.GetByWorkerId(w.Id, ct);
+                var bankDetail = await _repo.WorkerBankDetails.GetActiveByWorkerIdAsync(w.Id, ct);
                 var completedJobs = w.Bookings.Count(b => b.BookingStatus == BookingStatus.Completed);
                 items.Add(new AdminWorkerDto
                 {
@@ -212,13 +218,80 @@ namespace Clean_Connect.Web.Controllers
                     CompletedJobs = completedJobs,
                     KycStatus = "Verified",
                     Availability = w.IsAvailable ? "Available" : "Off-Duty",
-                    Balance = wallet?.Balance ?? 0,
+                    HasBankDetails = bankDetail != null,
+                    PayoutAccount = bankDetail != null
+                        ? MaskAccount(bankDetail.AccountNumber, bankDetail.BankName)
+                        : "No bank details",
                     DateJoined = w.DateCreated,
                     City = w.State ?? ""
                 });
             }
 
             return View(items);
+        }
+
+        [HttpGet("Payouts")]
+        public async Task<IActionResult> Payouts(CancellationToken ct)
+        {
+            ViewData["ActivePage"] = "Payouts";
+
+            var escrows = (await _repo.Escrows.GetAllEscrowsAsync(ct))
+                .Where(e => e.Status == EscrowStatus.Held)
+                .ToList();
+
+            var items = new List<AdminPayoutDto>();
+            foreach (var escrow in escrows)
+            {
+                var booking = await _repo.Bookings.GetBookingById(escrow.BookingId, ct);
+                if (booking == null || booking.IsDeleted || booking.BookingStatus != BookingStatus.Completed || booking.PaymentStatus != PaymentStatus.Successful)
+                    continue;
+
+                var worker = await _repo.Workers.GetWorkerById(booking.WorkerId, ct);
+                var bankDetail = await _repo.WorkerBankDetails.GetActiveByWorkerIdAsync(booking.WorkerId, ct);
+                var clientName = booking.Client?.FullName?.ToString() ?? "Unknown";
+
+                items.Add(new AdminPayoutDto
+                {
+                    BookingId = booking.Id,
+                    BookingRef = FormatBookingId(booking.Id, booking.DateCreated),
+                    WorkerName = worker?.FullName?.ToString() ?? "Unknown",
+                    WorkerInitials = GetInitials(worker?.FullName?.ToString()),
+                    ClientName = clientName,
+                    Gross = booking.OriginalAmount,
+                    Commission = escrow.CommissionAmount,
+                    Net = escrow.WorkerShare,
+                    HasBankDetails = bankDetail != null,
+                    PayoutAccount = bankDetail != null ? MaskAccount(bankDetail.AccountNumber, bankDetail.BankName) : "No bank details",
+                    PayoutStatus = "Pending"
+                });
+            }
+
+            return View(items);
+        }
+
+        [HttpPost("Payouts/Pay")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PayOutBooking(Guid bookingId, CancellationToken ct)
+        {
+            var admin = User.Identity?.Name;
+            try
+            {
+                var booking = await _repo.Bookings.GetBookingById(bookingId, ct);
+                if (booking == null || booking.IsDeleted)
+                    return Json(new { ok = false, message = "Booking not found." });
+
+                var escrow = await _repo.Escrows.GetByBookingId(bookingId, ct);
+                if (escrow == null || escrow.Status != EscrowStatus.Held)
+                    return Json(new { ok = false, message = "This payout is not pending. It may have already been paid." });
+
+                var result = await _payoutService.PayoutAsync(booking, admin, ct);
+                return Json(new { ok = result.Success, message = result.Message, reference = result.ProviderReference });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Admin payout for booking {BookingId} failed.", bookingId);
+                return Json(new { ok = false, message = $"Payout failed: {ex.Message}" });
+            }
         }
 
         [HttpGet("ServiceTypes")]
@@ -240,7 +313,6 @@ namespace Clean_Connect.Web.Controllers
                     Id = s.Id,
                     Name = s.Name,
                     Description = s.Description,
-                    BaseRate = s.Amount,
                     Duration = "2 - 3 hrs",
                     Status = s.IsDeleted ? "Deactivated" : "Active",
                     TotalBookings = sBookings.Count,
@@ -423,22 +495,21 @@ namespace Clean_Connect.Web.Controllers
 
         private static bool IsValidServiceTypeInput(AdminServiceTypeInput input) =>
             !string.IsNullOrWhiteSpace(input.Name) && input.Name.Trim().Length is >= 10 and <= 50 &&
-            !string.IsNullOrWhiteSpace(input.Description) && input.Description.Trim().Length is >= 10 and <= 200 &&
-            input.Amount > 0 && input.Amount <= 1_000_000;
+            !string.IsNullOrWhiteSpace(input.Description) && input.Description.Trim().Length is >= 10 and <= 200;
 
         [HttpPost("ServiceTypes/Create")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateServiceType(AdminServiceTypeInput input, CancellationToken ct)
         {
             if (!IsValidServiceTypeInput(input))
-                return Json(new { ok = false, message = "Name (10-50 chars) and description (10-200 chars) are required, plus a base rate between ₦1 and ₦1,000,000." });
+                return Json(new { ok = false, message = "Name (10-50 chars) and description (10-200 chars) are required." });
 
             try
             {
                 if (await _repo.ServiceTypes.CheckExistingByName(input.Name.Trim(), ct))
                     return Json(new { ok = false, message = $"A service named '{input.Name.Trim()}' already exists." });
 
-                var serviceType = ServiceType.Create(input.Name.Trim(), input.Description.Trim(), input.Amount, User.Identity?.Name);
+                var serviceType = ServiceType.Create(input.Name.Trim(), input.Description.Trim(), User.Identity?.Name);
                 await _repo.ServiceTypes.AddAsync(serviceType, ct);
                 await _repo.SaveChangesAsync(ct);
 
@@ -459,7 +530,7 @@ namespace Clean_Connect.Web.Controllers
             if (input.Id == null || input.Id == Guid.Empty)
                 return Json(new { ok = false, message = "Missing service id." });
             if (!IsValidServiceTypeInput(input))
-                return Json(new { ok = false, message = "Name (10-50 chars) and description (10-200 chars) are required, plus a base rate between ₦1 and ₦1,000,000." });
+                return Json(new { ok = false, message = "Name (10-50 chars) and description (10-200 chars) are required." });
 
             try
             {
@@ -467,7 +538,7 @@ namespace Clean_Connect.Web.Controllers
                 if (serviceType == null)
                     return Json(new { ok = false, message = "Service type not found." });
 
-                serviceType.UpdateService(input.Name.Trim(), input.Description.Trim(), input.Amount, User.Identity?.Name);
+                serviceType.UpdateService(input.Name.Trim(), input.Description.Trim(), User.Identity?.Name);
                 await _repo.ServiceTypes.UpdateAsync(serviceType, ct);
                 await _repo.SaveChangesAsync(ct);
 
@@ -645,39 +716,49 @@ namespace Clean_Connect.Web.Controllers
             {
                 var allClients = (await _repo.Clients.GetAllClients(ct))
                     .Where(c => !c.IsDeleted)
-                    .Select(c => c.Id)
                     .Distinct()
                     .ToList();
 
                 var allWorkers = (await _repo.Workers.GetAllWorkers(ct))
                     .Where(w => !w.IsDeleted)
-                    .Select(w => w.Id)
                     .Distinct()
                     .ToList();
 
                 var title = deactivated ? "Service deactivated" : "Service available again";
                 var message = deactivated
                     ? $"{serviceType.Name} has been deactivated and is no longer bookable. If you have upcoming bookings for this service, please contact admin."
-                    : $"{serviceType.Name} is back online at ₦{serviceType.Amount:N0} and available for booking again.";
+                    : $"{serviceType.Name} is back online and available for booking again.";
                 var status = deactivated ? "Deactivated" : "Active";
                 var tone = deactivated ? "warning" : "success";
                 var icon = deactivated ? "fa-triangle-exclamation" : "fa-circle-check";
 
-                foreach (var workerId in allWorkers)
+                foreach (var worker in allWorkers)
                 {
                     var notification = Notification.Create(
-                        workerId, Guid.Empty, NotificationAudience.Worker, title, message, status, tone, icon,
+                        worker.Id, Guid.Empty, NotificationAudience.Worker, title, message, status, tone, icon,
                         "Go to Dashboard", "/Worker-Dashboard", needsAttention: deactivated, createdBy: User.Identity?.Name);
                     await _repo.Notifications.CreateAsync(notification, ct);
+
+                    await _notifications.NotifyUserAsync(
+                        worker.Email?.ToString(), title, message, tone, "/Worker-Dashboard");
                 }
 
-                foreach (var clientId in allClients)
+                foreach (var client in allClients)
                 {
                     var notification = Notification.Create(
-                        clientId, Guid.Empty, NotificationAudience.Client, title, message, status, tone, icon,
+                        client.Id, Guid.Empty, NotificationAudience.Client, title, message, status, tone, icon,
                         "Go to Dashboard", "/Client-Dashboard", needsAttention: deactivated, createdBy: User.Identity?.Name);
                     await _repo.Notifications.CreateAsync(notification, ct);
+
+                    await _notifications.NotifyUserAsync(
+                        client.Email?.ToString(), title, message, tone, "/Client-Dashboard");
                 }
+
+                await _notifications.NotifyAdminAsync(
+                    title,
+                    $"Admin {User.Identity?.Name} {(deactivated ? "deactivated" : "reactivated")} {serviceType.Name}.",
+                    tone,
+                    "/Admin/ServiceTypes");
 
                 await _repo.SaveChangesAsync(ct);
                 _logger.LogInformation("Notified {WorkerCount} workers and {ClientCount} clients of service type '{Name}' status change (deactivated={Deactivated}).",
@@ -752,8 +833,11 @@ namespace Clean_Connect.Web.Controllers
                         var escrow = await _repo.Escrows.GetByBookingId(bookingId, ct);
                         if (escrow != null && escrow.Status == EscrowStatus.Held)
                         {
-                            escrow.Release(admin);
-                            await _repo.Escrows.UpdateEscrow(escrow, ct);
+                            var payout = await _payoutService.PayoutAsync(booking, admin, ct);
+                            if (!payout.Success && payout.ProviderReference == null)
+                            {
+                                _logger.LogInformation("Admin completed booking {BookingId}; payout deferred: {Message}", bookingId, payout.Message);
+                            }
                         }
                         break;
 
@@ -812,6 +896,15 @@ namespace Clean_Connect.Web.Controllers
             var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 1) return parts[0].Length >= 2 ? parts[0].Substring(0, 2).ToUpper() : parts[0].ToUpper();
             return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+        }
+
+        private static string MaskAccount(string? accountNumber, string bankName)
+        {
+            if (string.IsNullOrWhiteSpace(accountNumber))
+                return string.IsNullOrWhiteSpace(bankName) ? "No bank details" : bankName;
+            var tail = accountNumber.Length >= 4 ? accountNumber[^4..] : accountNumber;
+            var bank = string.IsNullOrWhiteSpace(bankName) ? "" : $"{bankName} ";
+            return $"{bank}••••{tail}";
         }
 
         private static string MapBookingStatus(BookingStatus status) => status switch

@@ -164,7 +164,8 @@ namespace Clean_Connect.Web.Controllers
                     worker.Email?.Value ?? "",
                     worker.Gender.ToString(),
                     worker.State ?? "",
-                    worker.DateOfBirth);
+                    worker.DateOfBirth,
+                    worker.HourlyRate);
 
                 return View(command);
             }
@@ -224,8 +225,8 @@ namespace Clean_Connect.Web.Controllers
             }
         }
 
-        [HttpGet("Withdraw")]
-        public async Task<IActionResult> Withdraw(CancellationToken ct)
+        [HttpGet("Payout-Details")]
+        public async Task<IActionResult> PayoutDetails(CancellationToken ct)
         {
             try
             {
@@ -243,23 +244,31 @@ namespace Clean_Connect.Web.Controllers
                     return RedirectToAction("Dashboard");
                 }
 
-                var wallet = await _repo.Wallets.GetByWorkerId(worker.Id, ct);
-                var model = new WithdrawViewModel { WalletBalance = wallet?.Balance ?? 0 };
-
+                var detail = await _mediator.Send(new GetWorkerBankDetailQuery(worker.Id), ct);
+                var model = new PayoutDetailsViewModel
+                {
+                    HasDetails = detail.HasDetails,
+                    BankCode = detail.BankCode,
+                    BankName = detail.BankName,
+                    AccountNumber = string.Empty,
+                    AccountName = detail.AccountName,
+                    Currency = detail.Currency,
+                    MaskedAccountNumber = detail.HasDetails ? detail.MaskedAccountNumber : string.Empty
+                };
                 await LoadBankListAsync(ct);
                 return View(model);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load withdraw page.");
-                _notyf.Error("Unable to load withdraw page.");
+                _logger.LogError(ex, "Failed to load payout details page.");
+                _notyf.Error("Unable to load payout details.");
                 return RedirectToAction("Dashboard");
             }
         }
 
-        [HttpPost("Withdraw")]
+        [HttpPost("Payout-Details")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Withdraw(WithdrawViewModel model, CancellationToken ct)
+        public async Task<IActionResult> PayoutDetails(PayoutDetailsViewModel model, CancellationToken ct)
         {
             try
             {
@@ -277,44 +286,90 @@ namespace Clean_Connect.Web.Controllers
                     return RedirectToAction("Dashboard");
                 }
 
-                var wallet = await _repo.Wallets.GetByWorkerId(worker.Id, ct);
-                model.WalletBalance = wallet?.Balance ?? 0;
+                var resolvedName = await ResolveAccountNameAsync(model.BankCode, model.AccountNumber, model.AccountName, ct);
+                if (!string.IsNullOrWhiteSpace(resolvedName))
+                    model.AccountName = resolvedName;
 
                 if (!ModelState.IsValid)
                 {
                     await LoadBankListAsync(ct);
-                    _notyf.Error("Please correct the highlighted errors.");
+
+                    var modelErrors = ModelState
+                        .Where(x => x.Value?.Errors.Count > 0)
+                        .SelectMany(x => x.Value!.Errors.Select(e => e.ErrorMessage))
+                        .Where(m => !string.IsNullOrWhiteSpace(m))
+                        .Distinct()
+                        .ToList();
+
+                    _logger.LogWarning("Payout details save blocked. Invalid fields: {Fields}", string.Join(" | ", ModelState
+                        .Where(x => x.Value?.Errors.Count > 0)
+                        .Select(x => $"{x.Key}: {string.Join(", ", x.Value!.Errors.Select(e => e.ErrorMessage))}")));
+
+                    _notyf.Error(modelErrors.Count > 0
+                        ? string.Join(" ", modelErrors)
+                        : "Please correct the highlighted errors.");
+
                     return View(model);
                 }
 
-                var command = new WithdrawFromWalletCommand(
+                var command = new SaveWorkerBankDetailCommand(
                     worker.Id,
-                    model.Amount,
-                    model.AccountNumber ?? "",
-                    model.BankCode ?? "",
-                    model.AccountName ?? "",
+                    model.BankCode,
+                    model.BankName,
+                    model.AccountNumber,
+                    model.AccountName,
                     model.Currency,
                     email);
 
                 var result = await _mediator.Send(command, ct);
 
-                if (result.Success)
+                if (result)
                 {
-                    _notyf.Success("Withdrawal initiated successfully.");
+                    _notyf.Success("Payout bank details saved. Any pending payout will be sent automatically.");
                     return RedirectToAction("Dashboard");
                 }
 
-                ModelState.AddModelError(string.Empty, result.Message);
                 await LoadBankListAsync(ct);
                 return View(model);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Withdrawal failed.");
-                ModelState.AddModelError(string.Empty, $"Something went wrong: {ex.Message}");
+                _logger.LogError(ex, "Failed to save payout details.");
+                ModelState.AddModelError(string.Empty, ex.Message);
+                _notyf.Error(ex.Message);
                 await LoadBankListAsync(ct);
                 return View(model);
             }
+        }
+
+        [HttpPost("Resolve-Account")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResolveAccount(string bankCode, string accountNumber, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(bankCode) || string.IsNullOrWhiteSpace(accountNumber) || accountNumber.Trim().Length != 10)
+            {
+                return Json(new { ok = false, message = "Enter a valid bank and a 10-digit account number." });
+            }
+
+            var resolved = await _paystackService.ResolveAccountAsync(accountNumber.Trim(), bankCode.Trim(), ct);
+            if (resolved?.Status == true && !string.IsNullOrWhiteSpace(resolved.Data?.AccountName))
+            {
+                return Json(new { ok = true, accountName = resolved.Data.AccountName });
+            }
+
+            return Json(new { ok = false, message = "Could not verify this account number. Check the bank and account number and try again." });
+        }
+
+        private async Task<string> ResolveAccountNameAsync(string bankCode, string accountNumber, string currentName, CancellationToken ct)
+        {
+            if (!string.IsNullOrWhiteSpace(currentName))
+                return currentName;
+
+            if (string.IsNullOrWhiteSpace(bankCode) || string.IsNullOrWhiteSpace(accountNumber) || accountNumber.Trim().Length != 10)
+                return string.Empty;
+
+            var resolved = await _paystackService.ResolveAccountAsync(accountNumber.Trim(), bankCode.Trim(), ct);
+            return resolved?.Status == true ? (resolved.Data?.AccountName ?? string.Empty) : string.Empty;
         }
 
         private static List<SelectListItem>? _cachedBanks;

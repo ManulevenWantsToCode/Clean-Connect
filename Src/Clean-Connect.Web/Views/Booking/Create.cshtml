@@ -71,6 +71,16 @@
                         <select asp-for="TimeRange" asp-items="ViewBag.TimeRanges" class="form-select form-select-lg"></select>
                         <span asp-validation-for="TimeRange" class="text-danger"></span>
                     </div>
+                    <div class="col-lg-6">
+                        <label asp-for="StartTime" class="form-label">Start time</label>
+                        <input asp-for="StartTime" type="time" class="form-control form-control-lg" value="@Model.StartTime.ToString("HH:mm")" />
+                        <span asp-validation-for="StartTime" class="text-danger"></span>
+                    </div>
+                    <div class="col-lg-6">
+                        <label asp-for="EndTime" class="form-label">End time</label>
+                        <input asp-for="EndTime" type="time" class="form-control form-control-lg" value="@Model.EndTime.ToString("HH:mm")" />
+                        <span asp-validation-for="EndTime" class="text-danger"></span>
+                    </div>
                 </div>
 
                 <div id="workerPreview" class="worker-preview mt-4 d-none">
@@ -148,6 +158,8 @@
             const serviceTypeSelect = document.getElementById("serviceTypeSelect");
             const serviceDateInput = document.querySelector('[name="DateOfService"]');
             const timeRangeSelect = document.querySelector('[name="TimeRange"]');
+            const startTimeInput = document.querySelector('[name="StartTime"]');
+            const endTimeInput = document.querySelector('[name="EndTime"]');
             const chooseWorkerBtn = document.getElementById("chooseWorkerBtn");
             const preview = document.getElementById("workerPreview");
             const previewName = document.getElementById("workerPreviewName");
@@ -159,6 +171,18 @@
             const form = document.getElementById("createBookingForm");
             const submitBtn = document.getElementById("submitBookingBtn");
 
+            function getDurationHours() {
+                if (!startTimeInput || !endTimeInput || !startTimeInput.value || !endTimeInput.value) return 0;
+                const [sh, sm] = startTimeInput.value.split(":").map(Number);
+                const [eh, em] = endTimeInput.value.split(":").map(Number);
+                const startMin = sh * 60 + sm;
+                const endMin = eh * 60 + em;
+                const diff = endMin - startMin;
+                return diff > 0 ? diff / 60 : 0;
+            }
+
+            const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
+
             function syncWorkerPreview() {
                 const selected = workerCards.find(x => x.Id === workerIdInput.value);
                 if (!selected) {
@@ -166,9 +190,13 @@
                     return;
                 }
 
+                const hours = getDurationHours();
+                const rate = Number(selected.HourlyRate || 0);
                 previewName.textContent = selected.Name;
-                previewMeta.textContent = `${selected.ServiceName} in ${selected.State || "your area"} | Rating ${Number(selected.Rating || 0).toFixed(1)}`;
-                previewPrice.textContent = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(selected.Amount || 0);
+                previewMeta.textContent = `${selected.ServiceName} in ${selected.State || "your area"} | ${naira.format(rate)}/hr`;
+                previewPrice.textContent = hours > 0
+                    ? `${naira.format(rate * hours)} for ${hours} hr${hours === 1 ? "" : "s"}`
+                    : "Set start and end times";
                 preview.classList.remove("d-none");
             }
 
@@ -187,6 +215,12 @@
             if (serviceTypeSelect || serviceDateInput || timeRangeSelect) {
                 [serviceTypeSelect, serviceDateInput, timeRangeSelect].forEach(el => {
                     if (el) el.addEventListener("change", updateChooseWorkerUrl);
+                });
+            }
+
+            if (startTimeInput || endTimeInput) {
+                [startTimeInput, endTimeInput].forEach(el => {
+                    if (el) el.addEventListener("change", syncWorkerPreview);
                 });
             }
 
@@ -225,7 +259,16 @@
             }
 
             if (form) {
-                form.addEventListener("submit", function () {
+                form.addEventListener("submit", function (e) {
+                    if (startTimeInput && endTimeInput && startTimeInput.value && endTimeInput.value) {
+                        const [sh, sm] = startTimeInput.value.split(":").map(Number);
+                        const [eh, em] = endTimeInput.value.split(":").map(Number);
+                        if ((eh * 60 + em) - (sh * 60 + sm) <= 0) {
+                            e.preventDefault();
+                            alert("End time must be after start time.");
+                            return;
+                        }
+                    }
                     submitBtn.disabled = true;
                     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending request';
                 });

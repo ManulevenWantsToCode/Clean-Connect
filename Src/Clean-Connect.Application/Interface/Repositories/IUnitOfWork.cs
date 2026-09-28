@@ -15,7 +15,7 @@ namespace Clean_Connect.Application.Interface.Repositories
 
         IPaymentRepository Payments { get; }
         IRatingRepository Ratings { get; }
-        IWalletRepository Wallets { get; }
+        IWorkerBankDetailRepository WorkerBankDetails { get; }
         IEscrowRepository Escrows { get; }
         ICouponRepository Coupons { get; }
         INotificationRepository Notifications { get; }

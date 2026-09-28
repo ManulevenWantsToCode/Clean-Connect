@@ -54,6 +54,20 @@ namespace Clean_Connect.Infrastructure.Configuration
             builder.Property(x => x.DateOfService)
                 .IsRequired();
 
+            builder.Property(x => x.StartTime)
+                .IsRequired();
+
+            builder.Property(x => x.EndTime)
+                .IsRequired();
+
+            builder.Property(x => x.HourlyRate)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            builder.Property(x => x.TotalAmount)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
             builder.Property(x => x.TimeRange)
                 .HasConversion<string>()
                 .IsRequired();

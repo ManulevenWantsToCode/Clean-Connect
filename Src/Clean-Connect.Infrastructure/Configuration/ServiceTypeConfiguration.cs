@@ -22,11 +22,6 @@ namespace Clean_Connect.Infrastructure.Configuration
             builder.Property(x => x.Description)
                 .IsRequired()
                 .HasMaxLength(200);
-
-
-            builder.Property(x => x.Amount)
-                .IsRequired()
-                .HasColumnType("decimal(18,2)");
         }
     
     }

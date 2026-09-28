@@ -14,42 +14,143 @@
 }
 else
 {
+    var onlineCount = Model.Workers.Count(x => x.IsOnline);
+
+    <div class="cw-results-head">
+        <div class="cw-results-head__title-wrap">
+            <h2 class="cw-results-head__title">Available cleaners</h2>
+            <p class="cw-results-head__sub">
+                <i class="fa-solid fa-circle-check"></i>
+                @Model.AvailableCount professional@(Model.AvailableCount == 1 ? "" : "s") free on @Model.DateOfService.ToString("MMM dd, yyyy") — online first
+            </p>
+        </div>
+        @if (onlineCount > 0)
+        {
+            <span class="availability-badge availability-badge--lg"><i class="fa-solid fa-circle"></i> @onlineCount online now</span>
+        }
+        else
+        {
+            <span class="availability-badge availability-badge--lg availability-badge--idle"><i class="fa-solid fa-circle"></i> All available</span>
+        }
+    </div>
+
     <div class="choose-worker-grid">
         @foreach (var w in Model.Workers)
         {
+            var fullNameParts = w.Name.Split(' ').Where(x => x.Length > 0).ToList();
+            var initials = string.Concat(fullNameParts.Select(x => x[0]).Take(2)).ToUpper();
+            var firstName = fullNameParts.Count > 0 ? fullNameParts[0] : "them";
+            var modalId = "workerModal_" + w.Id.ToString("N");
+            var distanceText = w.DistanceInKm.HasValue ? $"~{w.DistanceInKm.Value.ToString("0.#")} km away" : (string.IsNullOrWhiteSpace(w.State) ? "Your area" : w.State);
+
             <article class="choose-worker-card">
-                <div class="choose-worker-card__top">
-                    <div class="choose-worker-card__avatar">
-                        @{ var initials = string.Join("", w.Name.Split(' ').Where(x => x.Length > 0).Select(x => x[0]).Take(2)).ToUpper(); }
-                        @initials
-                    </div>
-                    <div class="choose-worker-card__title">
-                        <h2>@w.Name</h2>
-                        <span><i class="fa-solid fa-briefcase"></i> @w.ServiceName</span>
-                    </div>
-                    <div class="choose-worker-card__price">&#8358;@w.Amount.ToString("N0")</div>
+                <div class="choose-worker-card__head">
+                    <div class="choose-worker-card__avatar" aria-hidden="true">@initials</div>
+                    <span class="availability-badge @(w.IsOnline ? "" : "availability-badge--idle")"><i class="fa-solid fa-circle"></i> @(w.IsOnline ? "Online now" : "Available")</span>
                 </div>
 
-                <div class="choose-worker-card__meta">
-                    <span><i class="fa-solid fa-star"></i> @w.Rating.ToString("0.0") (@w.TotalRating)</span>
-                    <span><i class="fa-solid fa-location-dot"></i> @(w.DistanceInKm.HasValue ? $"~{w.DistanceInKm.Value.ToString("0.#")} km away" : (string.IsNullOrWhiteSpace(w.State) ? "Your area" : w.State))</span>
-                    <span><i class="fa-solid fa-cake-candles"></i> @w.Age yrs</span>
+                <div class="choose-worker-card__body">
+                    <h2 class="choose-worker-card__name">@w.Name</h2>
+                    <span class="service-chip"><i class="fa-solid fa-briefcase"></i> @w.ServiceName</span>
+
+                    <div class="rating-line">
+                        <span class="rating-line__stars" title="Rating">
+                            <i class="fa-solid fa-star"></i><strong>@w.Rating.ToString("0.0")</strong>
+                        </span>
+                        <span class="rating-line__count">@w.TotalRating review@(w.TotalRating == 1 ? "" : "s")</span>
+                        <span class="rating-line__price">&#8358;@w.HourlyRate.ToString("N0")/hr</span>
+                    </div>
+
+                    <div class="choose-worker-card__meta">
+                        <span title="Distance from your location"><i class="fa-solid fa-location-dot"></i> @distanceText</span>
+                        <span title="Location"><i class="fa-solid fa-map-pin"></i> @(string.IsNullOrWhiteSpace(w.State) ? "Not listed" : w.State)</span>
+                        <span title="Age"><i class="fa-solid fa-cake-candles"></i> @w.Age yrs</span>
+                    </div>
                 </div>
 
-                <div class="choose-worker-card__price-sm">&#8358;@w.Amount.ToString("N0")</div>
-
-                <a asp-controller="Booking" asp-action="Create"
-                   asp-route-workerId="@w.Id"
-                   asp-route-serviceTypeId="@w.ServiceTypeId"
-                   asp-route-dateOfService="@Model.DateOfService.ToString("yyyy-MM-dd")"
-                   asp-route-timeRange="@Model.TimeRange"
-                   asp-route-latitude="@ViewBag.OriginLatitude"
-                   asp-route-longitude="@ViewBag.OriginLongitude"
-                   asp-route-radius="@ViewBag.OriginRadius"
-                   class="btn btn-success booking-action-btn w-100 rounded-pill">
-                    <i class="fa-solid fa-arrow-right me-2"></i>Continue with @w.Name.Split(' ')[0]
-                </a>
+                <div class="choose-worker-card__actions">
+                    <button type="button" class="worker-card-btn worker-card-btn--outline rounded-pill" data-bs-toggle="modal" data-bs-target="#@modalId">
+                        <i class="fa-solid fa-address-card"></i> View profile
+                    </button>
+                    <a asp-controller="Booking" asp-action="Create"
+                       asp-route-workerId="@w.Id"
+                       asp-route-serviceTypeId="@w.ServiceTypeId"
+                       asp-route-dateOfService="@Model.DateOfService.ToString("yyyy-MM-dd")"
+                       asp-route-timeRange="@Model.TimeRange"
+                       asp-route-latitude="@ViewBag.OriginLatitude"
+                       asp-route-longitude="@ViewBag.OriginLongitude"
+                       asp-route-radius="@ViewBag.OriginRadius"
+                       class="btn btn-success booking-action-btn rounded-pill worker-card-btn worker-card-btn--primary">
+                        <i class="fa-solid fa-arrow-right me-2"></i>Book @firstName
+                    </a>
+                </div>
             </article>
+
+            <div class="modal fade worker-profile-modal" id="@modalId" tabindex="-1" aria-labelledby="@(modalId)_label" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="worker-profile-modal__hero">
+                            <button type="button" class="btn-close worker-profile-modal__close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <div class="worker-profile-modal__avatar" aria-hidden="true">@initials</div>
+                            <h2 id="@(modalId)_label">@w.Name</h2>
+                            <p><i class="fa-solid fa-briefcase"></i> @w.ServiceName</p>
+                            <span class="availability-badge availability-badge--on-dark @(w.IsOnline ? "" : "availability-badge--idle")"><i class="fa-solid fa-circle"></i> @(w.IsOnline ? "Online now" : "Available now")</span>
+                        </div>
+
+                        <div class="worker-profile-modal__body">
+                            <div class="worker-profile-modal__stats">
+                                <div class="worker-profile-modal__stat">
+                                    <span class="stat-label"><i class="fa-solid fa-star"></i> Rating</span>
+                                    <strong>@w.Rating.ToString("0.0")</strong>
+                                    <small>@w.TotalRating review@(w.TotalRating == 1 ? "" : "s")</small>
+                                </div>
+                                <div class="worker-profile-modal__stat">
+                                    <span class="stat-label"><i class="fa-solid fa-map-pin"></i> Location</span>
+                                    <strong>@(string.IsNullOrWhiteSpace(w.State) ? "Not listed" : w.State)</strong>
+                                    <small>@distanceText</small>
+                                </div>
+                                <div class="worker-profile-modal__stat">
+                                    <span class="stat-label"><i class="fa-solid fa-cake-candles"></i> Age</span>
+                                    <strong>@w.Age</strong>
+                                    <small>years old</small>
+                                </div>
+                                <div class="worker-profile-modal__stat">
+                                    <span class="stat-label"><i class="fa-solid fa-wallet"></i> Hourly rate</span>
+                                    <strong>&#8358;@w.HourlyRate.ToString("N0")/hr</strong>
+                                    <small>@w.ServiceName</small>
+                                </div>
+                            </div>
+
+                            <p class="worker-profile-modal__note">
+                                <i class="fa-solid @(w.IsOnline ? "fa-wifi" : "fa-shield-halved")"></i>
+                                @if (w.IsOnline)
+                                {
+                                    <text>@firstName is online right now and available on @Model.DateOfService.ToString("MMM dd, yyyy") (@Model.TimeRange). Proceed to pick a date, time and address to send your booking request.</text>
+                                }
+                                else
+                                {
+                                    <text>@firstName is available on @Model.DateOfService.ToString("MMM dd, yyyy") (@Model.TimeRange) but is currently offline — they'll see your request when they come online. Proceed to pick a date, time and address to send your booking request.</text>
+                                }
+                            </p>
+                        </div>
+
+                        <div class="worker-profile-modal__footer">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4 worker-profile-modal__cancel" data-bs-dismiss="modal">Close</button>
+                            <a asp-controller="Booking" asp-action="Create"
+                               asp-route-workerId="@w.Id"
+                               asp-route-serviceTypeId="@w.ServiceTypeId"
+                               asp-route-dateOfService="@Model.DateOfService.ToString("yyyy-MM-dd")"
+                               asp-route-timeRange="@Model.TimeRange"
+                               asp-route-latitude="@ViewBag.OriginLatitude"
+                               asp-route-longitude="@ViewBag.OriginLongitude"
+                               asp-route-radius="@ViewBag.OriginRadius"
+                               class="btn btn-success booking-action-btn rounded-pill px-4">
+                                <i class="fa-solid fa-arrow-right me-2"></i>Continue with @firstName
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         }
     </div>
 }

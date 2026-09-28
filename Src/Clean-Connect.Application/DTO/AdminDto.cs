@@ -93,9 +93,25 @@ namespace Clean_Connect.Application.DTO
         public int CompletedJobs { get; set; }
         public string KycStatus { get; set; } = "Pending KYC";
         public string Availability { get; set; } = "Available";
-        public decimal Balance { get; set; }
+        public bool HasBankDetails { get; set; }
+        public string PayoutAccount { get; set; } = string.Empty;
         public DateTime DateJoined { get; set; }
         public string City { get; set; } = string.Empty;
+    }
+
+    public record AdminPayoutDto
+    {
+        public Guid BookingId { get; set; }
+        public string BookingRef { get; set; } = string.Empty;
+        public string WorkerName { get; set; } = string.Empty;
+        public string WorkerInitials { get; set; } = string.Empty;
+        public string ClientName { get; set; } = string.Empty;
+        public decimal Gross { get; set; }
+        public decimal Commission { get; set; }
+        public decimal Net { get; set; }
+        public bool HasBankDetails { get; set; }
+        public string PayoutAccount { get; set; } = string.Empty;
+        public string PayoutStatus { get; set; } = string.Empty;
     }
 
     public record AdminServiceTypeDto
@@ -103,7 +119,6 @@ namespace Clean_Connect.Application.DTO
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public decimal BaseRate { get; set; }
         public string Duration { get; set; } = string.Empty;
         public string Status { get; set; } = "Active";
         public int TotalBookings { get; set; }
@@ -117,7 +132,6 @@ namespace Clean_Connect.Application.DTO
         public Guid? Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public decimal Amount { get; set; }
     }
 
     public record AdminBookingDto
@@ -193,7 +207,6 @@ namespace Clean_Connect.Application.DTO
         public int MaxActiveJobsPerCleanerPerDay { get; set; } = 2;
         public int CommissionPercent { get; set; } = 15;
         public int AutoReleaseEscrowDelayHours { get; set; } = 24;
-        public decimal MinimumWorkerWithdrawal { get; set; } = 5000;
         public string PaymentGatewayMode { get; set; } = "Paystack Live Production";
         public bool EmailAlertsOnNewBooking { get; set; } = true;
         public bool SmsToCleanerOnAssignment { get; set; } = true;

@@ -10,10 +10,11 @@ namespace Clean_Connect.Web.Models
         public string ServiceName { get; set; } = default!;
         public double Rating { get; set; }
         public int TotalRating { get; set; }
-        public decimal Amount { get; set; }
+        public decimal HourlyRate { get; set; }
         public string? State { get; set; }
         public double? DistanceInKm { get; set; }
         public int Age { get; set; }
+        public bool IsOnline { get; set; }
     }
 
     public class ChooseWorkerViewModel

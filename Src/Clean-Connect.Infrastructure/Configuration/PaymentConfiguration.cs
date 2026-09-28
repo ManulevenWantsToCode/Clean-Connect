@@ -56,7 +56,7 @@
                 builder.HasIndex(p => p.TransactionId);
 
                 builder.HasIndex(p => new { p.BookingId, p.Status })
-                    .HasFilter("[Status] = 'Successful'")
+                    .HasFilter("\"Status\" = 'Successful'")
                     .IsUnique();
                 builder.HasIndex(p => p.BookingId);
 

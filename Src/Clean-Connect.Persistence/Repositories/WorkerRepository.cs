@@ -127,6 +127,8 @@ namespace Clean_Connect.Persistence.Repositories
 
         public async Task<List<WorkerWithDistance>> GetAvailableWorkersWithDistanceAsync(double? latitude, double? longitude, double? radiusInMeters, Guid? serviceTypeId, DateTime dateOfService, CancellationToken cancellationToken)
         {
+            dateOfService = DateTime.SpecifyKind(dateOfService.Date, DateTimeKind.Utc);
+
             var activeStatuses = new[] { BookingStatus.Pending, BookingStatus.AcceptedAwaitingPayment, BookingStatus.MarkAsPaid, BookingStatus.AwaitingClientStartConfirmation, BookingStatus.InProgress, BookingStatus.AwaitingClientConfirmation };
 
             var query = dbContext.Workers

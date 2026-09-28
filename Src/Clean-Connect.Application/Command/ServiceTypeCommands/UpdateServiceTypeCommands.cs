@@ -11,7 +11,7 @@ using static Clean_Connect.Application.Command.ServiceTypeCommands.CreateService
 
 namespace Clean_Connect.Application.Command.ServiceTypeCommands
 {
-    public record UpdateServiceTypeCommands(Guid Id, string Name, string Description, decimal Amount, string? CreatedBy = null) : IRequest<bool>;
+    public record UpdateServiceTypeCommands(Guid Id, string Name, string Description, string? CreatedBy = null) : IRequest<bool>;
 
     public class UpdateServiceTypeValidator : AbstractValidator<UpdateServiceTypeCommands>
     {
@@ -28,13 +28,6 @@ namespace Clean_Connect.Application.Command.ServiceTypeCommands
                 .WithMessage("Description is required")
                 .Length(20, 50)
                 .WithMessage("Service Description must be between 20 - 50 character");
-
-            RuleFor(x => x.Amount)
-                .GreaterThan(0)
-                .LessThanOrEqualTo(1_000_000)
-                .PrecisionScale(18, 2, true)
-                .WithMessage("Invalid amount");
-
 
         }
 
@@ -76,7 +69,6 @@ namespace Clean_Connect.Application.Command.ServiceTypeCommands
 
             serviceTypeToUpdate.UpdateService(request.Name,
                 request.Description,
-                request.Amount,
                 request.CreatedBy
                 );
 

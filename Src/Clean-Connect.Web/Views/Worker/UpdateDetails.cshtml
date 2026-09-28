@@ -179,6 +179,18 @@
                                     </div>
                                     <span asp-validation-for="ServiceTypeId" class="text-danger small ms-2 mt-1 d-block"></span>
                                 </div>
+
+                                <!-- Hourly Rate -->
+                                <div class="col-md-6">
+                                    <div class="input-group custom-input">
+                                        <span class="input-group-text"><i class="fa-solid fa-naira-sign"></i></span>
+                                        <div class="form-floating">
+                                            <input asp-for="HourlyRate" type="number" min="1" max="1000000" step="0.01" class="form-control" placeholder="2000" />
+                                            <label asp-for="HourlyRate">Hourly Rate (₦/hr)</label>
+                                        </div>
+                                    </div>
+                                    <span asp-validation-for="HourlyRate" class="text-danger small ms-2 mt-1 d-block"></span>
+                                </div>
                             </div>
                         </div>
                     </div>

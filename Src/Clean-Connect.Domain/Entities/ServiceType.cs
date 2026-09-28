@@ -12,11 +12,10 @@ namespace Clean_Connect.Domain.Entities
     {
         private ServiceType () { }
 
-        private ServiceType(string name, string description, decimal amount, string? createdBy = null)
+        private ServiceType(string name, string description, string? createdBy = null)
         {
             Name =  name ?? throw new ArgumentNullException ("name");
             Description = description ?? throw new ArgumentNullException ("description");
-            Amount = amount;
         }
 
         public string Name { get; private set; } = default!;
@@ -24,27 +23,25 @@ namespace Clean_Connect.Domain.Entities
         public string Description { get; private set; } = default!;
 
         public List<Worker> Workers { get; private set; } = new List<Worker>(); 
-        public decimal Amount { get; private set;} = default!;
 
-        public static ServiceType Create (string name, string description, decimal amount, string? createdBy = null)
+        public static ServiceType Create (string name, string description, string? createdBy = null)
         {
-            Validate(name, description, amount);
-            var service = new ServiceType(name, description, amount, createdBy);
+            Validate(name, description);
+            var service = new ServiceType(name, description, createdBy);
             service.AddDomainEvent(new ServiceTypeCreatedEvent(service.Id));
             service.UpdateMetadata(createdBy);
             return service;
         }
 
-        public void UpdateService(string newName, string newDescription,  decimal newAmount, string? modifiedBy = null)
+        public void UpdateService(string newName, string newDescription, string? modifiedBy = null)
         {
             Name = newName;
             Description = newDescription;
-            Amount = newAmount;
 
             UpdateMetadata(modifiedBy);
         }
 
-        private static void Validate(string name, string description, decimal amount, string createdBy = null)
+        private static void Validate(string name, string description, string createdBy = null)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentNullException(nameof(name),"Name cannot be null or empty");

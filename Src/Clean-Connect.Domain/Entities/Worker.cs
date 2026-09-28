@@ -9,7 +9,7 @@ namespace Clean_Connect.Domain.Entities
     {
         private Worker() { }
 
-        private Worker(FullName name, Address address,Location location, PhoneNumber contact, Gender gender, Guid ServiceType, Email email, string state, DateTime dob, string? createdBy = null)
+        private Worker(FullName name, Address address,Location location, PhoneNumber contact, Gender gender, Guid ServiceType, Email email, string state, DateTime dob, decimal hourlyRate, string? createdBy = null)
         {
             FullName = name ?? throw new ArgumentNullException("name");
             Address = address ?? throw new ArgumentNullException("address");
@@ -21,6 +21,7 @@ namespace Clean_Connect.Domain.Entities
             State = state ?? throw new ArgumentNullException("state");
             ValidateDateOfBirth(dob);
             DateOfBirth = dob;
+            HourlyRate = ValidateHourlyRate(hourlyRate);
 
             UpdateMetadata(createdBy);
         }
@@ -55,6 +56,8 @@ namespace Clean_Connect.Domain.Entities
 
         public DateTime DateOfBirth { get; private set; } = default!;
 
+        public decimal HourlyRate { get; private set; }
+
         public int Age
         {
             get
@@ -68,11 +71,11 @@ namespace Clean_Connect.Domain.Entities
             }
         }
 
-        public static Worker Create(FullName name, Address address, PhoneNumber contact,Location location, Gender gender, Guid serviceTypeId, Email email, string state, DateTime dob, string? createdBy = null)
+        public static Worker Create(FullName name, Address address, PhoneNumber contact,Location location, Gender gender, Guid serviceTypeId, Email email, string state, DateTime dob, decimal hourlyRate, string? createdBy = null)
         {
             ValidateDateOfBirth(dob);
             ValidateState(state);
-            var worker = new Worker(name, address,location, contact, gender, serviceTypeId, email, state, dob);
+            var worker = new Worker(name, address,location, contact, gender, serviceTypeId, email, state, dob, hourlyRate);
 
             //domain event
             worker.AddDomainEvent(new WorkerCreatedDomainEvent(worker.Id));
@@ -152,6 +155,13 @@ namespace Clean_Connect.Domain.Entities
             UpdateMetadata(modifiedBy);
         }
 
+        public void UpdateHourlyRate(decimal newHourlyRate, string? modifiedBy = null)
+        {
+            HourlyRate = ValidateHourlyRate(newHourlyRate);
+
+            UpdateMetadata(modifiedBy);
+        }
+
         
         private static void ValidateState(string state)
         {
@@ -177,6 +187,16 @@ namespace Clean_Connect.Domain.Entities
                 throw new ArgumentException("Worker must be at least 18 years old", nameof(dob));
 
 
+        }
+
+        private static decimal ValidateHourlyRate(decimal hourlyRate)
+        {
+            if (hourlyRate <= 0)
+                throw new ArgumentOutOfRangeException(nameof(hourlyRate), "Hourly rate must be greater than zero");
+            if (hourlyRate > 1_000_000)
+                throw new ArgumentOutOfRangeException(nameof(hourlyRate), "Hourly rate cannot exceed 1,000,000");
+
+            return Math.Round(hourlyRate, 2);
         }
     }
 }

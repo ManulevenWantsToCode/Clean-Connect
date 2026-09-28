@@ -18,6 +18,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
 	  <PackageReference Include="AspNetCoreHero.ToastNotification" Version="1.1.0" />
+	  <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.1" />
+	  <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite" Version="9.0.0" />
     <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
@@ -34,5 +36,11 @@
   <ItemGroup>
     <Folder Include="wwwroot\images\auth\" />
   </ItemGroup>
+
+  <Target Name="StopIisExpressBeforeBuild" BeforeTargets="Restore;Build;CoreCompile;BeforeBuild">
+    <Message Importance="high" Text="[StopIisExpressBeforeBuild] stopping Clean-Connect IIS Express..." />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\stop-iis-express.ps1&quot;" IgnoreExitCode="true" />
+    <Message Importance="high" Text="[StopIisExpressBeforeBuild] done." />
+  </Target>
 
 </Project>

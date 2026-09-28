@@ -4,937 +4,603 @@
     ViewData["Title"] = "Create Worker Profile";
 }
 
+<link rel="stylesheet" href="~/css/profile-forms.css" asp-append-version="true" />
+
 <div class="worker-profile-page py-5">
-
-    <div class="container">
+    <div class="container profile-form-container">
 
         <!-- ========================================= -->
-        <!-- PAGE HEADER -->
+        <!-- PAGE HERO HEADER -->
         <!-- ========================================= -->
-
-        <div class="text-center mb-5">
-
-            <span class="badge bg-success px-3 py-2 mb-3">
-
-                <i class="fa-solid fa-user-check me-2"></i>
-
+        <div class="profile-header" data-aos="fade-down">
+            <div class="profile-badge-pill">
+                <span class="pulse-dot"></span>
+                <i class="fa-solid fa-badge-check"></i>
                 Worker Registration
+            </div>
 
-            </span>
-
-            <h1 class="worker-title">
-
-                Complete Your Worker Profile
-
+            <h1 class="profile-title">
+                Complete Your <span class="highlight-text">Worker Profile</span>
             </h1>
 
-            <p class="worker-subtitle">
-
-                Build your professional profile and start connecting with
-                clients looking for trusted cleaning professionals.
-
+            <p class="profile-subtitle">
+                Build your verified professional profile to start receiving direct job requests and earning with Clean Connect.
             </p>
 
+            <!-- Trust Perks Strip -->
+            <div class="profile-perks-strip">
+                <span class="profile-perk-item">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    Flexible Schedule
+                </span>
+                <span class="profile-perk-item">
+                    <i class="fa-solid fa-wallet"></i>
+                    Fast Direct Payouts
+                </span>
+                <span class="profile-perk-item">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    Verified Service Badging
+                </span>
+                <span class="profile-perk-item">
+                    <i class="fa-solid fa-chart-line-up"></i>
+                    Top Earning Potential
+                </span>
+            </div>
         </div>
 
         <!-- ========================================= -->
         <!-- PROGRESS STEPPER -->
         <!-- ========================================= -->
-
-        <div class="worker-stepper mb-5">
-
-            <div class="step active">
-
-                <div class="step-number">
-
-                    <i class="fa-solid fa-user"></i>
-
+        <div class="profile-stepper-wrap" data-aos="fade-up" data-aos-delay="100">
+            <div class="profile-stepper worker-stepper">
+                <div class="step-item step active" id="stepperItem1">
+                    <div class="step-circle step-number">1</div>
+                    <div class="step-content">
+                        <span class="step-label">Step 01</span>
+                        <span class="step-title">Personal Details</span>
+                    </div>
                 </div>
 
-                <span>Personal</span>
+                <div class="step-connector step-line" id="connector1"></div>
 
-            </div>
-
-            <div class="step-line"></div>
-
-            <div class="step">
-
-                <div class="step-number">
-
-                    <i class="fa-solid fa-location-dot"></i>
-
+                <div class="step-item step" id="stepperItem2">
+                    <div class="step-circle step-number">2</div>
+                    <div class="step-content">
+                        <span class="step-label">Step 02</span>
+                        <span class="step-title">Service Area</span>
+                    </div>
                 </div>
 
-                <span>Location</span>
+                <div class="step-connector step-line" id="connector2"></div>
 
-            </div>
-
-            <div class="step-line"></div>
-
-            <div class="step">
-
-                <div class="step-number">
-
-                    <i class="fa-solid fa-briefcase"></i>
-
+                <div class="step-item step" id="stepperItem3">
+                    <div class="step-circle step-number">3</div>
+                    <div class="step-content">
+                        <span class="step-label">Step 03</span>
+                        <span class="step-title">Specialization</span>
+                    </div>
                 </div>
-
-                <span>Service</span>
-
             </div>
-
         </div>
 
         <!-- ========================================= -->
-        <!-- FORM -->
+        <!-- MAIN PROFILE FORM -->
         <!-- ========================================= -->
-
         <form asp-action="CreateWorkerProfile"
               asp-controller="Worker"
               method="post"
               enctype="multipart/form-data"
-              id="workerProfileForm">
+              id="workerProfileForm"
+              novalidate>
 
             @Html.AntiForgeryToken()
 
-            <div asp-validation-summary="ModelOnly"
-                 class="alert alert-danger"></div>
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="profile-validation-summary" role="alert">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div>
+                        <strong>Please review the information you provided:</strong>
+                        <div asp-validation-summary="ModelOnly"></div>
+                    </div>
+                </div>
+            }
 
             <!-- ========================================= -->
-            <!-- STEP 1 -->
+            <!-- STEP 1: PERSONAL INFORMATION -->
             <!-- ========================================= -->
-
             <div id="step1" class="wizard-step active">
-
-                <!-- PROFILE PHOTO -->
-
-                @* <div class="worker-card mb-4">
-
-                    <div class="card-body text-center">
-
-                        <div class="profile-picture">
-
-                            <img id="previewImage"
-                                 src="~/images/profile-placeholder.png"
-                                 alt="Profile Photo" />
-
-                            <label for="profileImage"
-                                   class="camera-btn">
-
-                                <i class="fa-solid fa-camera"></i>
-
-                            </label>
-
+                <div class="profile-card" data-aos="fade-up" data-aos-delay="150">
+                    <div class="card-header-clean">
+                        <div class="profile-card-header-left">
+                            <div class="profile-card-icon-box">
+                                <i class="fa-solid fa-user-tie"></i>
+                            </div>
+                            <div class="profile-card-header-text">
+                                <h3>Personal & Contact Information</h3>
+                                <p>Provide accurate identity details for your verified service profile.</p>
+                            </div>
                         </div>
-
-                        <h3 class="fw-bold mt-4">
-
-                            Upload Profile Picture
-
-                        </h3>
-
-                        <p class="text-muted">
-
-                            A professional photo increases client trust.
-
-                        </p>
-
-                        <input type="file"
-                               id="profileImage"
-                               class="form-control"
-                               accept="image/*" />
-
+                        <span class="profile-card-badge">Step 1 of 3</span>
                     </div>
 
-                </div> *@
-
-                <!-- PERSONAL INFORMATION -->
-
-                <div class="worker-card">
-
-                    <div class="card-header border-0">
-
-                        <h4 class="fw-bold">
-
-                            <i class="fa-solid fa-user text-success me-2"></i>
-
-                            Personal Information
-
-                        </h4>
-
-                        <small class="text-muted">
-
-                            Tell us about yourself.
-
-                        </small>
-
-                    </div>
-
-                    <div class="card-body">
-
+                    <div class="card-body-clean">
                         <div class="row g-4">
-
                             <!-- First Name -->
-
                             <div class="col-md-6">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-user"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <input asp-for="FirstName"
-                                               class="form-control"
-                                               placeholder="First Name" />
-
-                                        <label asp-for="FirstName"></label>
-
+                                <div class="form-field-group">
+                                    <div class="custom-floating-box">
+                                        <div class="input-icon-pill">
+                                            <i class="fa-solid fa-user"></i>
+                                        </div>
+                                        <div class="form-floating">
+                                            <input asp-for="FirstName"
+                                                   class="form-control"
+                                                   id="FirstName"
+                                                   placeholder="First Name"
+                                                   autocomplete="given-name"
+                                                   required />
+                                            <label asp-for="FirstName">First Name</label>
+                                        </div>
                                     </div>
-
+                                    <span asp-validation-for="FirstName" class="field-validation-error"></span>
                                 </div>
-
-                                <span asp-validation-for="FirstName"
-                                      class="text-danger"></span>
-
                             </div>
 
                             <!-- Last Name -->
-
                             <div class="col-md-6">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-user"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <input asp-for="LastName"
-                                               class="form-control"
-                                               placeholder="Last Name" />
-
-                                        <label asp-for="LastName"></label>
-
+                                <div class="form-field-group">
+                                    <div class="custom-floating-box">
+                                        <div class="input-icon-pill">
+                                            <i class="fa-solid fa-user"></i>
+                                        </div>
+                                        <div class="form-floating">
+                                            <input asp-for="LastName"
+                                                   class="form-control"
+                                                   id="LastName"
+                                                   placeholder="Last Name"
+                                                   autocomplete="family-name"
+                                                   required />
+                                            <label asp-for="LastName">Last Name</label>
+                                        </div>
                                     </div>
-
+                                    <span asp-validation-for="LastName" class="field-validation-error"></span>
                                 </div>
-
-                                <span asp-validation-for="LastName"
-                                      class="text-danger"></span>
-
                             </div>
 
-                            <!-- Email -->
-
+                            <!-- Email Address -->
                             <div class="col-md-6">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-envelope"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <input asp-for="Email"
-                                               class="form-control"
-                                               placeholder="Email" />
-
-                                        <label asp-for="Email"></label>
-
+                                <div class="form-field-group">
+                                    <div class="custom-floating-box">
+                                        <div class="input-icon-pill">
+                                            <i class="fa-solid fa-envelope"></i>
+                                        </div>
+                                        <div class="form-floating">
+                                            <input asp-for="Email"
+                                                   type="email"
+                                                   class="form-control"
+                                                   id="Email"
+                                                   placeholder="name@example.com"
+                                                   autocomplete="email"
+                                                   required />
+                                            <label asp-for="Email">Email Address</label>
+                                        </div>
                                     </div>
-
+                                    <span asp-validation-for="Email" class="field-validation-error"></span>
+                                    <small class="field-help-text">Must match your registered Clean Connect login email.</small>
                                 </div>
-
-                                <span asp-validation-for="Email"
-                                      class="text-danger"></span>
-
                             </div>
 
-                            <!-- Contact -->
-
+                            <!-- Phone Number -->
                             <div class="col-md-6">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-phone"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <input asp-for="Contact"
-                                               class="form-control"
-                                               placeholder="Phone Number" />
-
-                                        <label asp-for="Contact"></label>
-
+                                <div class="form-field-group">
+                                    <div class="custom-floating-box">
+                                        <div class="input-icon-pill">
+                                            <i class="fa-solid fa-phone"></i>
+                                        </div>
+                                        <div class="form-floating">
+                                            <input asp-for="Contact"
+                                                   type="tel"
+                                                   class="form-control"
+                                                   id="Contact"
+                                                   placeholder="08012345678"
+                                                   autocomplete="tel"
+                                                   required />
+                                            <label asp-for="Contact">Phone Number</label>
+                                        </div>
                                     </div>
-
+                                    <span asp-validation-for="Contact" class="field-validation-error"></span>
+                                    <small class="field-help-text">Clients and dispatch will call or message this number.</small>
                                 </div>
-
-                                <span asp-validation-for="Contact"
-                                      class="text-danger"></span>
-
                             </div>
 
                             <!-- Gender -->
-
                             <div class="col-md-6">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-venus-mars"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <select asp-for="Gender"
-                                                class="form-select">
-
-                                            <option value=""></option>
-
-                                            <option value="Male">Male</option>
-
-                                            <option value="Female">Female</option>
-
-                                        </select>
-
-                                        <label asp-for="Gender"></label>
-
+                                <div class="form-field-group">
+                                    <div class="custom-floating-box">
+                                        <div class="input-icon-pill">
+                                            <i class="fa-solid fa-venus-mars"></i>
+                                        </div>
+                                        <div class="form-floating">
+                                            <select asp-for="Gender"
+                                                    class="form-select"
+                                                    id="Gender"
+                                                    required>
+                                                <option value="" disabled selected hidden></option>
+                                                <option value="Male">Male</option>
+                                                <option value="Female">Female</option>
+                                            </select>
+                                            <label asp-for="Gender">Select Gender</label>
+                                        </div>
                                     </div>
-
+                                    <span asp-validation-for="Gender" class="field-validation-error"></span>
                                 </div>
-
-                                <span asp-validation-for="Gender"
-                                      class="text-danger"></span>
-
                             </div>
 
-                            <!-- Date Of Birth -->
-
+                            <!-- Date of Birth -->
                             <div class="col-md-6">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-calendar-days"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <input asp-for="Dob"
-                                               type="date"
-                                               class="form-control" />
-
-                                        <label asp-for="Dob"></label>
-
+                                <div class="form-field-group">
+                                    <div class="custom-floating-box">
+                                        <div class="input-icon-pill">
+                                            <i class="fa-solid fa-calendar-day"></i>
+                                        </div>
+                                        <div class="form-floating">
+                                            <input asp-for="Dob"
+                                                   type="date"
+                                                   class="form-control"
+                                                   id="Dob"
+                                                   required />
+                                            <label asp-for="Dob">Date of Birth</label>
+                                        </div>
                                     </div>
-
+                                    <span asp-validation-for="Dob" class="field-validation-error"></span>
+                                    <small class="field-help-text">You must be at least 18 years old to register as a worker.</small>
                                 </div>
-
-                                <span asp-validation-for="Dob"
-                                      class="text-danger"></span>
-
                             </div>
-
                         </div>
-
                     </div>
-
                 </div>
 
-                <!-- NEXT BUTTON -->
-
-                <div class="d-flex justify-content-end mt-5">
-
+                <!-- Navigation Action -->
+                <div class="profile-actions-bar">
+                    <div></div>
                     <button type="button"
                             id="nextBtn1"
-                            class="btn btn-success btn-lg px-5">
-
-                        Continue
-
-                        <i class="fa-solid fa-arrow-right ms-2"></i>
-
+                            class="btn-wizard-action btn-wizard-primary">
+                        Continue to Location
+                        <i class="fa-solid fa-arrow-right"></i>
                     </button>
-
                 </div>
-
             </div>
 
             <!-- ========================================= -->
-            <!-- STEP 2 -->
-            <!-- LOCATION INFORMATION -->
+            <!-- STEP 2: LOCATION INFORMATION -->
             <!-- ========================================= -->
-
             <div id="step2" class="wizard-step">
-
-                <div class="worker-card">
-
-                    <div class="card-header border-0">
-
-                        <h4 class="fw-bold">
-
-                            <i class="fa-solid fa-location-dot text-success me-2"></i>
-
-                            Location Information
-
-                        </h4>
-
-                        <small class="text-muted">
-
-                            We'll use your location to connect you with nearby clients.
-
-                        </small>
-
+                <div class="profile-card">
+                    <div class="card-header-clean">
+                        <div class="profile-card-header-left">
+                            <div class="profile-card-icon-box">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </div>
+                            <div class="profile-card-header-text">
+                                <h3>Service Base & Work Radius</h3>
+                                <p>We match you with high-value cleaning opportunities in your coverage zone.</p>
+                            </div>
+                        </div>
+                        <span class="profile-card-badge">Step 2 of 3</span>
                     </div>
 
-                    <div class="card-body">
-
-                        <!-- LOCATION DETECTION CARD -->
-
-                        <div class="location-box mb-5">
-
-                            <div class="row align-items-center">
-
-                                <div class="col-lg-8">
-
-                                    <h5 class="fw-bold mb-2">
-
-                                        <i class="fa-solid fa-location-crosshairs text-success me-2"></i>
-
-                                        Detect My Current Location
-
-                                    </h5>
-
-                                    <p class="text-muted mb-0">
-
-                                        Click the button below and allow location access.
-                                        We'll automatically fill your coordinates and state.
-
-                                    </p>
-
+                    <div class="card-body-clean">
+                        <!-- Auto-Detect Geolocation Banner -->
+                        <div class="location-hero-banner">
+                            <div class="location-hero-info">
+                                <div class="location-hero-icon">
+                                    <i class="fa-solid fa-location-crosshairs"></i>
                                 </div>
-
-                                <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
-
-                                    <button type="button"
-                                            id="detectLocationBtn"
-                                            class="btn btn-success btn-location px-4">
-
-                                        <i class="fa-solid fa-location-crosshairs me-2"></i>
-
-                                        Use My Current Location
-
-                                    </button>
-
+                                <div class="location-hero-text">
+                                    <h5>Auto-Detect Current Location</h5>
+                                    <p>Allow location access to pin your operational service coordinates automatically.</p>
                                 </div>
-
                             </div>
-
+                            <button type="button"
+                                    id="detectLocationBtn"
+                                    class="btn-detect-action">
+                                <i class="fa-solid fa-location-crosshairs"></i>
+                                Use My Current Location
+                            </button>
                         </div>
 
-                        <!-- LOCATION FIELDS -->
-
-                        <div class="row g-4">
-
+                        <!-- Manual / Detected Coordinates Fields -->
+                        <div class="row g-4 mb-4">
                             <!-- State -->
-
                             <div class="col-md-4">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-map"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <input asp-for="State"
-                                               id="state"
-                                               class="form-control"
-                                               placeholder="State" />
-
-                                        <label asp-for="State"></label>
-
+                                <div class="form-field-group">
+                                    <div class="custom-floating-box">
+                                        <div class="input-icon-pill">
+                                            <i class="fa-solid fa-map"></i>
+                                        </div>
+                                        <div class="form-floating">
+                                            <input asp-for="State"
+                                                   id="state"
+                                                   class="form-control"
+                                                   placeholder="e.g. Lagos, Abuja"
+                                                   required />
+                                            <label asp-for="State">State / Operational Hub</label>
+                                        </div>
                                     </div>
-
+                                    <span asp-validation-for="State" class="field-validation-error"></span>
                                 </div>
-
-                                <span asp-validation-for="State"
-                                      class="text-danger"></span>
-
                             </div>
 
                             <!-- Latitude -->
-
                             <div class="col-md-4">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-location-dot"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <input asp-for="Latitude"
-                                               id="latitude"
-                                               class="form-control"
-                                               readonly />
-
-                                        <label asp-for="Latitude"></label>
-
+                                <div class="form-field-group">
+                                    <div class="custom-floating-box readonly-box">
+                                        <div class="input-icon-pill">
+                                            <i class="fa-solid fa-compass"></i>
+                                        </div>
+                                        <div class="form-floating">
+                                            <input asp-for="Latitude"
+                                                   id="latitude"
+                                                   class="form-control"
+                                                   placeholder="0.000000"
+                                                   readonly />
+                                            <label asp-for="Latitude">Latitude</label>
+                                        </div>
                                     </div>
-
+                                    <span asp-validation-for="Latitude" class="field-validation-error"></span>
                                 </div>
-
-                                <span asp-validation-for="Latitude"
-                                      class="text-danger"></span>
-
                             </div>
 
                             <!-- Longitude -->
-
                             <div class="col-md-4">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-location-crosshairs"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <input asp-for="Longitude"
-                                               id="longitude"
-                                               class="form-control"
-                                               readonly />
-
-                                        <label asp-for="Longitude"></label>
-
+                                <div class="form-field-group">
+                                    <div class="custom-floating-box readonly-box">
+                                        <div class="input-icon-pill">
+                                            <i class="fa-solid fa-crosshairs"></i>
+                                        </div>
+                                        <div class="form-floating">
+                                            <input asp-for="Longitude"
+                                                   id="longitude"
+                                                   class="form-control"
+                                                   placeholder="0.000000"
+                                                   readonly />
+                                            <label asp-for="Longitude">Longitude</label>
+                                        </div>
                                     </div>
-
+                                    <span asp-validation-for="Longitude" class="field-validation-error"></span>
                                 </div>
-
-                                <span asp-validation-for="Longitude"
-                                      class="text-danger"></span>
-
                             </div>
-
                         </div>
 
-                        <!-- LOCATION PREVIEW -->
-
-                        <div class="location-preview mt-5">
-
-                            <div class="text-center mb-4">
-
-                                <i class="fa-solid fa-map-location-dot location-preview-icon"></i>
-
-                                <h4 class="fw-bold mt-3">
-
-                                    Detected Location
-
-                                </h4>
-
-                                <p class="text-muted">
-
-                                    Your detected location details will appear below.
-
-                                </p>
-
+                        <!-- Live Metrics Cards -->
+                        <div class="location-metrics-grid">
+                            <div class="location-metric-card">
+                                <div class="location-metric-icon text-success">
+                                    <i class="fa-solid fa-map-pin"></i>
+                                </div>
+                                <div class="location-metric-body">
+                                    <div class="location-metric-label">Operational State</div>
+                                    <span id="statePreview" class="location-metric-value">Not Detected</span>
+                                </div>
                             </div>
 
-                            <div class="row g-4">
-
-                                <!-- STATE PREVIEW -->
-
-                                <div class="col-md-4">
-
-                                    <div class="location-info text-center">
-
-                                        <i class="fa-solid fa-map text-success"></i>
-
-                                        <h6 class="mt-3">
-
-                                            State
-
-                                        </h6>
-
-                                        <span id="statePreview">
-
-                                            Not Detected
-
-                                        </span>
-
-                                    </div>
-
+                            <div class="location-metric-card">
+                                <div class="location-metric-icon text-danger">
+                                    <i class="fa-solid fa-location-dot"></i>
                                 </div>
-
-                                <!-- LATITUDE PREVIEW -->
-
-                                <div class="col-md-4">
-
-                                    <div class="location-info text-center">
-
-                                        <i class="fa-solid fa-location-dot text-danger"></i>
-
-                                        <h6 class="mt-3">
-
-                                            Latitude
-
-                                        </h6>
-
-                                        <span id="latPreview">
-
-                                            ---
-
-                                        </span>
-
-                                    </div>
-
+                                <div class="location-metric-body">
+                                    <div class="location-metric-label">Latitude</div>
+                                    <span id="latPreview" class="location-metric-value">---</span>
                                 </div>
-
-                                <!-- LONGITUDE PREVIEW -->
-
-                                <div class="col-md-4">
-
-                                    <div class="location-info text-center">
-
-                                        <i class="fa-solid fa-location-crosshairs text-primary"></i>
-
-                                        <h6 class="mt-3">
-
-                                            Longitude
-
-                                        </h6>
-
-                                        <span id="lngPreview">
-
-                                            ---
-
-                                        </span>
-
-                                    </div>
-
-                                </div>
-
                             </div>
 
-                            <!-- MAP -->
-
-                            <div class="mt-5">
-
-                                <iframe id="mapFrame"
-                                        width="100%"
-                                        height="320"
-                                        style="border:0;border-radius:20px;"
-                                        loading="lazy">
-                                </iframe>
-
+                            <div class="location-metric-card">
+                                <div class="location-metric-icon text-primary">
+                                    <i class="fa-solid fa-location-crosshairs"></i>
+                                </div>
+                                <div class="location-metric-body">
+                                    <div class="location-metric-label">Longitude</div>
+                                    <span id="lngPreview" class="location-metric-value">---</span>
+                                </div>
                             </div>
-
                         </div>
 
+                        <!-- Map Preview Wrapper -->
+                        <div class="map-embed-wrapper mb-2">
+                            <div id="mapPlaceholder" class="map-placeholder-box">
+                                <div class="map-placeholder-icon">
+                                    <i class="fa-solid fa-map-location-dot"></i>
+                                </div>
+                                <h6>Interactive Radar Preview</h6>
+                                <p>Click "Use My Current Location" above to verify and lock your base coordinates on the map.</p>
+                            </div>
+                            <iframe id="mapFrame"
+                                    class="map-embed-frame"
+                                    style="display:none;"
+                                    title="Worker Coverage Area Map"
+                                    loading="lazy"></iframe>
+                        </div>
                     </div>
-
                 </div>
 
-                <!-- NAVIGATION -->
-
-                <div class="d-flex justify-content-between mt-5">
-
+                <!-- Navigation Actions -->
+                <div class="profile-actions-bar">
                     <button type="button"
                             id="prevBtn2"
-                            class="btn btn-light btn-lg px-5">
-
-                        <i class="fa-solid fa-arrow-left me-2"></i>
-
-                        Previous
-
+                            class="btn-wizard-action btn-wizard-secondary">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        Back to Personal Info
                     </button>
 
                     <button type="button"
                             id="nextBtn2"
-                            class="btn btn-success btn-lg px-5">
-
-                        Continue
-
-                        <i class="fa-solid fa-arrow-right ms-2"></i>
-
+                            class="btn-wizard-action btn-wizard-primary">
+                        Continue to Specialization
+                        <i class="fa-solid fa-arrow-right"></i>
                     </button>
-
                 </div>
-
             </div>
 
             <!-- ========================================= -->
-            <!-- STEP 3 -->
-            <!-- PROFESSIONAL INFORMATION -->
+            <!-- STEP 3: SPECIALIZATION & SUMMARY -->
             <!-- ========================================= -->
-
             <div id="step3" class="wizard-step">
-
-                <div class="worker-card">
-
-                    <div class="card-header border-0">
-
-                        <h4 class="fw-bold">
-
-                            <i class="fa-solid fa-briefcase text-success me-2"></i>
-
-                            Professional Information
-
-                        </h4>
-
-                        <small class="text-muted">
-
-                            Tell clients the service you specialize in.
-
-                        </small>
-
+                <div class="profile-card">
+                    <div class="card-header-clean">
+                        <div class="profile-card-header-left">
+                            <div class="profile-card-icon-box">
+                                <i class="fa-solid fa-broom"></i>
+                            </div>
+                            <div class="profile-card-header-text">
+                                <h3>Cleaning Specialization</h3>
+                                <p>Choose the core service category you are experienced and equipped to provide.</p>
+                            </div>
+                        </div>
+                        <span class="profile-card-badge">Step 3 of 3</span>
                     </div>
 
-                    <div class="card-body">
-
-                        <div class="row g-4">
-
-                            <!-- SERVICE TYPE -->
-
-                            <div class="col-12">
-
-                                <div class="input-group custom-input">
-
-                                    <span class="input-group-text">
-
-                                        <i class="fa-solid fa-broom"></i>
-
-                                    </span>
-
-                                    <div class="form-floating">
-
-                                        <select asp-for="ServiceTypeId"
-                                                asp-items="ViewBag.ServiceType"
-                                                class="form-select">
-
-                                            <option value="">
-                                                Select Service Type
-                                            </option>
-
-                                        </select>
-
-                                        <label asp-for="ServiceTypeId"></label>
-
-                                    </div>
-
+                    <div class="card-body-clean">
+                        <!-- Service Type Selector -->
+                        <div class="form-field-group mb-4">
+                            <div class="custom-floating-box">
+                                <div class="input-icon-pill">
+                                    <i class="fa-solid fa-sparkles"></i>
                                 </div>
-
-                                <span asp-validation-for="ServiceTypeId"
-                                      class="text-danger"></span>
-
+                                <div class="form-floating">
+                                    <select asp-for="ServiceTypeId"
+                                            asp-items="ViewBag.ServiceType"
+                                            id="ServiceTypeId"
+                                            class="form-select"
+                                            required>
+                                        <option value="" disabled selected hidden>Choose your specialty...</option>
+                                    </select>
+                                    <label asp-for="ServiceTypeId">Primary Cleaning Specialty</label>
+                                </div>
                             </div>
-
+                            <span asp-validation-for="ServiceTypeId" class="field-validation-error"></span>
+                            <small class="field-help-text">You can add secondary specialties later in your dashboard.</small>
                         </div>
 
-                    </div>
+                        <!-- Hourly Rate -->
+                        <div class="form-field-group mb-4">
+                            <div class="custom-floating-box">
+                                <div class="input-icon-pill">
+                                    <i class="fa-solid fa-naira-sign"></i>
+                                </div>
+                                <div class="form-floating">
+                                    <input asp-for="HourlyRate"
+                                           id="HourlyRate"
+                                           type="number"
+                                           class="form-control"
+                                           min="1"
+                                           max="1000000"
+                                           step="0.01"
+                                           placeholder="2000"
+                                           required />
+                                    <label asp-for="HourlyRate">Hourly Rate (₦)</label>
+                                </div>
+                            </div>
+                            <span asp-validation-for="HourlyRate" class="field-validation-error"></span>
+                            <small class="field-help-text">Your per-hour charge shown to clients when they book you.</small>
+                        </div>
 
+                        <!-- Live Summary Panel -->
+                        <div class="worker-summary-panel">
+                            <div class="summary-header-box">
+                                <div class="summary-hero-icon">
+                                    <i class="fa-solid fa-user-check"></i>
+                                </div>
+                                <h4>Profile Summary Review</h4>
+                                <p>Please double-check your registration details below before finalizing your worker profile.</p>
+                            </div>
+
+                            <div class="summary-cards-grid">
+                                <div class="summary-chip-card">
+                                    <div class="summary-chip-icon">
+                                        <i class="fa-solid fa-id-card"></i>
+                                    </div>
+                                    <div class="summary-chip-body">
+                                        <h6>Full Name</h6>
+                                        <span id="summaryFullName">Worker Candidate</span>
+                                    </div>
+                                </div>
+
+                                <div class="summary-chip-card">
+                                    <div class="summary-chip-icon">
+                                        <i class="fa-solid fa-address-book"></i>
+                                    </div>
+                                    <div class="summary-chip-body">
+                                        <h6>Contact Channels</h6>
+                                        <span id="summaryContact">Pending details</span>
+                                    </div>
+                                </div>
+
+                                <div class="summary-chip-card">
+                                    <div class="summary-chip-icon">
+                                        <i class="fa-solid fa-location-crosshairs"></i>
+                                    </div>
+                                    <div class="summary-chip-body">
+                                        <h6>Base Location</h6>
+                                        <span id="summaryLocation">State not set</span>
+                                    </div>
+                                </div>
+
+                                <div class="summary-chip-card">
+                                    <div class="summary-chip-icon">
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                    </div>
+                                    <div class="summary-chip-body">
+                                        <h6>Selected Specialty</h6>
+                                        <span id="summaryService">Select a category above</span>
+                                    </div>
+                                </div>
+
+                                <div class="summary-chip-card">
+                                    <div class="summary-chip-icon">
+                                        <i class="fa-solid fa-naira-sign"></i>
+                                    </div>
+                                    <div class="summary-chip-body">
+                                        <h6>Hourly Rate</h6>
+                                        <span id="summaryRate">Set rate above</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="agreement-trust-banner">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <div>
+                                    By submitting this form, you confirm that your details are accurate and agree to Clean Connect's Professional Partner Code of Conduct and Service Standards.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- ========================================= -->
-                <!-- PROFILE SUMMARY -->
-                <!-- ========================================= -->
-
-                <div class="worker-card summary-card mt-4">
-
-                    <div class="card-body">
-
-                        <div class="text-center">
-
-                            <div class="summary-icon">
-
-                                <i class="fa-solid fa-circle-check"></i>
-
-                            </div>
-
-                            <h2 class="fw-bold mt-4">
-
-                                Ready to Create Your Profile?
-
-                            </h2>
-
-                            <p class="text-muted">
-
-                                Please review your information before
-                                submitting your worker profile.
-
-                            </p>
-
-                        </div>
-
-                        <hr class="my-4" />
-
-                        <div class="row g-4">
-
-                            <div class="col-md-4">
-
-                                <div class="summary-item">
-
-                                    <i class="fa-solid fa-user"></i>
-
-                                    <div>
-
-                                        <h6 class="mb-1">
-
-                                            Personal Information
-
-                                        </h6>
-
-                                        <small class="text-muted">
-
-                                            Name, Email, Phone,
-                                            Gender & Date of Birth
-
-                                        </small>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            <div class="col-md-4">
-
-                                <div class="summary-item">
-
-                                    <i class="fa-solid fa-location-dot"></i>
-
-                                    <div>
-
-                                        <h6 class="mb-1">
-
-                                            Location
-
-                                        </h6>
-
-                                        <small class="text-muted">
-
-                                            State, Latitude &
-                                            Longitude
-
-                                        </small>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            <div class="col-md-4">
-
-                                <div class="summary-item">
-
-                                    <i class="fa-solid fa-broom"></i>
-
-                                    <div>
-
-                                        <h6 class="mb-1">
-
-                                            Service
-
-                                        </h6>
-
-                                        <small class="text-muted">
-
-                                            Cleaning Category
-                                            Selected
-
-                                        </small>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div class="alert alert-success mt-4">
-
-                            <i class="fa-solid fa-shield-heart me-2"></i>
-
-                            By creating your profile, you agree that the
-                            information provided is accurate and may be
-                            verified by Clean Connect.
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- ========================================= -->
-                <!-- NAVIGATION -->
-                <!-- ========================================= -->
-
-                <div class="d-flex justify-content-between mt-5">
-
+                <!-- Navigation Actions -->
+                <div class="profile-actions-bar">
                     <button type="button"
                             id="prevBtn3"
-                            class="btn btn-outline-secondary btn-lg px-5">
-
-                        <i class="fa-solid fa-arrow-left me-2"></i>
-
-                        Previous
-
+                            class="btn-wizard-action btn-wizard-secondary">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        Back to Location
                     </button>
 
                     <button type="submit"
                             id="saveButton"
-                            class="btn btn-success btn-lg px-5">
-
-                        <i class="fa-solid fa-user-check me-2"></i>
-
-                        Complete Profile
-
+                            class="btn-wizard-action btn-wizard-primary">
+                        <i class="fa-solid fa-user-check"></i>
+                        Complete Worker Profile
                     </button>
-
                 </div>
-
             </div>
-
         </form>
-    </div>
 
+    </div>
 </div>
 
 @section Scripts {
-
     <partial name="_ValidationScriptsPartial" />
-
-    <script src="~/js/worker-profile.js"></script>
-
+    <script src="~/js/worker-profile.js" asp-append-version="true"></script>
 }

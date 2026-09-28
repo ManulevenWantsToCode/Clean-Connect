@@ -8,11 +8,10 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using System.Reflection.Metadata.Ecma335;
 
 namespace Clean_Connect.Application.Command.WorkerCommands
 {
-    public record CreateWorkerCommand(string FirstName, string LastName, double? Latitude, double? Longitude, string Email, string Contact, string Gender, Guid ServiceTypeId, string State, DateTime Dob, string? CreatedBy = null) : IRequest<bool>;
+    public record CreateWorkerCommand(string FirstName, string LastName, double? Latitude, double? Longitude, string Email, string Contact, string Gender, Guid ServiceTypeId, string State, DateTime Dob, decimal HourlyRate, string? CreatedBy = null) : IRequest<bool>;
 
     public class RegisterWorkerValidator : AbstractValidator<CreateWorkerCommand>
     {
@@ -75,6 +74,14 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             RuleFor(x => x.Dob)
                 .LessThan(DateTime.UtcNow)
                 .WithMessage("Date of birth cannot be in the future");
+
+            RuleFor(x => x.HourlyRate)
+                .GreaterThan(0)
+                .WithMessage("Hourly rate must be greater than zero")
+                .LessThanOrEqualTo(1_000_000)
+                .WithMessage("Hourly rate cannot exceed 1,000,000")
+                .PrecisionScale(18, 2, true)
+                .WithMessage("Invalid hourly rate");
 
         }
     }
@@ -170,6 +177,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
                 email,
                 request.State,
                 request.Dob,
+                request.HourlyRate,
                 request.CreatedBy);
 
             logger.LogInformation("Creating worker profile for {Email}", request.Email);

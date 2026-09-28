@@ -39,15 +39,15 @@ namespace Clean_Connect.Application.Command.ClientCommands
     {
         private readonly IUnitOfWork repo;
         private readonly MarkAsCompletedService service;
-        private readonly EscrowService escrowService;
+        private readonly PayoutService payoutService;
         private readonly INotificationService notificationService;
         private readonly ILogger<MarkAsCompletedHandler> logger;
 
-        public MarkAsCompletedHandler(IUnitOfWork _repo, MarkAsCompletedService _service, EscrowService escrowService, INotificationService notificationService, ILogger<MarkAsCompletedHandler> _logger)
+        public MarkAsCompletedHandler(IUnitOfWork _repo, MarkAsCompletedService _service, PayoutService payoutService, INotificationService notificationService, ILogger<MarkAsCompletedHandler> _logger)
         {
             repo = _repo;
             service = _service;
-            this.escrowService = escrowService;
+            this.payoutService = payoutService;
             this.notificationService = notificationService;
             logger = _logger;
         }
@@ -60,7 +60,7 @@ namespace Clean_Connect.Application.Command.ClientCommands
             await service.MarkAsCompletedServiceAsync(request.BookingId, request.ClientId, cancellationToken);
 
             booking.MarkAsCompleted();
-            await escrowService.ReleaseEscrowToWorkerWalletAsync(booking, request.ClientId.ToString(), cancellationToken);
+            await payoutService.PayoutAsync(booking, request.ClientId.ToString(), cancellationToken);
 
             // Referral Reward Logic
             var client = await repo.Clients.GetClientById(request.ClientId, cancellationToken);

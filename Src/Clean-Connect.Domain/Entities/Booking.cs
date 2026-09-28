@@ -9,7 +9,7 @@ namespace Clean_Connect.Domain.Entities
     {
         private Booking() { }
 
-        private Booking(Guid clientId, Guid workerId, DateTime dateOfBooking,Location location, DateTime dateOfService, decimal amount, decimal originalAmount, TimeRange timeRange, PaymentStatus paymentStatus, Address address, Guid serviceTypeId, BookingStatus bookingStatus, Guid? couponId = null, string? createdBy = null)
+        private Booking(Guid clientId, Guid workerId, DateTime dateOfBooking,Location location, DateTime dateOfService, DateTime startTime, DateTime endTime, decimal hourlyRate, decimal totalAmount, decimal amount, decimal originalAmount, TimeRange timeRange, PaymentStatus paymentStatus, Address address, Guid serviceTypeId, BookingStatus bookingStatus, Guid? couponId = null, string? createdBy = null)
         {
             ClientId = clientId;
             WorkerId = workerId;
@@ -22,6 +22,10 @@ namespace Clean_Connect.Domain.Entities
             Address = address;
             DateOfBooking = dateOfBooking;
             DateOfService = dateOfService;
+            StartTime = startTime;
+            EndTime = endTime;
+            HourlyRate = hourlyRate;
+            TotalAmount = totalAmount;
             BookingStatus = bookingStatus;
         }
 
@@ -44,9 +48,13 @@ namespace Clean_Connect.Domain.Entities
 
         public decimal Amount { get; private set; } = default!;
         public decimal OriginalAmount { get; private set; } = default!;
+        public decimal HourlyRate { get; private set; } = default!;
+        public decimal TotalAmount { get; private set; } = default!;
         public Guid? CouponId { get; private set; }
         public Coupon? Coupon { get; private set; }
         public DateTime DateOfService { get; private set; } = default!;
+        public DateTime StartTime { get; private set; } = default!;
+        public DateTime EndTime { get; private set; } = default!;
         public ServiceType ServiceType { get; private set; }
         public Guid ServiceTypeId { get; private set; } = default!;
 
@@ -54,9 +62,9 @@ namespace Clean_Connect.Domain.Entities
 
 
 
-        public static Booking Create(Guid clientId, Guid workerId, Location location, DateTime dateOfService, DateTime dateOfBooking, decimal amount, decimal originalAmount, TimeRange timeRange, Address address, BookingStatus bookingStatus, PaymentStatus paymentStatus, Guid serviceTypeId, Guid? couponId = null, string? createdBy = null)
+        public static Booking Create(Guid clientId, Guid workerId, Location location, DateTime dateOfService, DateTime dateOfBooking, DateTime startTime, DateTime endTime, decimal hourlyRate, decimal totalAmount, decimal amount, decimal originalAmount, TimeRange timeRange, Address address, BookingStatus bookingStatus, PaymentStatus paymentStatus, Guid serviceTypeId, Guid? couponId = null, string? createdBy = null)
         {
-            var booking = new Booking(clientId, workerId, dateOfBooking,location, dateOfService, amount, originalAmount, timeRange, paymentStatus, address, serviceTypeId, bookingStatus, couponId, createdBy);
+            var booking = new Booking(clientId, workerId, dateOfBooking,location, dateOfService, startTime, endTime, hourlyRate, totalAmount, amount, originalAmount, timeRange, paymentStatus, address, serviceTypeId, bookingStatus, couponId, createdBy);
             booking.AddDomainEvent(new BookingCreatedEvent(booking.Id));
             booking.UpdateMetadata(createdBy);
             return booking;

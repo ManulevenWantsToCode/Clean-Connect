@@ -115,7 +115,7 @@
                 </div>
                 <div>
                     <h5 class="settings-card-title">Payments & Payouts</h5>
-                    <p class="settings-card-desc">Commission structure, escrow release, and worker withdrawal limits.</p>
+                    <p class="settings-card-desc">Commission structure, escrow release, and direct worker payouts.</p>
                 </div>
             </div>
             <div class="settings-card-body">
@@ -130,13 +130,6 @@
                     <div class="col-md-6">
                         <label class="form-label">Auto-Release Escrow Delay (hours)</label>
                         <input type="number" class="form-control" value="@Model.AutoReleaseEscrowDelayHours" min="0" />
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Minimum Worker Withdrawal</label>
-                    <div class="input-group">
-                        <span class="input-group-text">₦</span>
-                        <input type="number" class="form-control" value="@Model.MinimumWorkerWithdrawal.ToString("0")" min="0" step="500" />
                     </div>
                 </div>
                 <div class="mb-3">

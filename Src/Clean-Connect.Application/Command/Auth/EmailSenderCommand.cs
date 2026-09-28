@@ -1,12 +1,8 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Mail;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Clean_Connect.Application.Command.Auth
 {
@@ -14,11 +10,13 @@ namespace Clean_Connect.Application.Command.Auth
 
     public class EmailSenderHandler : IRequestHandler<EmailSenderCommand, Unit>
     {
-        private readonly IConfiguration _configuration; 
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<EmailSenderHandler> _logger;
 
-        public EmailSenderHandler(IConfiguration configuration)
+        public EmailSenderHandler(IConfiguration configuration, ILogger<EmailSenderHandler> logger)
         {
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task<Unit> Handle(EmailSenderCommand request, CancellationToken cancellationToken)
@@ -28,7 +26,7 @@ namespace Clean_Connect.Application.Command.Auth
                 Port = int.Parse(_configuration["Email:Smtp:Port"]),
                 Credentials = new NetworkCredential(
                     _configuration["Email:Smtp:Username"],
-                    _configuration["Email:Smtp:Password"]
+                    (_configuration["Email:Smtp:Password"] ?? "").Replace(" ", "").Trim()
                     
                     ),
 
@@ -47,7 +45,14 @@ namespace Clean_Connect.Application.Command.Auth
 
             mailMessage.To.Add(request.ToEmail);
 
-            await smtpClient.SendMailAsync(mailMessage);
+            try
+            {
+                await smtpClient.SendMailAsync(mailMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send email to {ToEmail} with subject {Subject}", request.ToEmail, request.Subject);
+            }
 
             return Unit.Value;
         }

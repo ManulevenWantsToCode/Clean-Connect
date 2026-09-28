@@ -31,6 +31,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================
+    // ADDITIONAL PASSWORD TOGGLES
+    // (e.g. confirm password on register)
+    // ==========================
+
+    document.querySelectorAll("[data-toggle-target]").forEach(function (btn) {
+
+        btn.addEventListener("click", function () {
+
+            const target = document.getElementById(this.getAttribute("data-toggle-target"));
+
+            if (!target) return;
+
+            const type = target.getAttribute("type") === "password"
+                ? "text"
+                : "password";
+
+            target.setAttribute("type", type);
+
+            const icon = this.querySelector("i");
+
+            if (icon) {
+                icon.classList.toggle("fa-eye");
+                icon.classList.toggle("fa-eye-slash");
+            }
+
+        });
+
+    });
+
+    // ==========================
     // LOGIN BUTTON LOADING
     // ==========================
 

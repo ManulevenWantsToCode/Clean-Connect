@@ -39,11 +39,10 @@ var jwtSettings = builder.Configuration.GetSection("Jwt");
 // --------------------
 // Add DbContext first
 // --------------------
-builder.Services.AddSqlServer<ApplicationDbContext>(
+builder.Services.AddNpgsql<ApplicationDbContext>(
     builder.Configuration.GetConnectionString("DefaultConnection"),
     b => b.UseNetTopologySuite()
-   .MigrationsAssembly("Clean-Connect.Persistence"));
-
+          .MigrationsAssembly("Clean-Connect.Persistence"));
 // --------------------
 // Identity Core for API
 // --------------------
@@ -138,7 +137,7 @@ builder.Services.AddScoped<AcceptBookingService>();
 builder.Services.AddScoped<MarkAsCompletedService>();
 builder.Services.AddScoped<EscrowService>();
 builder.Services.AddScoped<PayoutService>();
-builder.Services.AddScoped<WalletService>();
+builder.Services.AddScoped<RefundService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IPaystackService, PaystackService>();
@@ -158,7 +157,7 @@ builder.Services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
-builder.Services.AddScoped<IWalletRepository, WalletRepository>();
+builder.Services.AddScoped<IWorkerBankDetailRepository, WorkerBankDetailRepository>();
 builder.Services.AddScoped<IEscrowRepository, EscrowRepository>();
 builder.Services.AddScoped<ICouponRepository, CouponRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();

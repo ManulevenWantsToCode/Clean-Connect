@@ -26,7 +26,7 @@ namespace Clean_Connect.Application.Query.WorkersQuery
                 throw new KeyNotFoundException("Worker profile not found for the current user.");
 
             var workerFull = await repo.Workers.GetWorkerById(worker.Id, ct);
-            var wallet = await repo.Wallets.GetByWorkerId(worker.Id, ct);
+            var bankDetail = await repo.WorkerBankDetails.GetActiveByWorkerIdAsync(worker.Id, ct);
             var escrows = await repo.Escrows.GetByWorkerId(worker.Id, ct);
 
             var bookings = workerFull.Bookings ?? new();
@@ -81,7 +81,9 @@ namespace Clean_Connect.Application.Query.WorkersQuery
                 ActiveBookings = activeBookings,
                 PendingBookings = pendingBookings,
                 TotalEarnings = totalEarnings,
-                WalletBalance = wallet?.Balance ?? 0,
+                HasBankDetails = bankDetail != null,
+                PayoutAccount = bankDetail != null ? MaskAccount(bankDetail.AccountNumber, bankDetail.BankName) : string.Empty,
+                PendingPayouts = escrows.Count(e => e.Status == EscrowStatus.Held),
                 FiveStarCount = ratingDistribution.GetValueOrDefault(5, 0),
                 FourStarCount = ratingDistribution.GetValueOrDefault(4, 0),
                 ThreeStarCount = ratingDistribution.GetValueOrDefault(3, 0),
@@ -92,6 +94,15 @@ namespace Clean_Connect.Application.Query.WorkersQuery
 
             logger.LogInformation("Worker dashboard loaded for {Email}: {Name}", email, dto.WorkerName);
             return dto;
+        }
+
+        private static string MaskAccount(string? accountNumber, string bankName)
+        {
+            if (string.IsNullOrWhiteSpace(accountNumber))
+                return string.IsNullOrWhiteSpace(bankName) ? string.Empty : bankName;
+            var tail = accountNumber.Length >= 4 ? accountNumber[^4..] : accountNumber;
+            var bank = string.IsNullOrWhiteSpace(bankName) ? "" : $"{bankName} ";
+            return $"{bank}••••{tail}";
         }
     }
 }

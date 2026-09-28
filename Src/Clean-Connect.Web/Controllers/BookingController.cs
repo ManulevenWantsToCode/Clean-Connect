@@ -24,6 +24,7 @@ namespace Clean_Connect.Web.Controllers
         private readonly IUnitOfWork _repo;
         private readonly INotyfService _notyf;
         private readonly IRealtimeNotificationService _notifications;
+        private readonly IWorkerPresenceService _presence;
         private readonly ILogger<BookingController> _logger;
 
         public BookingController(
@@ -31,12 +32,14 @@ namespace Clean_Connect.Web.Controllers
             IUnitOfWork repo,
             INotyfService notyf,
             IRealtimeNotificationService notifications,
+            IWorkerPresenceService presence,
             ILogger<BookingController> logger)
         {
             _mediator = mediator;
             _repo = repo;
             _notyf = notyf;
             _notifications = notifications;
+            _presence = presence;
             _logger = logger;
         }
 
@@ -55,6 +58,8 @@ namespace Clean_Connect.Web.Controllers
             if (Guid.TryParse(Request.Query["serviceTypeId"], out var serviceTypeId)) model.ServiceTypeId = serviceTypeId;
             if (DateTime.TryParse(Request.Query["dateOfService"], out var dateOfService)) model.DateOfService = dateOfService;
             if (!string.IsNullOrWhiteSpace(Request.Query["timeRange"])) model.TimeRange = Request.Query["timeRange"]!;
+            if (DateTime.TryParse(Request.Query["startTime"], out var startTime)) model.StartTime = startTime;
+            if (DateTime.TryParse(Request.Query["endTime"], out var endTime)) model.EndTime = endTime;
             if (double.TryParse(Request.Query["latitude"], out var latitude)) model.Latitude = latitude;
             if (double.TryParse(Request.Query["longitude"], out var longitude)) model.Longitude = longitude;
             if (double.TryParse(Request.Query["radius"], out var radius) && radius >= 100) model.RadiusInMeters = radius;
@@ -100,6 +105,8 @@ namespace Clean_Connect.Web.Controllers
                     model.ServiceTypeId,
                     model.DateOfService,
                     model.TimeRange,
+                    model.StartTime,
+                    model.EndTime,
                     model.CouponCode,
                     User.Identity?.Name);
 
@@ -196,12 +203,14 @@ namespace Clean_Connect.Web.Controllers
                     ServiceName = w.Worker.ServiceType?.Name ?? "Cleaning service",
                     Rating = w.Worker.AverageRating,
                     TotalRating = w.Worker.TotalRating,
-                    Amount = w.Worker.ServiceType?.Amount ?? 0m,
+                    HourlyRate = w.Worker.HourlyRate,
                     State = w.Worker.State,
                     Age = w.Worker.Age,
-                    DistanceInKm = w.DistanceInKm
+                    DistanceInKm = w.DistanceInKm,
+                    IsOnline = _presence.IsOnline(w.Worker.Email.Value)
                 })
-                .OrderBy(w => w.DistanceInKm)
+                .OrderBy(w => !w.IsOnline)
+                .ThenBy(w => w.DistanceInKm)
                 .ThenByDescending(w => w.Rating)
                 .ToList();
         }
@@ -262,6 +271,10 @@ namespace Clean_Connect.Web.Controllers
                 Rating = booking.Ratings?.RatingValue ?? 0,
                 BookingDate = booking.DateOfBooking,
                 DateOfService = booking.DateOfService,
+                StartTime = booking.StartTime,
+                EndTime = booking.EndTime,
+                HourlyRate = booking.HourlyRate,
+                TotalAmount = booking.TotalAmount,
                 TimeRange = booking.TimeRange.ToString(),
                 Amount = booking.Amount,
                 Address = booking.Address,
@@ -311,6 +324,10 @@ namespace Clean_Connect.Web.Controllers
                 WorkersName = booking.Worker?.FullName ?? "Worker",
                 BookingDate = booking.DateOfBooking,
                 DateOfService = booking.DateOfService,
+                StartTime = booking.StartTime,
+                EndTime = booking.EndTime,
+                HourlyRate = booking.HourlyRate,
+                TotalAmount = booking.TotalAmount,
                 TimeRange = booking.TimeRange.ToString(),
                 Amount = booking.Amount,
                 Address = booking.Address,
@@ -685,7 +702,7 @@ namespace Clean_Connect.Web.Controllers
                 Name = worker.FullName.ToString(),
                 ServiceTypeId = worker.ServiceTypeId,
                 ServiceName = worker.ServiceType?.Name ?? "Cleaning service",
-                Amount = worker.ServiceType?.Amount ?? 0m,
+                HourlyRate = worker.HourlyRate,
                 Rating = worker.AverageRating,
                 State = worker.State
             }).ToList();

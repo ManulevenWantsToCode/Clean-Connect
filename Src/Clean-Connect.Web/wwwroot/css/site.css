@@ -597,6 +597,36 @@ body {
     padding: 0;
 }
 
+/* Global content spacing — comfortable, responsive gutters for every
+   main-content container (dashboard + marketing pages). Navbar and footer
+   containers sit outside <main> and keep their compact default gutter. */
+.main-content {
+    --content-pad: 16px;
+}
+
+.main-content .container {
+    padding-right: var(--content-pad);
+    padding-left: var(--content-pad);
+}
+
+@media (min-width: 576px) {
+    .main-content {
+        --content-pad: 20px;
+    }
+}
+
+@media (min-width: 992px) {
+    .main-content {
+        --content-pad: 28px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .main-content {
+        --content-pad: 32px;
+    }
+}
+
 /* Footer */
 
 footer {
@@ -2091,3 +2121,6 @@ textarea.form-control {
     display: block;
     font-weight: 500;
 }
+
+/* Profile Forms Redesign */
+@import url("profile-forms.css");

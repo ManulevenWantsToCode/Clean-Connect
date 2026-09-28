@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Clean_Connect.Application.Command.WorkerCommands
 {
-    public record UpdateWorkerCommand(Guid WorkerId, string FirstName, string LastName, double Latitude, double Longitude, string Address, string Contact, Guid ServiceTypeId, string Email, string Gender, string State, DateTime DateOfBirth, string? ModifiedBy = null) : IRequest<bool>;
+    public record UpdateWorkerCommand(Guid WorkerId, string FirstName, string LastName, double Latitude, double Longitude, string Address, string Contact, Guid ServiceTypeId, string Email, string Gender, string State, DateTime DateOfBirth, decimal HourlyRate, string? ModifiedBy = null) : IRequest<bool>;
 
 
     public class UpdateWorkerValidator : AbstractValidator<UpdateWorkerCommand>
@@ -80,6 +80,14 @@ namespace Clean_Connect.Application.Command.WorkerCommands
                 .WithMessage("Date of Birth is required")
                 .LessThan(DateTime.Now)
                 .WithMessage("Date of Birth must be in the past");
+
+            RuleFor(x => x.HourlyRate)
+                .GreaterThan(0)
+                .WithMessage("Hourly rate must be greater than zero")
+                .LessThanOrEqualTo(1_000_000)
+                .WithMessage("Hourly rate cannot exceed 1,000,000")
+                .PrecisionScale(18, 2, true)
+                .WithMessage("Invalid hourly rate");
         }
     }
 
@@ -147,6 +155,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             worker.UpdateDateOfBirth(request.DateOfBirth, request.ModifiedBy);
             worker.UpdateState(request.State, request.ModifiedBy);
             worker.UpdateGender(gender, request.ModifiedBy);
+            worker.UpdateHourlyRate(request.HourlyRate, request.ModifiedBy);
 
             await repo.Workers.UpdateWorker(worker, cancellationToken);
 

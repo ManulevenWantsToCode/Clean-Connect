@@ -21,11 +21,11 @@
                     Choose a Worker
                 </span>
                 <h1>Cleaners ready for @Model.DateOfService.ToString("MMM dd, yyyy")</h1>
-                <p>Every available professional is shown, closest first. Use the filters to narrow by service, date, or distance.</p>
+                <p>Only available, verified professionals are shown, closest first. Tap a worker to view their profile before you book.</p>
             </div>
             <div class="booking-hero__summary">
-                <span>@Model.AvailableCount available</span>
-                <strong>Distance shown for each worker</strong>
+                <span class="booking-hero__count"><i class="fa-solid fa-circle"></i> @Model.AvailableCount available</span>
+                <strong>All available &amp; ready to book</strong>
             </div>
         </div>
 

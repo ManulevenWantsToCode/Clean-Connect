@@ -1,0 +1,207 @@
+@model List<Clean_Connect.Application.DTO.AdminPayoutDto>
+@{
+    ViewData["Title"] = "Worker Payouts";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+    var pendingCount = Model.Count;
+    var withBank = Model.Count(p => p.HasBankDetails);
+    var totalNet = Model.Sum(p => p.Net);
+    string FormatNaira(decimal amount) => $"₦{amount:N0}";
+}
+
+<div class="admin-page-header">
+    <div class="admin-page-title-wrap">
+        <h2>Worker Payouts</h2>
+        <p>Completed jobs whose net settlement is still in escrow. Transfers run automatically once the worker adds bank details; use Pay Now to retry a transfer.</p>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+<!-- Stat Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Pending Payouts</span>
+                <div class="stat-icon-wrapper stat-icon-amber">
+                    <i class="fa-solid fa-hourglass-half"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@pendingCount.ToString("N0")</div>
+            <div class="stat-card-meta">
+                <span class="trend-badge trend-badge-up">@pendingCount</span>
+                <span>completed & awaiting transfer</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Workers With Bank</span>
+                <div class="stat-icon-wrapper stat-icon-emerald">
+                    <i class="fa-solid fa-bank"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@withBank.ToString("N0")</div>
+            <div class="stat-card-meta">
+                <span class="text-success fw-bold">@pendingCount.ToString("0")</span>
+                <span>payouts ready to send</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Awaiting Bank Details</span>
+                <div class="stat-icon-wrapper stat-icon-sky">
+                    <i class="fa-solid fa-user-clock"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@((pendingCount - withBank).ToString("N0"))</div>
+            <div class="stat-card-meta">
+                <span class="trend-badge trend-badge-neutral">@((pendingCount - withBank))</span>
+                <span>workers must add payout account</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <span class="stat-card-title">Total Escrow Held</span>
+                <div class="stat-icon-wrapper stat-icon-purple">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+            </div>
+            <div class="stat-card-value">@FormatNaira(totalNet)</div>
+            <div class="stat-card-meta">
+                <span class="text-danger fw-bold">@FormatNaira(Model.Sum(p => p.Commission)) fees</span>
+                <span>held on behalf of workers</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payouts Table -->
+<div class="admin-card">
+    <div class="admin-table-responsive">
+        <table class="admin-table" id="payoutsTable">
+            <thead>
+                <tr>
+                    <th>Booking</th>
+                    <th>Worker</th>
+                    <th>Gross</th>
+                    <th>Commission</th>
+                    <th>Worker Net</th>
+                    <th>Payout Account</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-circle-check fs-3 mb-2 d-block text-secondary"></i>
+                            No pending payouts. Completed transfers are settled automatically.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @for (var i = 0; i < Model.Count; i++)
+                    {
+                        var p = Model[i];
+                        <tr id="payout-row-@p.BookingId">
+                            <td>
+                                <div class="user-details">
+                                    <span class="fw-bold">@p.BookingRef</span>
+                                    <span class="user-subtext">@p.ClientName</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar-initials bg-success-subtle text-success">@p.WorkerInitials</div>
+                                    <div class="user-details">
+                                        <span class="user-name">@p.WorkerName</span>
+                                        <span class="user-subtext">@p.PayoutStatus</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>@FormatNaira(p.Gross)</td>
+                            <td>@FormatNaira(p.Commission)</td>
+                            <td>
+                                <span class="fw-bold text-success">@FormatNaira(p.Net)</span>
+                            </td>
+                            <td>
+                                @if (p.HasBankDetails)
+                                {
+                                    <span class="badge-status badge-status-success">
+                                        <span class="badge-status-dot"></span> @p.PayoutAccount
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge-status badge-status-danger">
+                                        <span class="badge-status-dot"></span> No bank details
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (p.HasBankDetails)
+                                {
+                                    <button type="button" class="btn btn-admin-primary btn-sm" onclick="payOutBooking('@p.BookingId')">
+                                        <i class="fa-solid fa-paper-plane me-1"></i> Pay Now
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Auto-fires on add</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.Count > 0)
+    {
+        <div class="admin-pagination-wrapper" data-paginate="payoutsTable" data-page-size="8">
+            <span class="pagination-info" data-pagination-info>Showing all @Model.Count pending payouts</span>
+            <ul class="admin-pagination" data-pagination-list></ul>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function payOutBooking(bookingId) {
+            if (!confirm('Send this payout to the worker bank account now?')) return;
+
+            fetch('@Url.Action("PayOutBooking", "Admin")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    bookingId: bookingId,
+                    __RequestVerificationToken: document.querySelector('input[name="__RequestVerificationToken"]').value
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok) {
+                    document.getElementById('payout-row-' + bookingId).style.opacity = '0.4';
+                    document.getElementById('payout-row-' + bookingId).querySelector('td:last-child').innerHTML =
+                        '<span class="badge-status badge-status-success"><span class="badge-status-dot"></span> Transfer sent</span>';
+                    alert('Payout sent: ' + data.message);
+                } else {
+                    alert(data.message || 'Payout could not be completed.');
+                }
+            })
+            .catch(() => alert('Payout request failed. Try again.'));
+        }
+    </script>
+}
