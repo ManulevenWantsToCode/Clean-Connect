@@ -92,7 +92,7 @@ namespace Clean_Connect.Application.Query.WorkersQuery
                 RecentBookings = recentBookings
             };
 
-            logger.LogInformation("Worker dashboard loaded for {Email}: {Name}", email, dto.WorkerName);
+            logger.LogInformation("Worker dashboard loaded.");
             return dto;
         }
 

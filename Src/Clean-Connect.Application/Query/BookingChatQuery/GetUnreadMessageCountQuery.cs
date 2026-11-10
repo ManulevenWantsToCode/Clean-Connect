@@ -36,7 +36,7 @@ namespace Clean_Connect.Application.Query.BookingChatQuery
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to retrieve unread message count for {Email}", currentUser.Email);
+                logger.LogError("Unread message count retrieval failed with exception type {ExceptionType}.", ex.GetType().Name);
             }
 
             return 0;

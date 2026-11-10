@@ -30,7 +30,7 @@ namespace Clean_Connect.Application.Query.MoneyQuery
             if (client != null)
                 return BuildClientReview(client);
 
-            logger.LogWarning("Money review requested for user without a profile: {Email}", email);
+            logger.LogWarning("Money review was requested for a user without a profile.");
             throw new KeyNotFoundException("No client or worker profile found for the current user.");
         }
 

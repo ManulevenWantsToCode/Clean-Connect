@@ -13,6 +13,12 @@ obj/
 
 # App settings (secrets)
 appsettings.json
+
+# Local secret and environment files
+.env
+.env.*
+!.env.example
+*.secrets.json
 appsettings.*.json
 
 # Logs
@@ -23,3 +29,9 @@ logs/
 .idea/
 .vscode/
 appsettings.json
+
+# Track sanitized configuration templates; secrets belong in User Secrets or deployment configuration.
+!Src/Clean-Connect.Api/appsettings.json
+!Src/Clean-Connect.Api/appsettings.Development.json
+!Src/Clean-Connect.Web/appsettings.json
+!Src/Clean-Connect.Web/appsettings.Development.json

@@ -23,7 +23,7 @@ namespace Clean_Connect.Application.Query.PaymentQuery
             var payment = await repo.Payments.GetByReferenceAsync(request.reference, cancellationToken);
             if (payment == null)
             {
-                logger.LogWarning("Payment with reference {Reference} not found", request.reference);
+                logger.LogWarning("Payment lookup by reference did not match a payment record.");
                 throw new KeyNotFoundException($"Payment with reference {request.reference} not found.");
             }
             return new PaymentDto

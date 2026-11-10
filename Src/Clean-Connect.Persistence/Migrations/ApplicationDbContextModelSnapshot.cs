@@ -143,6 +143,10 @@ namespace Clean_Connect.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -159,6 +163,10 @@ namespace Clean_Connect.Persistence.Migrations
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("RequestHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<Guid>("ServiceTypeId")
                         .HasColumnType("uuid");
@@ -179,15 +187,21 @@ namespace Clean_Connect.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClientId");
-
                     b.HasIndex("CouponId");
 
                     b.HasIndex("ServiceTypeId");
 
                     b.HasIndex("WorkerId");
 
-                    b.ToTable("Bookings");
+                    b.HasIndex("ClientId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Bookings_ClientId_IdempotencyKey")
+                        .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+
+                    b.ToTable("Bookings", t =>
+                        {
+                            t.HasCheckConstraint("CK_Bookings_ValidInterval", "\"StartTime\" < \"EndTime\"");
+                        });
                 });
 
             modelBuilder.Entity("Clean_Connect.Domain.Entities.BookingChat", b =>

@@ -52,7 +52,7 @@ namespace Clean_Connect.Web.Controllers
 
             if (!IsSetupKeyValid(model.SetupKey))
             {
-                _logger.LogWarning("Admin setup attempt blocked: invalid setup key (email {Email}).", model.Email);
+            _logger.LogWarning("Administrator setup attempt blocked by an invalid setup key.");
                 _notyf.Error("Invalid admin setup key.");
                 return View(model);
             }
@@ -66,7 +66,7 @@ namespace Clean_Connect.Web.Controllers
             var existing = await _user.FindByEmailAsync(model.Email);
             if (existing != null)
             {
-                _logger.LogWarning("Admin setup attempt failed: email {Email} already in use.", model.Email);
+            _logger.LogWarning("Administrator setup attempt rejected because the account already exists.");
                 _notyf.Error("An account with that email already exists.");
                 return View(model);
             }
@@ -78,7 +78,7 @@ namespace Clean_Connect.Web.Controllers
             if (!createResult.Succeeded)
             {
                 var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
-                _logger.LogError("Admin setup failed to create user {Email}: {Errors}", model.Email, errors);
+            _logger.LogError("Administrator account creation failed.");
                 foreach (var error in createResult.Errors)
                 {
                     ModelState.AddModelError(string.Empty, error.Description);
@@ -91,13 +91,13 @@ namespace Clean_Connect.Web.Controllers
             if (!roleResult.Succeeded)
             {
                 var errors = string.Join("; ", roleResult.Errors.Select(e => e.Description));
-                _logger.LogError("Admin setup failed to assign role for {Email}: {Errors}", model.Email, errors);
+            _logger.LogError("Administrator role assignment failed.");
                 await _user.DeleteAsync(admin);
                 _notyf.Error("Unable to create the administrator account.");
                 return View(model);
             }
 
-            _logger.LogInformation("Initial administrator account created for {Email}.", model.Email);
+            _logger.LogInformation("Initial administrator account created.");
             _notyf.Success("Administrator account created. Welcome!");
 
             await _signInManager.SignInAsync(admin, isPersistent: true);
@@ -108,7 +108,7 @@ namespace Clean_Connect.Web.Controllers
         {
             if (string.IsNullOrWhiteSpace(_configuration["Admin:SetupKey"]))
             {
-                _logger.LogWarning("/setup-admin blocked: Admin:SetupKey is not configured in appsettings.");
+            _logger.LogWarning("Administrator setup is unavailable because its secure key is not configured.");
                 return true;
             }
 

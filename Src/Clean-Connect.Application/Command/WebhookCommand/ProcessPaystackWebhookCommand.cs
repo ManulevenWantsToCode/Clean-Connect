@@ -60,21 +60,21 @@ namespace Clean_Connect.Application.Command.WebhookCommand
                 throw new InvalidOperationException("Paystack charge webhook did not include a payment reference.");
 
             var reference = payload.Data.Reference;
-            logger.LogInformation("Processing payment with reference: {Reference}", reference);
+            logger.LogInformation("Processing a verified Paystack payment webhook.");
 
             // 2. get payment
             var payment =  await unitOfWork.Payments.GetByReferenceAsync(reference, cancellationToken);
 
             if (payment == null)
             {
-                logger.LogWarning("Payment with reference {Reference} not found", reference);
-                throw new Exception("Payment not found");
+                logger.LogWarning("Verified Paystack webhook did not match a payment record.");
+                throw new InvalidOperationException("Payment not found.");
             }
 
             // 🔒 Prevent double processing (VERY IMPORTANT)
             if (payment.Status == PaymentStatus.Successful)
             {
-                logger.LogInformation("Payment with reference {Reference} has already been processed", reference);
+                logger.LogInformation("Paystack webhook was already processed for payment {PaymentId}.", payment.Id);
                 return Unit.Value;
             }
 
@@ -88,12 +88,10 @@ namespace Clean_Connect.Application.Command.WebhookCommand
 
             // 4. Validate amount
             var amountPaid = verification.Data.Amount / 100m;
-            logger.LogInformation("Amount paid: {AmountPaid}, Expected amount: {ExpectedAmount}", amountPaid, payment.Amount);
-
             if (amountPaid != payment.Amount) 
             {
-                logger.LogError("Amount mismatch for payment reference {Reference}. Amount paid: {AmountPaid}, Expected amount: {ExpectedAmount}", reference, amountPaid, payment.Amount);
-                throw new Exception("Amount mismatch");
+                logger.LogError("Verified Paystack amount did not match payment {PaymentId}.", payment.Id);
+                throw new InvalidOperationException("Payment amount mismatch.");
             }
                 
 
@@ -101,23 +99,23 @@ namespace Clean_Connect.Application.Command.WebhookCommand
             var booking = await unitOfWork.Bookings.GetBookingById(payment.BookingId, cancellationToken);
             if (booking == null)
             {
-                logger.LogError("Booking not found for payment reference {Reference}", reference);
-                throw new Exception("Booking not found");
+                logger.LogError("Booking was not found for payment {PaymentId}.", payment.Id);
+                throw new InvalidOperationException("Booking not found.");
             }
 
             // 🔒 Extra validation (VERY IMPORTANT)
             if (booking.Amount != payment.Amount)
             {
-                logger.LogError("Booking amount mismatch for payment reference {Reference}. Booking amount: {BookingAmount}, Payment amount: {PaymentAmount}", reference, booking.Amount, payment.Amount);
-                throw new Exception("Booking amount mismatch");
+                logger.LogError("Booking amount did not match payment {PaymentId}.", payment.Id);
+                throw new InvalidOperationException("Booking amount mismatch.");
             }
 
             var transactionId = verification.Data.Id?.ToString() ?? reference;
             payment.MarkAsPaid(verification.Data.Authorization.AuthorizationCode, transactionId);
-            logger.LogInformation("Payment with reference {Reference} marked as paid", reference);
+            logger.LogInformation("Payment {PaymentId} marked as paid.", payment.Id);
 
             booking.MarkAsPaid();
-            logger.LogInformation("Booking with reference {Reference} marked as paid", reference);
+            logger.LogInformation("Booking {BookingId} marked as paid.", booking.Id);
 
             await escrowService.HoldPaymentInEscrowAsync(booking, payment, cancellationToken);
 
@@ -138,13 +136,13 @@ namespace Clean_Connect.Application.Command.WebhookCommand
             var escrow = await unitOfWork.Escrows.GetByTransferReference(data.Reference, cancellationToken);
             if (escrow == null)
             {
-                logger.LogWarning("Transfer webhook reference {Reference} does not match a current payout attempt.", data.Reference);
+                logger.LogWarning("Paystack transfer webhook did not match a current payout attempt.");
                 return;
             }
 
             var expectedMinorUnits = decimal.Round(escrow.WorkerShare * 100m, 0, MidpointRounding.AwayFromZero);
             if (data.Amount != expectedMinorUnits)
-                throw new InvalidOperationException($"Transfer amount mismatch for reference {data.Reference}.");
+                throw new InvalidOperationException("Paystack transfer amount mismatch.");
 
             var providerStatus = payload.Event switch
             {
@@ -160,7 +158,7 @@ namespace Clean_Connect.Application.Command.WebhookCommand
 
             await unitOfWork.Escrows.UpdateEscrow(escrow, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            logger.LogInformation("Applied Paystack transfer event {Event} for escrow {EscrowId}, transfer ref {Reference}.", payload.Event, escrow.Id, data.Reference);
+            logger.LogInformation("Applied Paystack transfer event {Event} for escrow {EscrowId}.", payload.Event, escrow.Id);
         }
 
         private static bool IsValidSignature(string payload, string signature, string secret)

@@ -77,7 +77,7 @@ namespace Clean_Connect.Application.Command.PaymentCommand
 
             await _repo.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Saved bank details for worker {WorkerId}", request.WorkerId);
+            _logger.LogInformation("Worker payout bank details saved.");
 
             await _payoutService.PayoutPendingForWorkerAsync(request.WorkerId, request.ModifiedBy, cancellationToken);
 

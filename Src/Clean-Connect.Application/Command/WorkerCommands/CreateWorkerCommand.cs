@@ -118,9 +118,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             if (!string.Equals(appUser.Email, request.Email, StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogWarning(
-                    "Worker creation failed. Profile email {ProfileEmail} does not match logged-in user {UserEmail}",
-                    request.Email,
-                    appUser.Email);
+                "Worker profile email did not match the authenticated account.");
 
                 throw new ValidationException("Worker profile email must match your login email.");
             }
@@ -129,7 +127,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
 
             if (checkExistingEmail != null)
             {
-                logger.LogWarning("Worker creation failed. Email already in use: {Email}", request.Email);
+            logger.LogWarning("Worker profile creation failed because the email is already in use.");
                 throw new ValidationException("Email already in use");
             }
 
@@ -151,7 +149,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Geocoding failed for lat={Lat}, lng={Lng}, falling back to State-based address", request.Latitude, request.Longitude);
+                logger.LogWarning("Geocoding failed with exception type {ExceptionType}; using the state fallback.", ex.GetType().Name);
                     discoverAddress = $"{request.State}, Nigeria";
                 }
 
@@ -180,7 +178,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
                 request.HourlyRate,
                 request.CreatedBy);
 
-            logger.LogInformation("Creating worker profile for {Email}", request.Email);
+        logger.LogInformation("Creating worker profile.");
 
             await repo.Workers.CreateWorker(worker, cancellationToken);
 
@@ -199,8 +197,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             logger.LogInformation("Current Logged-in UserId: {UserId}", currentUser.UserId);
 
             logger.LogInformation(
-                "User found. Email={Email}, IsWorkerProfileCompleted BEFORE={Status}",
-                appUser.Email,
+            "User found. IsWorkerProfileCompleted BEFORE={Status}",
                 appUser.IsWorkerProfileCompleted);
 
             appUser.CompleteWorkerProfile();
@@ -213,11 +210,8 @@ namespace Clean_Connect.Application.Command.WorkerCommands
 
             if (!identityResult.Succeeded)
             {
-                var errorMessages = string.Join("; ", identityResult.Errors.Select(e => $"{e.Code}: {e.Description}"));
-
-                logger.LogError("Identity Update Error: {Errors}", errorMessages);
-
-                throw new Exception($"Failed to update ApplicationUser: {errorMessages}");
+                logger.LogError("Identity profile update failed with {ErrorCount} validation errors.", identityResult.Errors.Count());
+                throw new InvalidOperationException("Failed to update the application account.");
             }
 
             logger.LogInformation("ApplicationUser updated successfully.");
@@ -230,9 +224,8 @@ namespace Clean_Connect.Application.Command.WorkerCommands
                 updatedUser?.IsWorkerProfileCompleted);
 
             logger.LogInformation(
-                "CreateWorker succeeded. WorkerId={WorkerId}, Email={Email}",
-                worker.Id,
-                request.Email);
+            "Worker profile created successfully. WorkerId={WorkerId}.",
+            worker.Id);
 
             return true;
         }

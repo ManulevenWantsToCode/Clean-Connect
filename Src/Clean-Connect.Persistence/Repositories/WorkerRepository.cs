@@ -8,7 +8,7 @@ using NetTopologySuite.Geometries;
 
 namespace Clean_Connect.Persistence.Repositories
 {
-    public class WorkerRepository(ApplicationDbContext dbContext) : IWorkerRepository
+    public class WorkerRepository(ApplicationDbContext dbContext, IPlatformSettingsRepository platformSettingsRepository) : IWorkerRepository
     {
         public async Task CreateWorker(Worker worker, CancellationToken cancellationToken)
         {
@@ -130,13 +130,14 @@ namespace Clean_Connect.Persistence.Repositories
             dateOfService = DateTime.SpecifyKind(dateOfService.Date, DateTimeKind.Utc);
 
             var activeStatuses = new[] { BookingStatus.Pending, BookingStatus.AcceptedAwaitingPayment, BookingStatus.MarkAsPaid, BookingStatus.AwaitingClientStartConfirmation, BookingStatus.InProgress, BookingStatus.AwaitingClientConfirmation };
+            var settings = await platformSettingsRepository.GetAsync(cancellationToken);
 
             var query = dbContext.Workers
                 .Include(s => s.ServiceType)
                 .Where(w => w.IsAvailable)
-                .Where(w => !w.Bookings.Any(b =>
+                .Where(w => w.Bookings.Count(b => !b.IsDeleted &&
                     b.DateOfService.Date == dateOfService.Date &&
-                    activeStatuses.Contains(b.BookingStatus)));
+                    activeStatuses.Contains(b.BookingStatus)) < settings.MaxActiveJobsPerCleanerPerDay);
 
             if (serviceTypeId.HasValue)
                 query = query.Where(w => w.ServiceTypeId == serviceTypeId.Value);

@@ -975,17 +975,46 @@ namespace Clean_Connect.Web.Controllers
                 if (worker == null || worker.IsDeleted)
                     return Json(new { ok = false, message = "Selected cleaner does not exist." });
 
+                if (!worker.IsAvailable || worker.IsSuspended || worker.ServiceTypeId != booking.ServiceTypeId)
+                    return BadRequest(new { ok = false, message = "Selected cleaner is unavailable or is not eligible for this service." });
+
+                var reservingStatuses = new[]
+                {
+                    BookingStatus.Pending, BookingStatus.AcceptedAwaitingPayment, BookingStatus.MarkAsPaid,
+                    BookingStatus.AwaitingClientStartConfirmation, BookingStatus.InProgress,
+                    BookingStatus.AwaitingClientConfirmation
+                };
+                if (worker.Bookings.Any(existing => existing.Id != booking.Id && !existing.IsDeleted &&
+                    reservingStatuses.Contains(existing.BookingStatus) &&
+                    existing.StartTime < booking.EndTime && booking.StartTime < existing.EndTime))
+                    return StatusCode(409, new { ok = false, message = "Selected cleaner is already booked for part of this time." });
+
+                var previousWorkerId = booking.WorkerId;
                 booking.AssignWorker(workerId, User.Identity?.Name);
+                if (previousWorkerId != workerId)
+                {
+                    var bookingChat = await _repo.BookingChats.GetByBookingId(bookingId, ct);
+                    bookingChat?.ReassignWorker(workerId, User.Identity?.Name);
+                }
                 await _repo.Bookings.UpdateBooking(booking, ct);
                 await _repo.SaveChangesAsync(ct);
 
                 _logger.LogInformation("Admin assigned worker '{WorkerId}' to booking '{BookingId}'.", workerId, bookingId);
                 return Json(new { ok = true, message = $"Cleaner assigned to booking {FormatBookingId(booking.Id, booking.DateCreated)}." });
             }
+            catch (BookingConflictException)
+            {
+                _logger.LogWarning("Worker assignment rejected because the schedule conflicts with an existing booking.");
+                return StatusCode(409, new { ok = false, message = "The selected worker is already booked for part of that time, or the booking can no longer be assigned." });
+            }
+            catch (InvalidOperationException)
+            {
+                return StatusCode(409, new { ok = false, message = "The booking is no longer in a state that allows worker assignment." });
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to assign worker '{WorkerId}' to booking '{BookingId}'.", workerId, bookingId);
-                return Json(new { ok = false, message = ex.Message });
+                _logger.LogError(ex, "Failed to assign a worker to a booking.");
+                return StatusCode(500, new { ok = false, message = "The worker could not be assigned. Please try again." });
             }
         }
 
@@ -1056,10 +1085,19 @@ namespace Clean_Connect.Web.Controllers
                 _logger.LogInformation("Admin set booking '{BookingId}' to {Status}. Reason: {Reason}", bookingId, status, reason ?? "None");
                 return Json(new { ok = true });
             }
+            catch (BookingConflictException)
+            {
+                _logger.LogWarning("Booking status change rejected because it conflicts with an active schedule.");
+                return StatusCode(409, new { ok = false, message = "The booking could not be updated because its schedule conflicts with another booking." });
+            }
+            catch (InvalidOperationException)
+            {
+                return StatusCode(409, new { ok = false, message = "The booking is no longer in a state that allows this action." });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to update booking '{BookingId}' status to {Status}.", bookingId, status);
-                return Json(new { ok = false, message = ex.Message });
+                return StatusCode(500, new { ok = false, message = "The booking could not be updated. Please try again." });
             }
         }
 

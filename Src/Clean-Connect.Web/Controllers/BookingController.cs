@@ -57,6 +57,7 @@ namespace Clean_Connect.Web.Controllers
             }
 
             var model = new CreateBookingViewModel();
+            model.IdempotencyKey = Guid.NewGuid().ToString("N");
             if (Guid.TryParse(Request.Query["workerId"], out var workerId)) model.WorkerId = workerId;
             if (Guid.TryParse(Request.Query["serviceTypeId"], out var serviceTypeId)) model.ServiceTypeId = serviceTypeId;
             if (DateTime.TryParse(Request.Query["dateOfService"], out var dateOfService)) model.DateOfService = dateOfService;
@@ -131,9 +132,11 @@ namespace Clean_Connect.Web.Controllers
                     model.StartTime,
                     model.EndTime,
                     model.CouponCode,
-                    User.Identity?.Name);
+                    User.Identity?.Name,
+                    model.IdempotencyKey);
 
-                var bookingId = await _mediator.Send(command, ct);
+                var createResult = await _mediator.Send(command, ct);
+                var bookingId = createResult.BookingId;
                 if (bookingId == Guid.Empty)
                 {
                     _notyf.Error("Unable to create booking.");
@@ -141,12 +144,13 @@ namespace Clean_Connect.Web.Controllers
                     return View(model);
                 }
 
-                await _notifications.NotifyUserAsync(
-                    worker.Email?.Value,
-                    "New booking request",
-                    $"{client.FullName} requested {worker.ServiceType?.Name ?? "a cleaning service"}.",
-                    "success",
-                    Url.Action("WorkerDetails", "Booking", new { bookingId }));
+                if (createResult.Created)
+                    await _notifications.NotifyUserAsync(
+                        worker.Email?.Value,
+                        "New booking request",
+                        $"{client.FullName} requested {worker.ServiceType?.Name ?? "a cleaning service"}.",
+                        "success",
+                        Url.Action("WorkerDetails", "Booking", new { bookingId }));
 
                 _notyf.Success("Booking request sent to the worker.");
                 return RedirectToAction("Dashboard", "Client");
@@ -159,6 +163,21 @@ namespace Clean_Connect.Web.Controllers
                     ModelState.AddModelError(failure.PropertyName, failure.ErrorMessage);
                 }
                 _notyf.Error("Please correct the highlighted booking details.");
+                await PopulateBookingOptionsAsync(ct);
+                return View(model);
+            }
+            catch (IdempotencyConflictException)
+            {
+                Response.StatusCode = StatusCodes.Status409Conflict;
+                _notyf.Error("This booking form was already submitted with different details. Please refresh and try again.");
+                await PopulateBookingOptionsAsync(ct);
+                return View(model);
+            }
+            catch (BookingConflictException)
+            {
+                Response.StatusCode = StatusCodes.Status409Conflict;
+                ModelState.AddModelError(nameof(model.WorkerId), "This worker is no longer available for that time. Please choose another time.");
+                _notyf.Error("The selected worker is already booked for part of that time.");
                 await PopulateBookingOptionsAsync(ct);
                 return View(model);
             }
@@ -1054,6 +1073,16 @@ namespace Clean_Connect.Web.Controllers
                         Url.Action("Details", "Booking", new { bookingId = booking.Id }));
                 }
 
+                return RedirectToAction(nameof(Responses));
+            }
+            catch (BookingConflictException)
+            {
+                _notyf.Error("The worker is already booked for part of this time.");
+                return RedirectToAction(nameof(Responses));
+            }
+            catch (InvalidOperationException)
+            {
+                _notyf.Error("This booking is no longer in a state that allows that action.");
                 return RedirectToAction(nameof(Responses));
             }
             catch (Exception ex)

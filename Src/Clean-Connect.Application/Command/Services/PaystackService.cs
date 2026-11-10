@@ -19,7 +19,9 @@ namespace Clean_Connect.Application.Command.Services
         public PaystackService(HttpClient httpClient, IConfiguration config, ILogger<PaystackService> logger)
         {
             _httpClient = httpClient;
-            _paystackSecretKey = config["Paystack:SecretKey"] ?? throw new ArgumentNullException("Paystack secret key is not configured.");
+            _paystackSecretKey = config["Paystack:SecretKey"] ?? throw new InvalidOperationException("Paystack is not configured.");
+            if (string.IsNullOrWhiteSpace(_paystackSecretKey))
+                throw new InvalidOperationException("Paystack is not configured.");
             _paystackBase = config["Paystack:BaseUrl"]?.TrimEnd('/') ?? "https://api.paystack.co";
             _logger = logger;
         }
@@ -27,7 +29,7 @@ namespace Clean_Connect.Application.Command.Services
         public async Task<PaystackInitResponse> InitializePayment(decimal amount, string email, string reference, string? callbackUrl = null)
         {
             
-            _logger.LogInformation("Initializing Paystack payment for email: {Email}, amount: {Amount}, reference: {Reference}", email, amount, reference);
+            _logger.LogInformation("Initializing Paystack payment.");
       
             var requestData = new Dictionary<string, object>
             {
@@ -41,8 +43,6 @@ namespace Clean_Connect.Application.Command.Services
                 requestData["callback_url"] = callbackUrl;
             }
             
-            _logger.LogDebug("Paystack initialization request data: {@RequestData}", requestData);
-
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
             var response = await _httpClient.PostAsJsonAsync($"{_paystackBase}/transaction/initialize", requestData);
@@ -51,15 +51,11 @@ namespace Clean_Connect.Application.Command.Services
 
             var content = await response.Content.ReadAsStringAsync();
 
-            _logger.LogDebug("Paystack initialization response content: {Content}", content);
-
             var paystackResponse = JsonSerializer.Deserialize<PaystackInitializeApiResponse>(content, JsonOptions);
-
-            _logger.LogInformation("Parsed Paystack initialization response: {@PaystackResponse}", paystackResponse);
 
             if (response.IsSuccessStatusCode && paystackResponse?.Status == true && paystackResponse.Data != null)
             {
-                _logger.LogInformation("Paystack initialization successful for reference: {Reference}", reference);
+                _logger.LogInformation("Paystack payment initialization completed.");
                 return new PaystackInitResponse
                 {
                     Status = true,
@@ -67,43 +63,38 @@ namespace Clean_Connect.Application.Command.Services
                     Reference = paystackResponse.Data.Reference
                 };
             }
-            _logger.LogError("Paystack initialization failed for reference: {Reference}. Response: {Content}", reference, content);
-
-            throw new Exception($"Paystack initialization failed: {paystackResponse?.Message ?? content}");
+            _logger.LogError("Paystack payment initialization failed with status {StatusCode}.", (int)response.StatusCode);
+            throw new HttpRequestException("Paystack payment initialization failed.");
         }
 
         public async Task<PaystackVerifyResponse> VerifyTransaction(string reference)
         {
-            _logger.LogInformation("Verifying Paystack transaction for reference: {Reference}", reference);
+            _logger.LogInformation("Verifying Paystack transaction.");
             _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
-            _logger.LogDebug("Sending request to Paystack to verify transaction with reference: {Reference}", reference);
-
             var response = await _httpClient.GetAsync(
-                $"{_paystackBase}/transaction/verify/{reference}"
+                $"{_paystackBase}/transaction/verify/{Uri.EscapeDataString(reference)}"
             );
-            _logger.LogInformation("Received response from Paystack verification for reference: {Reference}. Status code: {StatusCode}", reference, response.StatusCode);
+            _logger.LogInformation("Paystack transaction verification returned status {StatusCode}.", (int)response.StatusCode);
             response.EnsureSuccessStatusCode();
 
             var content = await response.Content
                 .ReadFromJsonAsync<PaystackVerifyResponse>();
 
-            _logger.LogInformation("Parsed Paystack verification response for reference: {Reference}: {@Content}", reference, content);
-
             if (content == null)
             {
-                _logger.LogError("Failed to parse Paystack verification response for reference: {Reference}", reference);
-                throw new Exception("Unable to verify transaction");
+                _logger.LogError("Paystack transaction verification returned an empty response.");
+                throw new InvalidOperationException("Unable to verify transaction.");
             }
 
-            _logger.LogInformation("Paystack transaction verification successful for reference: {Reference}", reference);
+            _logger.LogInformation("Paystack transaction verification completed.");
             return content;
         }
 
         public async Task<TransferRecipientResponse> CreateTransferRecipientAsync(WorkerBankAccountDto bankAccount, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Creating transfer recipient for account: {AccountName}, bank code: {BankCode}", bankAccount.AccountName, bankAccount.BankCode);
+            _logger.LogInformation("Creating Paystack transfer recipient.");
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
@@ -116,40 +107,34 @@ namespace Clean_Connect.Application.Command.Services
                 currency = bankAccount.Currency
             };
 
-            _logger.LogDebug("Transfer recipient request data: {@RequestData}", requestData);
-
             var response = await _httpClient.PostAsJsonAsync($"{_paystackBase}/transferrecipient", requestData, cancellationToken);
 
             _logger.LogInformation("Received response from Paystack transfer recipient creation: {StatusCode}", response.StatusCode);
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            _logger.LogDebug("Paystack transfer recipient response content: {Content}", content);
-
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Transfer recipient creation failed for account: {AccountName}. Response: {Content}", bankAccount.AccountName, content);
-                throw new Exception($"Transfer recipient creation failed: {content}");
+                _logger.LogError("Paystack transfer recipient creation failed with status {StatusCode}.", (int)response.StatusCode);
+                throw new HttpRequestException("Paystack transfer recipient creation failed.");
             }
 
             var paystackResponse = JsonSerializer.Deserialize<PaystackTransferRecipientResponse>(content, JsonOptions);
 
-            _logger.LogInformation("Parsed Paystack transfer recipient response: {@PaystackResponse}", paystackResponse);
-
             if (paystackResponse == null || !paystackResponse.Status || paystackResponse.Data == null)
             {
-                _logger.LogError("Invalid transfer recipient response for account: {AccountName}. Response: {Content}", bankAccount.AccountName, content);
-                throw new Exception($"Invalid transfer recipient response: {paystackResponse?.Message ?? content}");
+                _logger.LogError("Paystack returned an invalid transfer recipient response.");
+                throw new InvalidOperationException("Paystack returned an invalid transfer recipient response.");
             }
 
-            _logger.LogInformation("Transfer recipient created successfully. RecipientCode: {RecipientCode}", paystackResponse.Data.RecipientCode);
+            _logger.LogInformation("Paystack transfer recipient creation completed.");
 
             return paystackResponse.Data;
         }
 
         public async Task<PaystackResolveAccountResponse?> ResolveAccountAsync(string accountNumber, string bankCode, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Resolving Paystack account for bank code: {BankCode}", bankCode);
+            _logger.LogInformation("Resolving a bank account through Paystack.");
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
@@ -161,20 +146,20 @@ namespace Clean_Connect.Application.Command.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Paystack account resolve failed. Response: {Content}", content);
+                _logger.LogWarning("Paystack account resolution returned status {StatusCode}.", (int)response.StatusCode);
                 return null;
             }
 
             var paystackResponse = JsonSerializer.Deserialize<PaystackResolveAccountResponse>(content, JsonOptions);
 
-            _logger.LogInformation("Paystack account resolve result for bank code {BankCode}: status {Status}", bankCode, paystackResponse?.Status);
+            _logger.LogInformation("Paystack account resolution completed with status {Success}.", paystackResponse?.Status == true);
 
             return paystackResponse;
         }
 
         public async Task<TransferInitiationResponse> InitiateTransferAsync(string recipientCode, decimal amount, string reason, string reference, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Initiating transfer to recipient: {RecipientCode}, amount: {Amount}, reason: {Reason}", recipientCode, amount, reason);
+            _logger.LogInformation("Initiating Paystack transfer.");
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
@@ -188,33 +173,27 @@ namespace Clean_Connect.Application.Command.Services
                 reference
             };
 
-            _logger.LogDebug("Transfer initiation request data: {@RequestData}", requestData);
-
             var response = await _httpClient.PostAsJsonAsync($"{_paystackBase}/transfer", requestData, cancellationToken);
 
             _logger.LogInformation("Received response from Paystack transfer initiation: {StatusCode}", response.StatusCode);
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            _logger.LogDebug("Paystack transfer initiation response content: {Content}", content);
-
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Transfer initiation failed for recipient: {RecipientCode}. Response: {Content}", recipientCode, content);
-                throw new Exception($"Transfer initiation failed: {content}");
+                _logger.LogError("Paystack transfer initiation failed with status {StatusCode}.", (int)response.StatusCode);
+                throw new HttpRequestException("Paystack transfer initiation failed.");
             }
 
             var paystackResponse = JsonSerializer.Deserialize<PaystackTransferResponse>(content, JsonOptions);
 
-            _logger.LogInformation("Parsed Paystack transfer initiation response: {@PaystackResponse}", paystackResponse);
-
             if (paystackResponse == null || !paystackResponse.Status || paystackResponse.Data == null)
             {
-                _logger.LogError("Invalid transfer initiation response for recipient: {RecipientCode}. Response: {Content}", recipientCode, content);
-                throw new Exception($"Invalid transfer response: {paystackResponse?.Message ?? content}");
+                _logger.LogError("Paystack returned an invalid transfer initiation response.");
+                throw new InvalidOperationException("Paystack returned an invalid transfer response.");
             }
 
-            _logger.LogInformation("Transfer initiated successfully. TransferCode: {TransferCode}, Status: {Status}", paystackResponse.Data.TransferCode, paystackResponse.Data.Status);
+            _logger.LogInformation("Paystack transfer initiation completed.");
 
             return paystackResponse.Data;
         }
@@ -231,11 +210,11 @@ namespace Clean_Connect.Application.Command.Services
                 || content.Contains("transfer not found", StringComparison.OrdinalIgnoreCase))
                 return null;
             if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException($"Paystack transfer verification failed ({(int)response.StatusCode}): {content}");
+                throw new HttpRequestException($"Paystack transfer verification failed ({(int)response.StatusCode}).");
 
             var result = JsonSerializer.Deserialize<PaystackTransferResponse>(content, JsonOptions);
             if (result == null || !result.Status || result.Data == null)
-                throw new InvalidOperationException($"Invalid Paystack transfer verification response: {result?.Message ?? content}");
+                throw new InvalidOperationException("Paystack returned an invalid transfer verification response.");
             return result.Data;
         }
 
@@ -251,11 +230,11 @@ namespace Clean_Connect.Application.Command.Services
                 || content.Contains("transfer not found", StringComparison.OrdinalIgnoreCase))
                 return null;
             if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException($"Paystack transfer lookup failed ({(int)response.StatusCode}): {content}");
+                throw new HttpRequestException($"Paystack transfer lookup failed ({(int)response.StatusCode}).");
 
             var result = JsonSerializer.Deserialize<PaystackTransferResponse>(content, JsonOptions);
             if (result == null || !result.Status || result.Data == null)
-                throw new InvalidOperationException($"Invalid Paystack transfer lookup response: {result?.Message ?? content}");
+                throw new InvalidOperationException("Paystack returned an invalid transfer lookup response.");
             return result.Data;
         }
 
@@ -272,7 +251,7 @@ namespace Clean_Connect.Application.Command.Services
 
         public async Task<bool> RefundTransactionAsync(string transactionReference, decimal amount, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Initiating Paystack refund for transaction: {Reference}, amount: {Amount}", transactionReference, amount);
+            _logger.LogInformation("Initiating Paystack refund.");
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
@@ -283,17 +262,13 @@ namespace Clean_Connect.Application.Command.Services
                 amount = amountKobo
             };
 
-            _logger.LogDebug("Paystack refund request data: {@RequestData}", requestData);
-
             var response = await _httpClient.PostAsJsonAsync($"{_paystackBase}/refund", requestData, cancellationToken);
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            _logger.LogDebug("Paystack refund response content: {Content}", content);
-
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Paystack refund failed for transaction: {Reference}. Response: {Content}", transactionReference, content);
+                _logger.LogError("Paystack refund failed with status {StatusCode}.", (int)response.StatusCode);
                 return false;
             }
 
@@ -301,11 +276,11 @@ namespace Clean_Connect.Application.Command.Services
 
             if (paystackResponse == null || !paystackResponse.Status)
             {
-                _logger.LogError("Paystack refund rejected for transaction: {Reference}. Response: {Content}", transactionReference, content);
+                _logger.LogError("Paystack rejected the refund request.");
                 return false;
             }
 
-            _logger.LogInformation("Paystack refund initiated for transaction: {Reference}. Status: {Status}", transactionReference, paystackResponse.Data?.Status);
+            _logger.LogInformation("Paystack refund request completed with status {Status}.", paystackResponse.Data?.Status);
             return true;
         }
 
@@ -313,7 +288,7 @@ namespace Clean_Connect.Application.Command.Services
         {
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
-            _logger.LogInformation("Fetching list of banks from Paystack for currency: {Currency}", currency);
+            _logger.LogInformation("Fetching the bank list from Paystack.");
 
             var response = await _httpClient.GetAsync($"{_paystackBase}/bank?currency={Uri.EscapeDataString(currency)}&per_page=100", cancellationToken);
 
@@ -321,16 +296,16 @@ namespace Clean_Connect.Application.Command.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Failed to fetch banks from Paystack. Response: {Content}", content);
-                throw new Exception($"Failed to fetch banks from Paystack: {content}");
+                _logger.LogError("Paystack bank-list request failed with status {StatusCode}.", (int)response.StatusCode);
+                throw new HttpRequestException("Paystack bank-list request failed.");
             }
 
             var paystackResponse = JsonSerializer.Deserialize<PaystackListBanksResponse>(content, JsonOptions);
 
             if (paystackResponse == null || !paystackResponse.Status || paystackResponse.Data == null)
             {
-                _logger.LogError("Invalid bank list response from Paystack. Response: {Content}", content);
-                throw new Exception($"Invalid bank list response from Paystack: {paystackResponse?.Message ?? content}");
+                _logger.LogError("Paystack returned an invalid bank-list response.");
+                throw new InvalidOperationException("Paystack returned an invalid bank-list response.");
             }
 
             _logger.LogInformation("Fetched {Count} banks from Paystack.", paystackResponse.Data.Count);

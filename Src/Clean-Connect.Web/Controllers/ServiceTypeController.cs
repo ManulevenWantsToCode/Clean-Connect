@@ -2,10 +2,12 @@
 using Clean_Connect.Application.Command.ServiceTypeCommands;
 using Clean_Connect.Application.Query.ServiceTypeQuery;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clean_Connect.Web.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class ServiceTypeController : Controller
     {
         private readonly ILogger<ServiceTypeController> _logger;

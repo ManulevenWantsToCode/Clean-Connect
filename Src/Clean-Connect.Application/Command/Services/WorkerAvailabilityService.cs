@@ -10,14 +10,20 @@ namespace Clean_Connect.Application.Command.Services
 {
     public class WorkerAvailabilityService
     {
-        public bool IsWorkerAvailable(Worker worker, DateTime desiredDate, TimeRange desiredTime)
+        public bool IsWorkerAvailable(Worker worker, DateTime desiredDate, DateTime desiredStart, DateTime desiredEnd)
         {
+            var reservingStatuses = new[]
+            {
+                BookingStatus.Pending, BookingStatus.AcceptedAwaitingPayment, BookingStatus.MarkAsPaid,
+                BookingStatus.AwaitingClientStartConfirmation, BookingStatus.InProgress,
+                BookingStatus.AwaitingClientConfirmation
+            };
             return !worker
                 .Bookings
                 .Any(booking =>
-                booking.DateOfService.Date == desiredDate.Date &&
-                booking.TimeRange == desiredTime && booking.BookingStatus != BookingStatus.Rejected
-                && booking.BookingStatus != BookingStatus.Expired
+                !booking.IsDeleted &&
+                reservingStatuses.Contains(booking.BookingStatus) &&
+                booking.StartTime < desiredEnd && desiredStart < booking.EndTime
                 );
         }
 

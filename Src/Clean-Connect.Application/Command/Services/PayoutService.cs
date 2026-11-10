@@ -95,7 +95,7 @@ namespace Clean_Connect.Application.Command.Services
                 }
 
                 var result = await PayoutAsync(booking, modifiedBy, reconcileExisting: true, cancellationToken);
-                _logger.LogInformation("Payout recovery for booking {BookingId}: {Message}", booking.Id, result.Message);
+                _logger.LogInformation("Payout reconciliation completed for booking {BookingId} with success {Success}.", booking.Id, result.Success);
             }
         }
 
@@ -141,7 +141,7 @@ namespace Clean_Connect.Application.Command.Services
 
         private async Task<PayoutResult> PayoutToExternalTransferAsync(Booking booking, WorkerBankDetail bankDetail, Escrow escrow, string? modifiedBy, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Executing direct transfer payout for booking: {BookingId}, account tail: {Tail}", booking.Id, Tail(bankDetail.AccountNumber));
+            _logger.LogInformation("Executing payout for booking {BookingId}.", booking.Id);
 
             var wasUnresolved = escrow.TransferStatus is PayoutTransferStatus.Initiating
                 or PayoutTransferStatus.Unknown
@@ -190,7 +190,7 @@ namespace Clean_Connect.Application.Command.Services
                         return new PayoutResult(false, "This transfer is awaiting OTP approval in Paystack; no duplicate transfer was created.", escrow.PaystackTransferCode);
 
                     var reason = $"Payout for booking {booking.Id}";
-                    _logger.LogInformation("Initiating payout transfer for booking {BookingId}, reference {Reference}", booking.Id, reference);
+                    _logger.LogInformation("Initiating payout transfer for booking {BookingId}.", booking.Id);
                     transferResult = await _paystackService.InitiateTransferAsync(recipientCode, escrow.WorkerShare, reason, reference, cancellationToken);
                 }
 
@@ -212,7 +212,7 @@ namespace Clean_Connect.Application.Command.Services
                     PayoutTransferStatus.Reversed => "Paystack reversed the transfer. It is eligible for a safe retry.",
                     _ => "The transfer outcome is not yet confirmed. The same transfer reference will be checked before retrying."
                 };
-                _logger.LogInformation("Payout state for booking {BookingId} is {Status}, reference {Reference}", booking.Id, escrow.TransferStatus, reference);
+                _logger.LogInformation("Payout state for booking {BookingId} is {Status}.", booking.Id, escrow.TransferStatus);
                 return new PayoutResult(completed, message, transferResult.TransferCode, escrow.TransferStatus.ToString());
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -242,11 +242,5 @@ namespace Clean_Connect.Application.Command.Services
             }
         }
 
-        private static string Tail(string accountNumber)
-        {
-            if (string.IsNullOrEmpty(accountNumber) || accountNumber.Length < 4)
-                return accountNumber ?? string.Empty;
-            return accountNumber[^4..];
-        }
     }
 }

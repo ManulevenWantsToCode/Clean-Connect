@@ -8,20 +8,15 @@ namespace Clean_Connect.Application.DTO
 {
     public record NearbyWorkerDto
     {
+        public Guid WorkerId { get; init; }
         public string Name { get; set; }
-
-        public string Email { get; set; }
-
-        public string Address { get; set; }
-
-        public string Contact { get; set; }
-
-        public string Gender { get; set; }
 
         public string ServiceType { get; set; }
 
         public double DistanceInKm { get; set; }
 
         public double Rating { get; set; }
+        public string State { get; init; }
+        public decimal HourlyRate { get; init; }
     }
 }

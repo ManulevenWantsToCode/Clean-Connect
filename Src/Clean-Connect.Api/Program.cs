@@ -1,4 +1,5 @@
 using Clean_Connect.Application.AssemblyMarker;
+using Clean_Connect.Application.Configuration;
 using Clean_Connect.Application.Behaviours;
 using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.Interface.Repositories;
@@ -8,6 +9,7 @@ using Clean_Connect.Domain.Utilities;
 using Clean_Connect.Infrastructure.Configuration;
 using Clean_Connect.Infrastructure.Context;
 using Clean_Connect.Persistence.Repositories;
+using Clean_Connect.Api.Security;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -19,6 +21,7 @@ using Serilog;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+RequiredConfiguration.ValidateProduction(builder.Configuration, builder.Environment.EnvironmentName);
 
 // --------------------
 // Serilog configuration
@@ -35,6 +38,9 @@ builder.Host.UseSerilog();
 // JWT settings
 // --------------------
 var jwtSettings = builder.Configuration.GetSection("Jwt");
+var jwtKey = jwtSettings["Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+    throw new InvalidOperationException("JWT signing configuration is missing.");
 
 // --------------------
 // Add DbContext first
@@ -64,6 +70,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.Events = new JwtBearerEvents { OnTokenValidated = JwtRevocationEvents.ValidateTokenAsync };
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -72,14 +79,19 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 });
 
 // --------------------
 // Authorization
 // --------------------
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 
 builder.Services.AddApiVersioning(options =>
@@ -98,15 +110,10 @@ builder.Services.AddVersionedApiExplorer(options =>
 // --------------------
 // CORS Configuration
 // --------------------
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+var frontendCorsPolicy = FrontendCorsPolicy.Build(allowedOrigins);
+builder.Services.AddCors(options => options.AddPolicy(FrontendCorsPolicy.Name, frontendCorsPolicy));
+builder.Services.AddScoped<IJwtRevocationStore, IdentityJwtRevocationStore>();
 
 // --------------------
 // Controllers & Swagger
@@ -167,6 +174,7 @@ builder.Services.AddScoped<IWorkerBankDetailRepository, WorkerBankDetailReposito
 builder.Services.AddScoped<IEscrowRepository, EscrowRepository>();
 builder.Services.AddScoped<ICouponRepository, CouponRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IPlatformSettingsRepository, PlatformSettingsRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // --------------------
@@ -195,7 +203,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // ? MUST come BEFORE UseAuthorization
-app.UseCors("AllowAll");
+app.UseCors(FrontendCorsPolicy.Name);
 app.UseAuthentication();
 app.UseAuthorization();
 

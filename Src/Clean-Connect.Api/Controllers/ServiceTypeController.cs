@@ -3,6 +3,7 @@ using Clean_Connect.Application.Query.ServiceTypeQuery;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Clean_Connect.Api.Controllers
 {
@@ -19,6 +20,7 @@ namespace Clean_Connect.Api.Controllers
         }
 
         [HttpPost("Create-service-type")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> CreateServiceType([FromBody] CreateServiceTypeCommand serviceType, CancellationToken cancellationToken)
         {
             logger.LogInformation("Service type creation started");
@@ -28,6 +30,7 @@ namespace Clean_Connect.Api.Controllers
         }
 
         [HttpPut("Update-service-type")]
+        [Authorize(Roles = "Admin")]
 
         public async Task<ActionResult> UpdateServiceType([FromBody] UpdateServiceTypeCommands serviceType, CancellationToken cancellationToken)
         {
@@ -38,6 +41,7 @@ namespace Clean_Connect.Api.Controllers
         }
 
         [HttpGet("Get-all-service-types")]
+        [AllowAnonymous]
 
         public async Task<ActionResult> GetAllServiceTypes(CancellationToken cancellationToken)
         {
@@ -50,6 +54,7 @@ namespace Clean_Connect.Api.Controllers
 
 
         [HttpGet("Get-service-type-by-id/{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult> GetServiceTypeById(Guid id, CancellationToken cancellationToken)
         {
             logger.LogInformation("Get service type by ID operation started");

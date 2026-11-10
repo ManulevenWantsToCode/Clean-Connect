@@ -49,7 +49,7 @@ namespace Clean_Connect.Application.Query.ClientsQuery
 
             if (client == null)
             {
-                logger.LogWarning("Client not found for email: {Email}", email);
+                logger.LogWarning("Client profile was not found for the authenticated account.");
                 return new ClientDashboardDto { ClientName = "Client" };
             }
 

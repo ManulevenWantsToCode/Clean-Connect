@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Src\Clean-Connect.Api\Clean-Connect.Api.csproj" />
     <ProjectReference Include="..\..\Src\Clean-Connect.Web\Clean-Connect.Web.csproj" />
     <ProjectReference Include="..\..\Src\Clean-Connect.Application\Clean-Connect.Application.csproj" />
   </ItemGroup>

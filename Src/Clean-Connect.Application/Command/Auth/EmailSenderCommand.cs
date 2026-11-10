@@ -56,7 +56,7 @@ namespace Clean_Connect.Application.Command.Auth
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send email to {ToEmail} with subject {Subject}", request.ToEmail, request.Subject);
+                _logger.LogError("Email delivery failed with exception type {ExceptionType}.", ex.GetType().Name);
             }
 
             return Unit.Value;

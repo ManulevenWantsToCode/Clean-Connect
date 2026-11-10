@@ -25,9 +25,16 @@ namespace Clean_Connect.Application.Command.Auth
         public async Task<string> Handle(JwtTokenCommand request, CancellationToken cancellationToken)
         {
             var jwtSettings = _configuration.GetSection("Jwt");
+            var configuredKey = jwtSettings["Key"];
+            if (string.IsNullOrWhiteSpace(configuredKey))
+                throw new InvalidOperationException("JWT signing configuration is missing.");
+
+            if (!double.TryParse(jwtSettings["DurationInMinutes"], System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out var durationInMinutes) || durationInMinutes <= 0)
+                throw new InvalidOperationException("JWT lifetime configuration is invalid.");
 
             var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtSettings["Key"])
+                Encoding.UTF8.GetBytes(configuredKey)
             );
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -52,9 +59,7 @@ namespace Clean_Connect.Application.Command.Auth
                 issuer: jwtSettings["Issuer"],
                 audience: jwtSettings["Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(
-                    double.Parse(jwtSettings["DurationInMinutes"])
-                ),
+                expires: DateTime.UtcNow.AddMinutes(durationInMinutes),
                 signingCredentials: creds
             );
 

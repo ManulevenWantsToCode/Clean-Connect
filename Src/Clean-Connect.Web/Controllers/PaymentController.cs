@@ -48,6 +48,17 @@ namespace Clean_Connect.Web.Controllers
 
             try
             {
+                var payment = await _repo.Payments.GetByReferenceAsync(paymentReference, ct);
+                var paymentBooking = payment == null
+                    ? null
+                    : await _repo.Bookings.GetBookingById(payment.BookingId, ct);
+
+                if (payment == null || paymentBooking == null || paymentBooking.ClientId != client.Id)
+                {
+                    _notyf.Error("The booking for this payment was not found for your profile.");
+                    return RedirectToAction("ClientResponses", "Booking");
+                }
+
                 var result = await _mediator.Send(new ConfirmPaymentCommand(paymentReference), ct);
 
                 var booking = await _repo.Bookings.GetBookingById(result.BookingId, ct);
@@ -81,7 +92,7 @@ namespace Clean_Connect.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Payment confirmation failed for reference {Reference}", paymentReference);
+                _logger.LogError("Payment confirmation failed with exception type {ExceptionType}.", ex.GetType().Name);
                 _notyf.Error("We couldn't confirm your payment right now. Please try again.");
 
                 var model = new PaymentConfirmationViewModel

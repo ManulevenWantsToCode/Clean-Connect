@@ -47,7 +47,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
 
             if (appUser == null)
             {
-                logger.LogWarning("Login failed for email: {Email} (user not found)", request.Email);
+            logger.LogWarning("Login failed because the account was not found.");
 
                 return new LoginResponse
                 {
@@ -59,7 +59,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
             // Check if account is already locked
             if (await user.IsLockedOutAsync(appUser))
             {
-                logger.LogWarning("Locked out login attempt for {Email}", request.Email);
+            logger.LogWarning("Login attempt rejected for a locked account.");
 
                 return new LoginResponse
                 {
@@ -80,7 +80,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 // Check if this failed attempt locked the account
                 if (await user.IsLockedOutAsync(appUser))
                 {
-                    logger.LogWarning("User {Email} has been locked out.", request.Email);
+            logger.LogWarning("Login rejected because the account is locked out.");
 
                     return new LoginResponse
                     {
@@ -90,7 +90,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                     };
                 }
 
-                logger.LogWarning("Invalid password for {Email}", request.Email);
+            logger.LogWarning("Login rejected because credentials were invalid.");
 
                 return new LoginResponse
                 {
@@ -106,7 +106,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
             // Now check email confirmation
             if (!appUser.EmailConfirmed)
             {
-                logger.LogInformation("Login blocked for {Email}: email not confirmed.", request.Email);
+            logger.LogInformation("Login blocked because the account email is not confirmed.");
 
                 return new LoginResponse
                 {
@@ -147,10 +147,8 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                     foreach (var error in updateResult.Errors)
                     {
                         logger.LogError(
-                            "Failed to repair worker profile completion flag for {Email}: {Code} - {Description}",
-                            appUser.Email,
-                            error.Code,
-                            error.Description);
+                            "Failed to repair worker profile completion flag. Identity error code: {Code}.",
+                            error.Code);
                     }
 
                     return new LoginResponse
@@ -164,8 +162,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 }
 
                 logger.LogInformation(
-                    "Repaired worker profile completion flag during login for {Email}",
-                    appUser.Email);
+                    "Repaired worker profile completion flag during login.");
             }
 
             // Sign in (creates authentication cookie)
@@ -188,7 +185,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 new JwtTokenCommand(appUser),
                 cancellationToken);
 
-            logger.LogInformation("User logged in successfully: {Email}", request.Email);
+            logger.LogInformation("User login completed successfully.");
 
             return new LoginResponse
             {

@@ -65,7 +65,7 @@ namespace Clean_Connect.Application.Command.Services
             if (lookupResponse.StatusCode != HttpStatusCode.NotFound)
             {
                 var body = await lookupResponse.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogWarning("Agora Chat user lookup failed for {UserId}. Status {StatusCode}: {Body}", userId, lookupResponse.StatusCode, body);
+                logger.LogWarning("Agora Chat user lookup failed with status {StatusCode}.", (int)lookupResponse.StatusCode);
             }
 
             using var create = new HttpRequestMessage(HttpMethod.Post, new Uri(host, $"app-id/{appId}/users"));
@@ -85,7 +85,7 @@ namespace Clean_Connect.Application.Command.Services
                 return;
             }
 
-            logger.LogError("Agora Chat user provisioning failed for {UserId}. Status {StatusCode}: {Body}", userId, createResponse.StatusCode, createBody);
+            logger.LogError("Agora Chat user provisioning failed with status {StatusCode}.", (int)createResponse.StatusCode);
             throw new InvalidOperationException("Agora Chat user provisioning failed.");
         }
 

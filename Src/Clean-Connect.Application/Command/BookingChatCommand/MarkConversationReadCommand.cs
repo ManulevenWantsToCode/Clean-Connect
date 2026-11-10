@@ -73,8 +73,7 @@ namespace Clean_Connect.Application.Command.BookingChatCommand
                 else
                 {
                     logger.LogWarning(
-                        "MarkConversationRead access denied. Email {Email} is not a participant on booking {BookingId}.",
-                        currentUser.Email,
+                        "MarkConversationRead access denied for a non-participant on booking {BookingId}.",
                         request.BookingId);
                     throw new UnauthorizedAccessException("Only the booking client and assigned worker can access this conversation.");
                 }

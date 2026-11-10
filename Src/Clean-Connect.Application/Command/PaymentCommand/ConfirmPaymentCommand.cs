@@ -37,14 +37,14 @@ namespace Clean_Connect.Application.Command.PaymentCommand
             var payment = await unitOfWork.Payments.GetByReferenceAsync(request.Reference, cancellationToken);
             if (payment == null)
             {
-                logger.LogWarning("Payment with reference {Reference} not found during confirmation.", request.Reference);
+                logger.LogWarning("Payment was not found during confirmation.");
                 throw new ArgumentException("Payment was not found for the given reference.");
             }
 
             // Already processed (webhook may have completed first) -> idempotent success.
             if (payment.Status == PaymentStatus.Successful)
             {
-                logger.LogInformation("Payment {Reference} was already confirmed.", request.Reference);
+                logger.LogInformation("Payment was already confirmed.");
                 return new PaymentConfirmationResult(
                     payment.BookingId,
                     payment.Id,
@@ -66,7 +66,7 @@ namespace Clean_Connect.Application.Command.PaymentCommand
                 await unitOfWork.Payments.UpdatePayment(payment, cancellationToken);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
 
-                logger.LogWarning("Payment {Reference} failed Paystack verification.", request.Reference);
+                logger.LogWarning("Paystack payment verification failed.");
                 return new PaymentConfirmationResult(
                     payment.BookingId,
                     payment.Id,
@@ -80,23 +80,21 @@ namespace Clean_Connect.Application.Command.PaymentCommand
             if (amountPaid != payment.Amount)
             {
                 logger.LogError(
-                    "Amount mismatch for reference {Reference}. Paid {AmountPaid}, expected {ExpectedAmount}.",
-                    request.Reference,
-                    amountPaid,
-                    payment.Amount);
+                    "Verified payment amount did not match the recorded amount for payment {PaymentId}.",
+                    payment.Id);
                 throw new InvalidOperationException("The amount paid does not match the booking amount.");
             }
 
             var booking = await unitOfWork.Bookings.GetBookingById(payment.BookingId, cancellationToken);
             if (booking == null)
             {
-                logger.LogError("Booking for payment {Reference} was not found.", request.Reference);
+                logger.LogError("Booking was not found for payment {PaymentId}.", payment.Id);
                 throw new InvalidOperationException("The booking for this payment was not found.");
             }
 
             if (booking.Amount != payment.Amount)
             {
-                logger.LogError("Booking amount mismatch for reference {Reference}.", request.Reference);
+                logger.LogError("Booking amount did not match payment {PaymentId}.", payment.Id);
                 throw new InvalidOperationException("The booking amount does not match the payment amount.");
             }
 
@@ -111,7 +109,7 @@ namespace Clean_Connect.Application.Command.PaymentCommand
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await notificationService.PaymentConfirmedAsync(booking, cancellationToken);
 
-            logger.LogInformation("Payment {Reference} confirmed successfully.", request.Reference);
+            logger.LogInformation("Payment {PaymentId} confirmed successfully.", payment.Id);
 
             return new PaymentConfirmationResult(
                 payment.BookingId,

@@ -84,6 +84,15 @@ namespace Clean_Connect.Domain.Entities
             UpdateMetadata(modifiedBy);
         }
 
+        public void ReassignWorker(Guid workerId, string? modifiedBy = null)
+        {
+            ValidateId(workerId, nameof(workerId));
+            WorkerProviderUserId = BuildWorkerUserId(workerId);
+            WorkerUnreadCount = 0;
+            WorkerLastReadAt = null;
+            UpdateMetadata(modifiedBy);
+        }
+
         private static string? TruncatePreview(string? text)
         {
             if (string.IsNullOrWhiteSpace(text)) return null;

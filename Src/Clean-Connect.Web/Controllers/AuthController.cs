@@ -47,14 +47,14 @@ namespace Clean_Connect.Web.Controllers
         {
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Login validation failed for {Email}", model.Email);
+                _logger.LogWarning("Login validation failed.");
                 _notyf.Error("Please correct the highlighted errors.");
                 return View(model);
             }
 
             try
             {
-                _logger.LogInformation("Login attempt for {Email}", model.Email);
+                _logger.LogInformation("Login attempt received.");
 
                 var command = new LoginCommand(
                     model.Email,
@@ -67,8 +67,7 @@ namespace Clean_Connect.Web.Controllers
                 if (result.EmailNotConfirmed == true)
                 {
                     _logger.LogInformation(
-                        "Unconfirmed email login attempt for {Email}",
-                        model.Email);
+                        "Login blocked because the account email is unconfirmed.");
 
                     _notyf.Warning(
                         "Your email address has not been verified.");
@@ -83,9 +82,7 @@ namespace Clean_Connect.Web.Controllers
                 if (result == null || !result.IsSuccessful)
                 {
                     _logger.LogWarning(
-                        "Failed login attempt for {Email}. Reason: {Error}",
-                        model.Email,
-                        result?.ErrorMessage);
+                        "Login attempt failed.");
 
                     _notyf.Error("Invalid email or password.");
 
@@ -99,8 +96,7 @@ namespace Clean_Connect.Web.Controllers
 
 
                 _logger.LogInformation(
-                    "User {Email} logged in successfully",
-                    model.Email);
+                    "User login completed successfully.");
 
                 
 
@@ -131,10 +127,7 @@ namespace Clean_Connect.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "An error occurred while logging in {Email}",
-                    model.Email);
+                _logger.LogError("Login failed with exception type {ExceptionType}.", ex.GetType().Name);
 
                 _notyf.Error(
                     "An unexpected error occurred. Please try again.");
@@ -184,7 +177,7 @@ namespace Clean_Connect.Web.Controllers
         {
             if (!string.IsNullOrWhiteSpace(remoteError))
             {
-                _logger.LogWarning("Google OAuth failed with error: {RemoteError}", remoteError);
+                _logger.LogWarning("Google OAuth authentication failed.");
                 _notyf.Error("There was a problem signing in with Google. Please try again.");
                 return RedirectToAction(nameof(Login));
             }
@@ -227,8 +220,7 @@ namespace Clean_Connect.Web.Controllers
                 var createResult = await _user.CreateAsync(user);
                 if (!createResult.Succeeded)
                 {
-                    var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
-                    _logger.LogError("Failed to create user from Google login for {Email}. Errors: {Errors}", email, errors);
+                    _logger.LogError("Account creation from Google login failed.");
                     _notyf.Error("Unable to create your account from the Google login.");
                     return RedirectToAction(nameof(Login));
                 }
@@ -244,10 +236,10 @@ namespace Clean_Connect.Web.Controllers
                 var roleResult = await _user.AddToRoleAsync(user, role);
                 if (!roleResult.Succeeded)
                 {
-                    _logger.LogError("Failed to assign {Role} role after Google login for {Email}.", role, email);
+                    _logger.LogError("Role assignment after Google login failed for role {Role}.", role);
                 }
 
-                _logger.LogInformation("Created user {Email} with role {Role} via Google OAuth.", email, role);
+                _logger.LogInformation("Created account through Google OAuth with role {Role}.", role);
             }
             else
             {
@@ -257,7 +249,7 @@ namespace Clean_Connect.Web.Controllers
                 {
                     user.EmailConfirmed = true;
                     await _user.UpdateAsync(user);
-                    _logger.LogInformation("Confirmed email for existing user {Email} via Google OAuth.", email);
+                    _logger.LogInformation("Confirmed existing account email through Google OAuth.");
                 }
             }
 
@@ -265,8 +257,7 @@ namespace Clean_Connect.Web.Controllers
             var linkResult = await _user.AddLoginAsync(user, loginInfo);
             if (!linkResult.Succeeded)
             {
-                var errors = string.Join(", ", linkResult.Errors.Select(e => e.Description));
-                _logger.LogWarning("Failed to link Google login to {Email}. Errors: {Errors}", email, errors);
+                _logger.LogWarning("Linking the Google login to an existing account failed.");
             }
 
             await _signInManager.SignInAsync(user, isPersistent: false);
@@ -353,7 +344,7 @@ namespace Clean_Connect.Web.Controllers
             }
             catch (FluentValidation.ValidationException vex)
             {
-                _logger.LogWarning(vex, "Registration validation failed.");
+                _logger.LogWarning("Registration validation failed with {FailureCount} validation errors.", vex.Errors?.Count() ?? 0);
                 var failures = vex.Errors?.ToList() ?? new List<FluentValidation.Results.ValidationFailure>();
 
                 if (failures.Count == 0)
@@ -377,7 +368,7 @@ namespace Clean_Connect.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Registration failed.");
+                _logger.LogError("Registration failed with exception type {ExceptionType}.", ex.GetType().Name);
                 _notyf.Error("Something went wrong while creating your account. Please try again.");
                 return View(request);
             }
@@ -408,8 +399,7 @@ namespace Clean_Connect.Web.Controllers
                 if (result)
                 {
                     _logger.LogInformation(
-                        "Verification email resent successfully to {Email}",
-                        email);
+                        "Verification email resent successfully.");
 
                     _notyf.Success(
                         "A new verification email has been sent. Please check your inbox.");
@@ -418,8 +408,7 @@ namespace Clean_Connect.Web.Controllers
                 }
 
                 _logger.LogWarning(
-                    "Resend confirmation email failed for {Email}",
-                    email);
+                    "Verification email resend failed.");
 
                 _notyf.Warning(
                     "Unable to resend verification email. The email may already be confirmed or you may need to wait before trying again.");
@@ -428,10 +417,7 @@ namespace Clean_Connect.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "An error occurred while resending confirmation email for {Email}",
-                    email);
+                _logger.LogError("Verification email resend failed with exception type {ExceptionType}.", ex.GetType().Name);
 
                 _notyf.Error(
                     "Something went wrong while sending the verification email.");
@@ -444,8 +430,7 @@ namespace Clean_Connect.Web.Controllers
         public IActionResult EmailNotConfirmed(string email)
         {
             _logger.LogInformation(
-                "EmailNotConfirmed page accessed for {Email}",
-                email); 
+                "Email confirmation page accessed.");
 
 
 
@@ -480,7 +465,7 @@ namespace Clean_Connect.Web.Controllers
         {
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Forgot password validation failed for {Email}", model.Email);
+                _logger.LogWarning("Forgot password request validation failed.");
                 _notyf.Error("Please correct the highlighted errors.");
                 return View(model);
             }
@@ -488,7 +473,7 @@ namespace Clean_Connect.Web.Controllers
             try
             {
                 var command = new ForgotPasswordCommand(model.Email, GetPasswordResetBaseUrl());
-                _logger.LogInformation("Processing forgot password request for {Email}", model.Email);
+                _logger.LogInformation("Processing forgot password request.");
 
                 await _mediator.Send(command);
 
@@ -496,7 +481,7 @@ namespace Clean_Connect.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while processing forgot password request for {Email}", model.Email);
+                _logger.LogError("Forgot password request failed with exception type {ExceptionType}.", ex.GetType().Name);
                 _notyf.Error("An error occurred while processing your request.");
                 
             }
@@ -546,14 +531,14 @@ namespace Clean_Connect.Web.Controllers
         {
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Reset password validation failed for {Email}", model.Email);
+                _logger.LogWarning("Reset password request validation failed.");
                 _notyf.Error("Please correct the highlighted errors.");
                 return View(model);
             }
             try
             {
                 var command = new ResetPasswordCommand(model.Email, model.Token, model.Password);
-                _logger.LogInformation("Processing reset password request for {Email}", model.Email);
+                _logger.LogInformation("Processing reset password request.");
                 var result = await _mediator.Send(command);
                 if (result)
                 {
@@ -562,14 +547,14 @@ namespace Clean_Connect.Web.Controllers
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to reset password for {Email}. Invalid token or email.", model.Email);
+                    _logger.LogWarning("Password reset was rejected because the link was invalid or expired.");
                     _notyf.Error("Failed to reset password. The link may be invalid or expired.");
                     return View(model);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while resetting password for {Email}", model.Email);
+                _logger.LogError("Password reset failed with exception type {ExceptionType}.", ex.GetType().Name);
                 _notyf.Error("An error occurred while processing your request.");
                 return View(model);
             }

@@ -1,5 +1,6 @@
 using AspNetCoreHero.ToastNotification;
 using Clean_Connect.Application.AssemblyMarker;
+using Clean_Connect.Application.Configuration;
 using Clean_Connect.Application.Behaviours;
 using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.Interface.Repositories;
@@ -20,6 +21,7 @@ using Serilog;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+RequiredConfiguration.ValidateProduction(builder.Configuration, builder.Environment.EnvironmentName);
 
 
 // --------------------
@@ -37,6 +39,9 @@ builder.Host.UseSerilog();
 // JWT settings
 // --------------------
 var jwtSettings = builder.Configuration.GetSection("Jwt");
+var jwtKey = jwtSettings["Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+    throw new InvalidOperationException("JWT signing configuration is missing.");
 
 // --------------------
 // Add DbContext first
@@ -79,7 +84,7 @@ builder.Services.AddAuthentication()
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 });
 

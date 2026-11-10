@@ -94,33 +94,31 @@ namespace Clean_Connect.Application.Command.PaymentCommand
             if (request.Amount != booking.Amount)
             {
                 logger.LogWarning(
-                    "Payment initialization failed. Request amount {RequestAmount} does not match booking amount {BookingAmount} for booking {BookingId}",
-                    request.Amount,
-                    booking.Amount,
+                    "Payment initialization amount did not match booking {BookingId}.",
                     request.BookingId);
                 throw new InvalidOperationException("Payment amount must match the booking amount.");
             }
 
             // 1. Generate unique reference
             var reference = Guid.NewGuid().ToString();
-            logger.LogInformation("Generated payment reference: {Reference} for Booking ID: {BookingId}", reference, request.BookingId);
+            logger.LogInformation("Generated a payment reference for booking {BookingId}.", request.BookingId);
 
             // 2. Create payment (Pending)
 
             var payment = Payment.Create(request.BookingId, booking.Amount, reference, request.PaymentMethod, request.TransactionId ?? string.Empty, DateTime.UtcNow, request.CreatedBy);
-            logger.LogInformation("Created payment record for Booking ID: {BookingId} with Reference: {Reference}", request.BookingId, reference);
+            logger.LogInformation("Created a pending payment record for booking {BookingId}.", request.BookingId);
 
             await repo.Payments.CreatePayment(payment, cancellationToken);
-            logger.LogInformation("Saved payment record to database for Booking ID: {BookingId} with Reference: {Reference}", request.BookingId, reference);
+            logger.LogInformation("Saved the pending payment record for booking {BookingId}.", request.BookingId);
 
             var response = await paystackService.InitializePayment(booking.Amount, request.Email, reference);
-            logger.LogInformation("Received response from Paystack for Booking ID: {BookingId} with Reference: {Reference}. Status: {Status}", request.BookingId, reference, response.Status);
+            logger.LogInformation("Paystack initialization completed for booking {BookingId} with status {Status}.", request.BookingId, response.Status);
             if (!response.Status)
 
 
                 throw new ArgumentException("Payment initialization failed");
 
-            logger.LogInformation("Payment initialization successful for Booking ID: {BookingId} with Reference: {Reference}. Authorization URL: {AuthorizationUrl}", request.BookingId, reference, response.AuthorizationUrl);
+            logger.LogInformation("Payment initialization succeeded for booking {BookingId}.", request.BookingId);
 
             return response.AuthorizationUrl;
 

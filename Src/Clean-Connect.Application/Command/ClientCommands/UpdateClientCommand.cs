@@ -76,7 +76,7 @@ namespace Clean_Connect.Application.Command.ClientCommands
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Geocoding failed for lat={Lat}, lng={Lng}, falling back to State-based address", request.Latitude, request.Longitude);
+                logger.LogWarning("Geocoding failed with exception type {ExceptionType}; using the state fallback.", ex.GetType().Name);
                 newAddress = $"{request.State}, Nigeria";
             }
 

@@ -79,7 +79,7 @@ namespace Clean_Connect.Application.Command.ClientCommands
 
             if (!string.Equals(appUser.Email, request.Email, StringComparison.OrdinalIgnoreCase))
             {
-                logger.LogWarning("Client creation failed. Profile email {ProfileEmail} does not match logged-in user {UserEmail}", request.Email, appUser.Email);
+            logger.LogWarning("Client profile email did not match the authenticated account.");
                 throw new ValidationException("Client email must match your login email.");
             }
 
@@ -87,7 +87,7 @@ namespace Clean_Connect.Application.Command.ClientCommands
 
             if (checkExistingEmail != null)
             {
-                logger.LogWarning("Client creation failed. Email already in use: {Email}", request.Email);
+            logger.LogWarning("Client profile creation failed because the email is already in use.");
                 throw new ValidationException("Email already in use");
             }
 
@@ -109,7 +109,7 @@ namespace Clean_Connect.Application.Command.ClientCommands
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Geocoding failed for lat={Lat}, lng={Lng}, falling back to State-based address", request.Latitude, request.Longitude);
+                logger.LogWarning("Geocoding failed with exception type {ExceptionType}; using the state fallback.", ex.GetType().Name);
                     discoverAddress = $"{request.State}, Nigeria";
                 }
 
@@ -135,10 +135,10 @@ namespace Clean_Connect.Application.Command.ClientCommands
                     throw new ValidationException($"Referral code '{request.ReferralCode}' is invalid.");
 
                 client.SetReferrer(referrer.Id);
-                logger.LogInformation("Client {ClientEmail} was referred by {ReferrerId}", request.Email, referrer.Id);
+                logger.LogInformation("Client referral was applied.");
             }
 
-            logger.LogInformation("Creating client profile for {Email}", request.Email);
+            logger.LogInformation("Creating client profile.");
 
             await repo.Clients.CreateClient(client, cancellationToken);
 
@@ -158,12 +158,11 @@ namespace Clean_Connect.Application.Command.ClientCommands
 
             if (!identityResult.Succeeded)
             {
-                var errorMessages = string.Join("; ", identityResult.Errors.Select(e => $"{e.Code}: {e.Description}"));
-                logger.LogError("Identity Update Error: {Errors}", errorMessages);
-                throw new Exception($"Failed to update ApplicationUser: {errorMessages}");
+                logger.LogError("Identity profile update failed with {ErrorCount} validation errors.", identityResult.Errors.Count());
+                throw new InvalidOperationException("Failed to update the application account.");
             }
 
-            logger.LogInformation("Client profile created successfully for {Email}", request.Email);
+            logger.LogInformation("Client profile created successfully.");
             return true;
         }
 

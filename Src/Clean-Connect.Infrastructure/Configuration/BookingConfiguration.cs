@@ -14,6 +14,7 @@ namespace Clean_Connect.Infrastructure.Configuration
         public void Configure(EntityTypeBuilder<Booking> builder)
         {
             builder.HasKey(x => x.Id);
+            builder.ToTable(table => table.HasCheckConstraint("CK_Bookings_ValidInterval", "\"StartTime\" < \"EndTime\""));
 
             builder.OwnsOne(c => c.Address, address =>
             {
@@ -83,6 +84,13 @@ namespace Clean_Connect.Infrastructure.Configuration
 
             builder.Property(x => x.RejectionReason)
                 .HasMaxLength(500);
+
+            builder.Property(x => x.IdempotencyKey).HasMaxLength(128);
+            builder.Property(x => x.RequestHash).HasMaxLength(64);
+            builder.HasIndex(x => new { x.ClientId, x.IdempotencyKey })
+                .IsUnique()
+                .HasFilter("\"IdempotencyKey\" IS NOT NULL")
+                .HasDatabaseName("IX_Bookings_ClientId_IdempotencyKey");
 
             builder.Property(x => x.Amount)
                 .HasPrecision(18, 2)

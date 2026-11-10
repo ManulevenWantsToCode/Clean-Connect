@@ -5,6 +5,10 @@ namespace Clean_Connect.Web.Models
     public class CreateBookingViewModel
     {
         [Required]
+        [StringLength(128, MinimumLength = 1)]
+        public string IdempotencyKey { get; set; } = Guid.NewGuid().ToString("N");
+
+        [Required]
         public Guid WorkerId { get; set; }
 
         [Required]

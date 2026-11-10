@@ -81,7 +81,7 @@ namespace Clean_Connect.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to deliver contact message from {Email}", model.Email);
+                _logger.LogError("Contact message delivery failed with exception type {ExceptionType}.", ex.GetType().Name);
                 _notyf.Error("Something went wrong sending your message. Please try again.");
                 return View(model);
             }

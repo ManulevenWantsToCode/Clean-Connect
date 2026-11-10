@@ -32,6 +32,7 @@
 
         <form asp-action="Create" asp-controller="Booking" method="post" id="createBookingForm" class="booking-shell">
             @Html.AntiForgeryToken()
+            <input asp-for="IdempotencyKey" type="hidden" />
             <div asp-validation-summary="All" class="alert alert-danger @(ViewData.ModelState.IsValid ? "d-none" : "")" role="alert"></div>
 
             <div class="row g-4">

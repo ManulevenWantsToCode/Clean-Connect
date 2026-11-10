@@ -1,5 +1,6 @@
 ﻿using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Infrastructure.Context;
+using Clean_Connect.Application.Command.BookingCommand;
 using MediatR;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -20,7 +21,12 @@ namespace Clean_Connect.Application.Behaviours
             RequestHandlerDelegate<TResponse> next,
             CancellationToken cancellationToken)
         {
-            // 🔒 If already in transaction, just continue (prevents nesting issues)
+            // Booking creation owns its short database transaction so it can roll back
+            // before translating PostgreSQL idempotency and exclusion conflicts.
+            if (request is CreateBookingCommand)
+                return await next();
+
+            // If already in transaction, just continue (prevents nesting issues)
             if (_dbContext.Database.CurrentTransaction != null)
             {
                 return await next();

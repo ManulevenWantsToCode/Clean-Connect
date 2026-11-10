@@ -32,7 +32,7 @@ namespace Clean_Connect.Application.Command.Services
         }
 
 
-        public async Task ValidateBookingAsync(Guid workerId, Guid clientId, Guid serviceTypeId, decimal totalAmount, decimal amount, decimal hourlyRate, double durationHours, DateTime dateOfService, TimeRange timeRange, CancellationToken cancellationToken)
+        public async Task ValidateBookingAsync(Guid workerId, Guid clientId, Guid serviceTypeId, decimal totalAmount, decimal amount, decimal hourlyRate, double durationHours, DateTime dateOfService, DateTime startTime, DateTime endTime, TimeRange timeRange, CancellationToken cancellationToken)
         {
             var settings = await _platformSettings.GetAsync(cancellationToken);
             if (settings.MaintenanceMode)
@@ -71,7 +71,7 @@ namespace Clean_Connect.Application.Command.Services
             }
 
             if (!checkWorkerId.IsAvailable ||
-                !_availabilityService.IsWorkerAvailable(checkWorkerId, dateOfService, timeRange))
+                !_availabilityService.IsWorkerAvailable(checkWorkerId, dateOfService, startTime, endTime))
             {
                 _logger.LogWarning("Booking creation failed. Worker is not available at the requested date: {DateOfService}", dateOfService);
                 throw new ValidationException("Worker is not available at the requested date");
@@ -96,7 +96,7 @@ namespace Clean_Connect.Application.Command.Services
                 throw new ValidationException("Invalid booking amount");
             }
 
-            if (dateOfService < DateTime.Now.AddHours(settings.MinimumAdvanceNoticeHours))
+            if (dateOfService < DateTime.UtcNow.AddHours(settings.MinimumAdvanceNoticeHours))
             {
                 _logger.LogWarning("Booking creation failed. Date of service is before the configured advance notice: {DateOfService}", dateOfService);
                 throw new ValidationException($"Bookings must be made at least {settings.MinimumAdvanceNoticeHours} hours in advance.");

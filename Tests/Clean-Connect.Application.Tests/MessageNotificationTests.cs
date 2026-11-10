@@ -535,6 +535,8 @@ namespace Clean_Connect.Application.Tests
         private sealed class FakeBookingRepository(Booking booking) : IBookingRepository
         {
             public Task CreateBooking(Booking booking, CancellationToken cancellationToken) => Task.CompletedTask;
+            public Task<BookingCreateResult?> GetIdempotentBookingAsync(Guid clientId, string key, string requestHash, CancellationToken cancellationToken) => Task.FromResult<BookingCreateResult?>(null);
+            public Task<BookingCreateResult> CreateBookingIdempotentlyAsync(Booking booking, BookingChat bookingChat, CancellationToken cancellationToken) => Task.FromResult(new BookingCreateResult(booking.Id, true));
             public Task DeleteBooking(Booking booking, CancellationToken cancellationToken) => Task.CompletedTask;
             public Task<List<Booking>> GetAllBookings(CancellationToken cancellationToken) => Task.FromResult(new List<Booking>());
             public Task<Booking> GetBookingById(Guid bookingId, CancellationToken cancellationToken) => Task.FromResult(bookingId == booking.Id ? booking : null!);

@@ -37,10 +37,4 @@
     <Folder Include="wwwroot\images\auth\" />
   </ItemGroup>
 
-  <Target Name="StopIisExpressBeforeBuild" BeforeTargets="Restore;Build;CoreCompile;BeforeBuild">
-    <Message Importance="high" Text="[StopIisExpressBeforeBuild] stopping Clean-Connect IIS Express..." />
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\stop-iis-express.ps1&quot;" IgnoreExitCode="true" />
-    <Message Importance="high" Text="[StopIisExpressBeforeBuild] done." />
-  </Target>
-
 </Project>

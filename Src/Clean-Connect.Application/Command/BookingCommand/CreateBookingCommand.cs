@@ -8,10 +8,13 @@ using Clean_Connect.Domain.Value_Objects;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 
 namespace Clean_Connect.Application.Command.BookingCommand
 {
-    public record CreateBookingCommand(Guid ClientId, Guid WorkerId, double Latitude, double Longitude, double RadiusInMeters, Guid ServiceTypeId, DateTime DateOfService, string TimeRange, DateTime StartTime, DateTime EndTime, string? CouponCode = null, string? CreatedBy = null) : IRequest<Guid>;
+    public record CreateBookingCommand(Guid ClientId, Guid WorkerId, double Latitude, double Longitude, double RadiusInMeters, Guid ServiceTypeId, DateTime DateOfService, string TimeRange, DateTime StartTime, DateTime EndTime, string? CouponCode = null, string? CreatedBy = null, string? IdempotencyKey = null) : IRequest<BookingCreateResult>;
 
     public class CreateBookingValidator : AbstractValidator<CreateBookingCommand>
     {
@@ -55,17 +58,26 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 .GreaterThan(x => x.StartTime)
                 .WithMessage("End time must be after start time.");
 
+            RuleFor(x => x.IdempotencyKey)
+                .NotEmpty().WithMessage("Idempotency-Key is required.")
+                .MaximumLength(128)
+                .Matches("^[!-~]+$").WithMessage("Idempotency-Key contains invalid characters.");
+
 
         }
 
 
     }
 
-    public class CreateBookingHandler(IUnitOfWork repo, BookingRuleService bookingRuleService, GeocodingService geocodingService, INotificationService notificationService, ILogger<CreateBookingHandler> logger) : IRequestHandler<CreateBookingCommand, Guid>
+    public class CreateBookingHandler(IUnitOfWork repo, BookingRuleService bookingRuleService, GeocodingService geocodingService, INotificationService notificationService, ILogger<CreateBookingHandler> logger) : IRequestHandler<CreateBookingCommand, BookingCreateResult>
     {
-        public async Task<Guid> Handle(CreateBookingCommand request, CancellationToken cancellationToken)
+        public async Task<BookingCreateResult> Handle(CreateBookingCommand request, CancellationToken cancellationToken)
         {
-
+            var idempotencyKey = request.IdempotencyKey!.Trim();
+            var requestHash = ComputeRequestHash(request);
+            var replay = await repo.Bookings.GetIdempotentBookingAsync(request.ClientId, idempotencyKey, requestHash, cancellationToken);
+            if (replay is not null)
+                return replay;
 
             if (!Enum.TryParse<TimeRange>(request.TimeRange, true, out var timeRange))
             {
@@ -91,10 +103,11 @@ namespace Clean_Connect.Application.Command.BookingCommand
             if (worker == null)
                 throw new ValidationException("Worker with Id not found");
 
-            var startTime = request.DateOfService.Date.Add(request.StartTime.TimeOfDay);
-            var endTime = request.DateOfService.Date.Add(request.EndTime.TimeOfDay);
+            var serviceDateUtc = AsUtc(request.DateOfService).Date;
+            var startTime = serviceDateUtc.Add(AsUtc(request.StartTime).TimeOfDay);
+            var endTime = serviceDateUtc.Add(AsUtc(request.EndTime).TimeOfDay);
             var durationHours = (endTime - startTime).TotalHours;
-            if (durationHours <= 0)
+            if (durationHours <= 0 || durationHours > 24)
                 throw new ValidationException("End time must be after start time.");
 
             var hourlyRate = worker.HourlyRate;
@@ -135,7 +148,7 @@ namespace Clean_Connect.Application.Command.BookingCommand
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Geocoding failed for booking lat={Lat}, lng={Lng}, falling back to default address.", request.Latitude, request.Longitude);
+                logger.LogWarning("Geocoding failed with exception type {ExceptionType}; using the default address.", ex.GetType().Name);
                 discoverAddress = "Lagos, Nigeria";
             }
 
@@ -156,7 +169,9 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 amount,
                 hourlyRate,
                 durationHours,
-                request.DateOfService,
+                serviceDateUtc,
+                startTime,
+                endTime,
                 timeRange,
                 cancellationToken);
 
@@ -168,7 +183,7 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 request.ClientId,
                 request.WorkerId,
                 location,
-                request.DateOfService,
+                serviceDateUtc,
                 DateTime.UtcNow,
                 startTime,
                 endTime,
@@ -182,10 +197,10 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 paymentStatus,
                 request.ServiceTypeId,
                 couponId,
-                request.CreatedBy
+                request.CreatedBy,
+                idempotencyKey,
+                requestHash
                 );
-
-            await repo.Bookings.CreateBooking(newBooking, cancellationToken);
 
             var bookingChat = BookingChat.CreateForBooking(
                 newBooking.Id,
@@ -193,13 +208,37 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 newBooking.WorkerId,
                 request.CreatedBy);
 
-            await repo.BookingChats.CreateBookingChat(bookingChat, cancellationToken);
+            var saveResult = await repo.Bookings.CreateBookingIdempotentlyAsync(newBooking, bookingChat, cancellationToken);
+            if (saveResult.Created)
+            {
+                await notificationService.NewBookingRequestAsync(newBooking, cancellationToken);
+            }
+            return saveResult;
+        }
 
-            await repo.SaveChangesAsync(cancellationToken);
+        private static DateTime AsUtc(DateTime value) => value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
 
-            await notificationService.NewBookingRequestAsync(newBooking, cancellationToken);
-
-            return newBooking.Id;
+        private static string ComputeRequestHash(CreateBookingCommand request)
+        {
+            var canonical = JsonSerializer.Serialize(new
+            {
+                request.WorkerId,
+                request.Latitude,
+                request.Longitude,
+                request.RadiusInMeters,
+                request.ServiceTypeId,
+                ServiceDate = AsUtc(request.DateOfService).ToString("O"),
+                request.TimeRange,
+                Start = AsUtc(request.StartTime).ToString("O"),
+                End = AsUtc(request.EndTime).ToString("O"),
+                CouponCode = request.CouponCode?.Trim()
+            });
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
         }
     }
 }

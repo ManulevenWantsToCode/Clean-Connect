@@ -9,8 +9,12 @@ namespace Clean_Connect.Domain.Entities
     {
         private Booking() { }
 
-        private Booking(Guid clientId, Guid workerId, DateTime dateOfBooking,Location location, DateTime dateOfService, DateTime startTime, DateTime endTime, decimal hourlyRate, decimal totalAmount, decimal amount, decimal originalAmount, TimeRange timeRange, PaymentStatus paymentStatus, Address address, Guid serviceTypeId, BookingStatus bookingStatus, Guid? couponId = null, string? createdBy = null)
+        private Booking(Guid clientId, Guid workerId, DateTime dateOfBooking,Location location, DateTime dateOfService, DateTime startTime, DateTime endTime, decimal hourlyRate, decimal totalAmount, decimal amount, decimal originalAmount, TimeRange timeRange, PaymentStatus paymentStatus, Address address, Guid serviceTypeId, BookingStatus bookingStatus, Guid? couponId = null, string? createdBy = null, string? idempotencyKey = null, string? requestHash = null)
         {
+            if (startTime >= endTime)
+                throw new ArgumentException("Booking start time must be before end time.");
+            if ((endTime - startTime).TotalHours > 24)
+                throw new ArgumentException("Booking duration cannot exceed 24 hours.");
             ClientId = clientId;
             WorkerId = workerId;
             ServiceTypeId = serviceTypeId;
@@ -28,6 +32,8 @@ namespace Clean_Connect.Domain.Entities
             TotalAmount = totalAmount;
             TimeRange = timeRange;
             BookingStatus = bookingStatus;
+            IdempotencyKey = idempotencyKey;
+            RequestHash = requestHash;
         }
 
         public Client Client { get; private set; }
@@ -65,11 +71,14 @@ namespace Clean_Connect.Domain.Entities
 
         public string? RejectionReason { get; private set; }
 
+        public string? IdempotencyKey { get; private set; }
+        public string? RequestHash { get; private set; }
 
 
-        public static Booking Create(Guid clientId, Guid workerId, Location location, DateTime dateOfService, DateTime dateOfBooking, DateTime startTime, DateTime endTime, decimal hourlyRate, decimal totalAmount, decimal amount, decimal originalAmount, TimeRange timeRange, Address address, BookingStatus bookingStatus, PaymentStatus paymentStatus, Guid serviceTypeId, Guid? couponId = null, string? createdBy = null)
+
+        public static Booking Create(Guid clientId, Guid workerId, Location location, DateTime dateOfService, DateTime dateOfBooking, DateTime startTime, DateTime endTime, decimal hourlyRate, decimal totalAmount, decimal amount, decimal originalAmount, TimeRange timeRange, Address address, BookingStatus bookingStatus, PaymentStatus paymentStatus, Guid serviceTypeId, Guid? couponId = null, string? createdBy = null, string? idempotencyKey = null, string? requestHash = null)
         {
-            var booking = new Booking(clientId, workerId, dateOfBooking,location, dateOfService, startTime, endTime, hourlyRate, totalAmount, amount, originalAmount, timeRange, paymentStatus, address, serviceTypeId, bookingStatus, couponId, createdBy);
+            var booking = new Booking(clientId, workerId, dateOfBooking,location, dateOfService, startTime, endTime, hourlyRate, totalAmount, amount, originalAmount, timeRange, paymentStatus, address, serviceTypeId, bookingStatus, couponId, createdBy, idempotencyKey, requestHash);
             booking.AddDomainEvent(new BookingCreatedEvent(booking.Id));
             booking.UpdateMetadata(createdBy);
             return booking;

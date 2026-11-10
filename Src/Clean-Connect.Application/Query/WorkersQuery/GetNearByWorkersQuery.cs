@@ -43,14 +43,13 @@ namespace Clean_Connect.Application.Query.WorkersQuery
 
             var workerDtos = workers.Select(x => new NearbyWorkerDto
             {
+                WorkerId = x.Worker.Id,
                 Name = x.Worker.FullName,
-                Email = x.Worker.Email,
                 Rating = x.Worker.AverageRating,
-                Address = x.Worker.Address,
-                Contact = x.Worker.Contact,
-                Gender = x.Worker.Gender.ToString(),
                 DistanceInKm = Math.Round(x.DistanceInKm, 2),
                 ServiceType = x.Worker.ServiceType.Name,
+                State = x.Worker.State,
+                HourlyRate = x.Worker.HourlyRate,
             }).ToList();
            
 

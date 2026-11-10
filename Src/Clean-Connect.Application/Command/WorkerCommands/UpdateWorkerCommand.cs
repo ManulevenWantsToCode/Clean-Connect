@@ -123,10 +123,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
 
             if (checkExistingEmail != null && checkExistingEmail.Id != request.WorkerId)
             {
-                logger.LogWarning("Attempt to update client {ClientId} with duplicate email {Email}",
-                    worker.Id,
-                    email
-                );
+            logger.LogWarning("Worker profile update rejected because the email is already in use.");
 
                 throw new InvalidOperationException($"Email {email} is already in use.");
 
@@ -139,7 +136,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Geocoding failed for lat={Lat}, lng={Lng}, falling back to State-based address", request.Latitude, request.Longitude);
+                logger.LogWarning("Geocoding failed with exception type {ExceptionType}; using the state fallback.", ex.GetType().Name);
                 newAddress = $"{request.State}, Nigeria";
             }
 

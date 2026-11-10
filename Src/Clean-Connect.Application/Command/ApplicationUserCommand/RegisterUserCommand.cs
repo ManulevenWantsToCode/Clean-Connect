@@ -79,7 +79,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
             var checkExistingUser = await user.FindByEmailAsync(email);
             if (checkExistingUser != null)
             {
-                logger.LogWarning("User with email {Email} already exists", email);
+            logger.LogWarning("Registration rejected because the account already exists.");
 
                 throw new ValidationException("User with this email already exists");
 
@@ -95,7 +95,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
 
-                logger.LogError("Failed to create user with email {Email}. Errors: {Errors}", email, errors);
+            logger.LogError("Account creation failed validation in the identity store.");
                 throw new ValidationException($"Failed to create user: {errors}");
             }
 
@@ -107,7 +107,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
             {
                 var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
 
-                logger.LogError("Failed to assign role {Role} to user with email {Email}. Errors: {Errors}", role, email, errors);
+            logger.LogError("Account role assignment failed for role {Role}.", role);
                 throw new ValidationException($"Failed to assign role: {errors}");
             }
 
@@ -142,7 +142,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
             await mediator.Send(emailMessage, cancellationToken);
 
 
-            logger.LogInformation("User with email {Email} created successfully with role {Role}", request.Email, role);
+            logger.LogInformation("Account created successfully with role {Role}.", role);
             return newUser.Id;
 
         }

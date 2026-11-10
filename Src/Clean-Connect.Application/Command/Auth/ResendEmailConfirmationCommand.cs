@@ -39,13 +39,13 @@ namespace Clean_Connect.Application.Command.Auth
 
             if (user == null)
             {
-                _logger.LogWarning("Resend failed - user not found: {Email}", request.Email);
+                _logger.LogWarning("Verification email resend was requested for an unknown account.");
                 return false;
             }
 
             if (user.EmailConfirmed)
             {
-                _logger.LogInformation("Resend skipped - email already confirmed: {Email}", request.Email);
+                _logger.LogInformation("Verification email resend skipped for a confirmed account.");
                 return false;
             }
 
@@ -55,7 +55,7 @@ namespace Clean_Connect.Application.Command.Auth
             if (user.EmailConfirmationSentAt != null &&
                 user.EmailConfirmationSentAt.Value.AddMinutes(cooldownMinutes) > DateTime.UtcNow)
             {
-                _logger.LogInformation("Resend blocked due to cooldown: {Email}", request.Email);
+                _logger.LogInformation("Verification email resend blocked by cooldown.");
                 return false;
             }
 
@@ -93,7 +93,7 @@ namespace Clean_Connect.Application.Command.Auth
             user.MarkEmailConfirmationSent();
             await _userManager.UpdateAsync(user);
 
-            _logger.LogInformation("Verification email resent to {Email}", request.Email);
+            _logger.LogInformation("Verification email resent.");
 
             return true;
         }

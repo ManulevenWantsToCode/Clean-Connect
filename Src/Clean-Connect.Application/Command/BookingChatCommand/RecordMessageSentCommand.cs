@@ -95,8 +95,7 @@ namespace Clean_Connect.Application.Command.BookingChatCommand
                 else
                 {
                     logger.LogWarning(
-                        "RecordMessageSent access denied. Email {Email} is not a participant on booking {BookingId}.",
-                        currentUser.Email,
+                        "RecordMessageSent access denied for a non-participant on booking {BookingId}.",
                         request.BookingId);
                     throw new UnauthorizedAccessException("Only the booking client and assigned worker can send messages in this chat.");
                 }

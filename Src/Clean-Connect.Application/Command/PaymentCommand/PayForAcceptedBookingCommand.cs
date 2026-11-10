@@ -112,9 +112,8 @@ namespace Clean_Connect.Application.Command.PaymentCommand
             }
 
             logger.LogInformation(
-                "Payment initialized for booking {BookingId} with reference {PaymentReference}",
-                request.BookingId,
-                reference);
+                "Payment initialized for booking {BookingId}.",
+                request.BookingId);
 
             return new PaymentInitializationResponse(
                 request.BookingId,

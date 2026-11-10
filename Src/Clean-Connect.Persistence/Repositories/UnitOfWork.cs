@@ -1,5 +1,7 @@
-using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Infrastructure.Context;
+using Clean_Connect.Application.Interface.Repositories;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Clean_Connect.Persistence.Repositories
@@ -33,7 +35,15 @@ namespace Clean_Connect.Persistence.Repositories
 
         public async Task <int> SaveChangesAsync(CancellationToken cancellation)
         {
-            return await dbContext.SaveChangesAsync(cancellation);
+            try
+            {
+                return await dbContext.SaveChangesAsync(cancellation);
+            }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException postgresException &&
+                postgresException.SqlState is PostgresErrorCodes.ExclusionViolation or PostgresErrorCodes.SerializationFailure)
+            {
+                throw new BookingConflictException();
+            }
         }
     }
 }
