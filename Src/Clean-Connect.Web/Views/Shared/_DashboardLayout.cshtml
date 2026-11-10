@@ -1,10 +1,12 @@
+@inject Clean_Connect.Application.Interface.Repositories.IPlatformSettingsRepository PlatformSettingsRepository
+@{ var platformSettings = await PlatformSettingsRepository.GetAsync(Context.RequestAborted); }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>@ViewData["Title"] - Clean Connect</title>
+    <title>@ViewData["Title"] - @platformSettings.PlatformName</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,139 +29,47 @@
           asp-append-version="true" />
 
     <link rel="stylesheet"
+          href="~/css/cleanconnect-frontend.css"
+          asp-append-version="true" />
+
+    <link rel="stylesheet"
+          href="~/css/profile-forms.css"
+          asp-append-version="true" />
+
+    <link rel="stylesheet"
           href="~/lib/notyf/notyf.min.css" />
+
+    <link rel="stylesheet"
+          href="~/css/toast-overrides.css"
+          asp-append-version="true" />
+
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 
 <body>
 
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
-        <div class="container">
+    <partial name="_DashboardNavbar" />
 
-            <a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">
-                <span class="navbar-brand-icon">
-                    <i class="fas fa-broom"></i>
-                </span>
-                Clean Connect
-            </a>
+    <button type="button"
+            class="cc-sidebar-mobile-toggle"
+            id="ccSidebarMobileToggle"
+            hidden
+            aria-label="Open dashboard navigation"
+            aria-controls="ccSidebar"
+            aria-expanded="false"
+            title="Open dashboard navigation">
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+    </button>
 
-            <button class="navbar-toggler"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#mainNavbar">
-
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse"
-                 id="mainNavbar">
-
-                <ul class="navbar-nav ms-auto">
-
-                    <li class="nav-item">
-                        <a class="nav-link"
-                           asp-controller="Home"
-                           asp-action="Index">
-                            Home
-                        </a>
-                    </li>
-
-                    <li class="nav-divider" aria-hidden="true"></li>
-
-                    @if (User.Identity!.IsAuthenticated)
-                    {
-                        <li class="nav-item">
-                            @if (User.IsInRole("Worker"))
-                            {
-                                <a class="nav-link"
-                                   asp-controller="Worker"
-                                   asp-action="Dashboard">
-                                    Dashboard
-                                </a>
-                            }
-                            else if (User.IsInRole("Client"))
-                            {
-                                <a class="nav-link"
-                                   asp-controller="Client"
-                                   asp-action="Dashboard">
-                                    Dashboard
-                                </a>
-                            }
-                            else
-                            {
-                                <a class="nav-link"
-                                   asp-controller="Dashboard"
-                                   asp-action="Index">
-                                    Dashboard
-                                </a>
-                            }
-                        </li>
-
-                        <li class="nav-item">
-                            <form method="post"
-                                  asp-controller="Auth"
-                                  asp-action="Logout">
-
-                                <button type="submit"
-                                        class="btn btn-nav-logout ms-1">
-                                    <i class="fas fa-sign-out-alt me-1"></i>Logout
-                                </button>
-
-                            </form>
-                        </li>
-                    }
-                    else
-                    {
-                        <li class="nav-item">
-                            <a class="btn btn-login ms-2"
-                               asp-controller="Auth"
-                               asp-action="Login">
-                                Login
-                            </a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="btn btn-register ms-2"
-                               asp-controller="Auth"
-                               asp-action="Register">
-                                Register
-                            </a>
-                        </li>
-                    }
-
-                    <li class="nav-item">
-                        <button id="themeToggle"
-                                class="btn btn-nav-theme ms-2"
-                                title="Toggle theme"
-                                aria-label="Toggle theme">
-                            <i id="themeIcon" class="fa-solid fa-moon"></i>
-                        </button>
-                    </li>
-
-                    @if (User.Identity!.IsAuthenticated)
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-notifications"
-                               asp-controller="Notifications"
-                               asp-action="Index"
-                               title="Notifications"
-                               aria-label="Notifications">
-                                <i class="fa-solid fa-bell"></i>
-                                <span class="nav-notification-badge" id="notificationBadge" data-count="0">0</span>
-                            </a>
-                        </li>
-                    }
-
-                </ul>
-            </div>
-
-        </div>
-    </nav>
+    <!-- Overlay backdrop -->
+    <div class="cc-sidebar-overlay" id="ccSidebarOverlay" aria-hidden="true"></div>
 
     <!-- Main Content -->
     <main class="main-content">
         @RenderBody()
     </main>
+
+    <partial name="_SiteFooter" />
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
@@ -170,5 +80,140 @@
     <script src="~/lib/notyf/notyf.min.js"></script>
     @await Component.InvokeAsync("Notyf")
 
+    <script>
+        (function () {
+            var BREAKPOINT = 1100;
+            var SIDEBAR_STORAGE_KEY = 'cc_sidebar_collapsed_v2';
+            var desktopToggle = document.getElementById('ccSidebarToggle');
+            var mobileToggle = document.getElementById('ccSidebarMobileToggle');
+            var overlay = document.getElementById('ccSidebarOverlay');
+            var rail    = document.querySelector('.cc-rail');
+            var shell   = document.querySelector('.cc-dashboard-shell');
+
+            if (!rail || !shell || !desktopToggle || !mobileToggle) return;
+
+            var closeButton = rail.querySelector('.cc-rail__close');
+            var desktopToggleIcon = desktopToggle.querySelector('i');
+            var desktopToggleLabel = desktopToggle.querySelector('span');
+            var isMobileLayout = window.innerWidth <= BREAKPOINT;
+            var previousBodyOverflow = '';
+
+            function syncMobileToggle() {
+                mobileToggle.classList.toggle('has-sidebar', isMobileLayout);
+                mobileToggle.hidden = !isMobileLayout;
+            }
+
+            // ── Mobile Drawer Open / Close ─────────────────────────────────
+            function openMobileDrawer() {
+                if (!isMobileLayout) return;
+                previousBodyOverflow = document.body.style.overflow;
+                rail.classList.add('cc-rail--open');
+                rail.removeAttribute('aria-hidden');
+                rail.inert = false;
+                mobileToggle.setAttribute('aria-expanded', 'true');
+                if (overlay) {
+                    overlay.classList.add('is-visible');
+                    overlay.setAttribute('aria-hidden', 'false');
+                }
+                document.body.style.overflow = 'hidden';
+                if (closeButton) closeButton.focus();
+            }
+
+            function closeMobileDrawer(restoreFocus) {
+                rail.classList.remove('cc-rail--open');
+                rail.setAttribute('aria-hidden', isMobileLayout ? 'true' : 'false');
+                rail.inert = isMobileLayout;
+                mobileToggle.setAttribute('aria-expanded', 'false');
+                if (overlay) {
+                    overlay.classList.remove('is-visible');
+                    overlay.setAttribute('aria-hidden', 'true');
+                }
+                document.body.style.overflow = previousBodyOverflow;
+                if (restoreFocus && isMobileLayout) mobileToggle.focus();
+            }
+
+            function setDesktopSidebarCollapsed(isCollapsed) {
+                shell.classList.toggle('cc-sidebar-collapsed', isCollapsed);
+                desktopToggle.setAttribute('aria-expanded', (!isCollapsed).toString());
+                desktopToggle.setAttribute('aria-label', isCollapsed ? 'Expand sidebar' : 'Collapse sidebar');
+                desktopToggle.setAttribute('title', isCollapsed ? 'Expand sidebar' : 'Collapse sidebar');
+                if (desktopToggleLabel) desktopToggleLabel.textContent = isCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
+                if (desktopToggleIcon) {
+                    desktopToggleIcon.className = isCollapsed
+                        ? 'fa-solid fa-angles-right'
+                        : 'fa-solid fa-angles-left';
+                }
+            }
+
+            function getSavedDesktopSidebarState() {
+                try {
+                    var savedState = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+                    return savedState === null || savedState === 'true';
+                } catch (e) {}
+                return true;
+            }
+
+            // Restore the saved desktop width; mobile always starts with a closed drawer.
+            if (isMobileLayout) {
+                syncMobileToggle();
+                setDesktopSidebarCollapsed(false);
+                rail.setAttribute('aria-hidden', 'true');
+                rail.inert = true;
+            } else {
+                syncMobileToggle();
+                rail.removeAttribute('aria-hidden');
+                rail.inert = false;
+                setDesktopSidebarCollapsed(isMobileLayout ? false : getSavedDesktopSidebarState());
+            }
+
+            desktopToggle.addEventListener('click', function () {
+                if (isMobileLayout) return;
+                var isCollapsed = !shell.classList.contains('cc-sidebar-collapsed');
+                setDesktopSidebarCollapsed(isCollapsed);
+                try {
+                    localStorage.setItem(SIDEBAR_STORAGE_KEY, isCollapsed ? 'true' : 'false');
+                } catch (e) {}
+            });
+
+            mobileToggle.addEventListener('click', function () {
+                if (rail.classList.contains('cc-rail--open')) {
+                    closeMobileDrawer(false);
+                } else {
+                    openMobileDrawer();
+                }
+            });
+
+            if (overlay) overlay.addEventListener('click', function () { closeMobileDrawer(true); });
+            if (closeButton) closeButton.addEventListener('click', function () { closeMobileDrawer(true); });
+
+            // Escape key
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && rail.classList.contains('cc-rail--open')) closeMobileDrawer(true);
+            });
+
+            var wasMobileLayout = isMobileLayout;
+            window.addEventListener('resize', function () {
+                var nextIsMobileLayout = window.innerWidth <= BREAKPOINT;
+                if (nextIsMobileLayout === wasMobileLayout) return;
+                wasMobileLayout = nextIsMobileLayout;
+                isMobileLayout = nextIsMobileLayout;
+                syncMobileToggle();
+                closeMobileDrawer(false);
+                setDesktopSidebarCollapsed(isMobileLayout ? false : getSavedDesktopSidebarState());
+                if (!isMobileLayout) {
+                    rail.removeAttribute('aria-hidden');
+                    rail.inert = false;
+                }
+            });
+
+            // Close drawer when a nav link is tapped on mobile
+            rail.querySelectorAll('.cc-rail__link').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    if (isMobileLayout) closeMobileDrawer(false);
+                });
+            });
+        })();
+    </script>
 </body>
 </html>
+

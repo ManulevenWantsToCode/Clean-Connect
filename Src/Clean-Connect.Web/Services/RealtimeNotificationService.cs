@@ -40,5 +40,64 @@ namespace Clean_Connect.Web.Services
                 createdAt = DateTime.UtcNow
             });
         }
+
+        public async Task SendMessageNotificationAsync(
+            string? recipientEmail,
+            Guid bookingId,
+            string senderName,
+            string messagePreview,
+            int unreadCount,
+            string messageId)
+        {
+            if (string.IsNullOrWhiteSpace(recipientEmail))
+            {
+                return;
+            }
+
+            await _hubContext.Clients.Group(recipientEmail.Trim().ToLowerInvariant()).SendAsync("messageNotification", new
+            {
+                bookingId = bookingId,
+                senderName = senderName,
+                messagePreview = messagePreview,
+                unreadCount = unreadCount,
+                messageId = messageId,
+                url = $"/Booking/{bookingId}/Messages",
+                createdAt = DateTime.UtcNow
+            });
+        }
+
+        public async Task UpdateUnreadMessageCountAsync(
+            string? userEmail,
+            int unreadCount)
+        {
+            if (string.IsNullOrWhiteSpace(userEmail))
+            {
+                return;
+            }
+
+            await _hubContext.Clients.Group(userEmail.Trim().ToLowerInvariant()).SendAsync("updateUnreadMessageCount", new
+            {
+                unreadCount = unreadCount
+            });
+        }
+
+        public async Task NotifyConversationReadAsync(
+            string? recipientEmail,
+            Guid bookingId,
+            string readerRole,
+            DateTime readAtUtc)
+        {
+            if (string.IsNullOrWhiteSpace(recipientEmail))
+            {
+                return;
+            }
+
+            await _hubContext.Clients.Group(recipientEmail.Trim().ToLowerInvariant()).SendAsync("conversationRead", new
+            {
+                bookingId = bookingId,
+                readerRole = readerRole,
+                readAt = readAtUtc
+            });
+        }
     }
 }

@@ -26,12 +26,15 @@ namespace Clean_Connect.Domain.Entities
             EndTime = endTime;
             HourlyRate = hourlyRate;
             TotalAmount = totalAmount;
+            TimeRange = timeRange;
             BookingStatus = bookingStatus;
         }
 
         public Client Client { get; private set; }
 
         public Worker Worker { get; private set; }
+
+        public BookingChat BookingChat { get; private set; } = default!;
 
         public PaymentStatus PaymentStatus { get; private set; }
         public Address Address { get; private set; }
@@ -60,6 +63,8 @@ namespace Clean_Connect.Domain.Entities
 
         public BookingStatus BookingStatus { get; private set; } = default!;
 
+        public string? RejectionReason { get; private set; }
+
 
 
         public static Booking Create(Guid clientId, Guid workerId, Location location, DateTime dateOfService, DateTime dateOfBooking, DateTime startTime, DateTime endTime, decimal hourlyRate, decimal totalAmount, decimal amount, decimal originalAmount, TimeRange timeRange, Address address, BookingStatus bookingStatus, PaymentStatus paymentStatus, Guid serviceTypeId, Guid? couponId = null, string? createdBy = null)
@@ -83,7 +88,7 @@ namespace Clean_Connect.Domain.Entities
             AddDomainEvent(new BookingAcceptedEvent(Id));
         }
 
-        public void Reject()
+        public void Reject(string? rejectionReason = null)
         {
             if (BookingStatus != BookingStatus.Pending)
             {
@@ -91,7 +96,7 @@ namespace Clean_Connect.Domain.Entities
             }
             BookingStatus = BookingStatus.Rejected;
             PaymentStatus = PaymentStatus.Canceled;
-            
+            RejectionReason = string.IsNullOrWhiteSpace(rejectionReason) ? null : rejectionReason.Trim();
 
         }
 

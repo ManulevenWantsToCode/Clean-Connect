@@ -139,8 +139,13 @@ builder.Services.AddScoped<EscrowService>();
 builder.Services.AddScoped<PayoutService>();
 builder.Services.AddScoped<RefundService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<IMessageRealtimeNotificationService, NullMessageRealtimeNotificationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IPaystackService, PaystackService>();
+builder.Services.Configure<AgoraChatOptions>(
+    builder.Configuration.GetSection(AgoraChatOptions.SectionName));
+builder.Services.AddScoped<IAgoraChatTokenService, AgoraChatTokenService>();
+builder.Services.AddHttpClient<IAgoraChatProvisioningService, AgoraChatProvisioningService>();
 
 builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
 
@@ -156,6 +161,7 @@ builder.Services.AddScoped<IWorkerRepository, WorkerRepository>();
 builder.Services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IBookingChatRepository, BookingChatRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IWorkerBankDetailRepository, WorkerBankDetailRepository>();
 builder.Services.AddScoped<IEscrowRepository, EscrowRepository>();

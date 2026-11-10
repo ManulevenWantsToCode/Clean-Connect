@@ -257,6 +257,19 @@ body {
     border: 2px solid rgba(16, 185, 129, 0.5);
 }
 
+.profile-avatar-initials {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    border: 2px solid rgba(16, 185, 129, 0.5);
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0f766e, #10b981);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
 .status-online {
     position: absolute;
     bottom: -2px;
@@ -319,13 +332,14 @@ body {
 }
 
 .topbar {
-    height: 72px;
+    min-height: 72px;
     background-color: var(--admin-header-bg);
     border-bottom: 1px solid var(--admin-header-border);
-    padding: 0 32px;
+    padding: 0 clamp(16px, 2.4vw, 32px);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 20px;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -337,6 +351,8 @@ body {
     display: flex;
     align-items: center;
     gap: 16px;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .btn-topbar-toggle {
@@ -354,6 +370,7 @@ body {
 .topbar-breadcrumb {
     display: flex;
     align-items: center;
+    min-width: 0;
 }
 
 .breadcrumb-root {
@@ -373,18 +390,27 @@ body {
     font-size: 1.22rem;
     font-weight: 700;
     color: var(--admin-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .topbar-right {
     display: flex;
     align-items: center;
-    gap: 14px;
+    justify-content: flex-end;
+    flex: 0 1 auto;
+    min-width: 0;
+    gap: 12px;
 }
 
 /* Topbar Global Search */
 .topbar-search {
     position: relative;
-    width: 260px;
+    flex: 1 1 260px;
+    min-width: 170px;
+    max-width: 300px;
+    height: 40px;
     align-items: center;
 }
 
@@ -397,11 +423,14 @@ body {
 }
 
 .topbar-search-input {
+    width: 100%;
+    min-width: 0;
+    height: 40px;
     background-color: var(--admin-input-bg);
     border: 1px solid var(--admin-input-border);
     color: var(--admin-text);
     border-radius: 10px;
-    padding: 7px 40px 7px 34px;
+    padding: 7px 68px 7px 38px;
     font-size: 0.85rem;
     transition: all 0.2s ease;
 }
@@ -416,6 +445,8 @@ body {
 .search-shortcut {
     position: absolute;
     right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
     font-size: 0.7rem;
     font-weight: 600;
     color: var(--admin-text-subtle);
@@ -433,6 +464,7 @@ body {
 .btn-topbar-icon {
     width: 40px;
     height: 40px;
+    flex: 0 0 40px;
     border-radius: 10px;
     border: 1px solid var(--admin-card-border);
     background-color: var(--admin-card-bg);
@@ -452,8 +484,8 @@ body {
 
 .notification-indicator {
     position: absolute;
-    top: 7px;
-    right: 8px;
+    top: 5px;
+    right: 5px;
     width: 8px;
     height: 8px;
     background-color: #ef4444;
@@ -465,6 +497,10 @@ body {
 .btn-admin-profile {
     display: flex;
     align-items: center;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: min(300px, 30vw);
+    min-height: 40px;
     gap: 10px;
     background: transparent;
     border: 1px solid var(--admin-card-border);
@@ -479,8 +515,14 @@ body {
 }
 
 .admin-avatar-small {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
     width: 32px;
     height: 32px;
+    flex: 0 0 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0f766e, #10b981);
 }
 
 .admin-avatar-small img {
@@ -490,17 +532,41 @@ body {
     object-fit: cover;
 }
 
+.admin-avatar-initials {
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
 .admin-user-name {
+    display: block;
+    max-width: 100%;
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--admin-text);
     line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .admin-user-badge {
+    display: block;
+    max-width: 100%;
     font-size: 0.7rem;
     color: var(--admin-primary);
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-user-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 190px;
+    overflow: hidden;
 }
 
 /* Notification Dropdown */
@@ -1312,7 +1378,7 @@ main {
 }
 
 .btn-close {
-    filter: var(--admin-text) == '#f1f5f9' ? invert(1) : none;
+    filter: none;
 }
 
 [data-theme="dark"] .btn-close {
@@ -1413,6 +1479,32 @@ main {
 /* ==========================================
    RESPONSIVE DESIGN BREAKPOINTS
    ========================================== */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .topbar {
+        gap: 12px;
+        padding-inline: 16px;
+    }
+
+    .topbar-right {
+        gap: 8px;
+    }
+
+    .topbar-search {
+        flex-basis: 190px;
+        min-width: 150px;
+    }
+
+    .btn-admin-profile {
+        max-width: 170px;
+        gap: 7px;
+        padding-right: 8px;
+    }
+
+    .admin-user-info {
+        max-width: 88px;
+    }
+}
+
 @media (max-width: 991.98px) {
     .sidebar {
         transform: translateX(-100%);
@@ -1447,7 +1539,25 @@ main {
     }
 
     .topbar {
-        padding: 0 20px;
+        gap: 12px;
+        padding-inline: 16px;
+    }
+
+    .topbar-left {
+        gap: 10px;
+    }
+
+    .topbar-right {
+        gap: 8px;
+    }
+
+    .topbar-search {
+        flex-basis: 190px;
+        min-width: 150px;
+    }
+
+    .btn-topbar-toggle {
+        flex: 0 0 38px;
     }
 
     main {
@@ -1456,6 +1566,40 @@ main {
 }
 
 @media (max-width: 575.98px) {
+    .topbar {
+        min-height: 64px;
+        gap: 8px;
+        padding-inline: 12px;
+    }
+
+    .topbar-left {
+        gap: 8px;
+    }
+
+    .topbar-right {
+        gap: 6px;
+    }
+
+    .topbar-right > .btn-topbar-icon,
+    .topbar-right > .dropdown > .btn-topbar-icon {
+        width: 36px;
+        height: 36px;
+        flex-basis: 36px;
+    }
+
+    .topbar-breadcrumb > div {
+        gap: 0.35rem !important;
+    }
+
+    .breadcrumb-root,
+    .breadcrumb-separator {
+        display: none;
+    }
+
+    .topbar-page-title {
+        font-size: 1rem;
+    }
+
     .admin-page-header {
         flex-direction: column;
         align-items: flex-start;

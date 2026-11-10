@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <style>
+        body { margin: 0; font: 15px/1.5 Consolas, monospace; color: #111; background: #fff; }
+        iframe { display: block; width: 1440px; height: 4200px; border: 0; }
+        #out { position: fixed; top: 0; left: 0; z-index: 9; max-width: 900px; padding: 24px; background: #fff; border: 2px solid #111; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <pre id="out">loading</pre>
+    <iframe id="frame" src="/Home/About"></iframe>
+    <script>
+        frame.addEventListener("load", function () {
+            var d = frame.contentDocument;
+            var names = [".cc-about-page", ".cc-about-cta", ".cc-about-cta__inner", ".cc-site-footer", ".main-content"];
+            var out = names.map(function (sel) {
+                var el = d.querySelector(sel);
+                if (!el) return sel + ": missing";
+                var r = el.getBoundingClientRect();
+                var cs = frame.contentWindow.getComputedStyle(el);
+                return sel + "\n  top=" + r.top.toFixed(0) + " bottom=" + r.bottom.toFixed(0) +
+                    " height=" + r.height.toFixed(0) + "\n  margin=" + cs.marginTop + "/" + cs.marginBottom +
+                    " padding=" + cs.paddingTop + "/" + cs.paddingBottom +
+                    " display=" + cs.display + " bg=" + cs.backgroundColor;
+            });
+            var cta = d.querySelector(".cc-about-cta").getBoundingClientRect();
+            var footer = d.querySelector(".cc-site-footer").getBoundingClientRect();
+            out.push("GAP cta.bottom -> footer.top = " + (footer.top - cta.bottom).toFixed(0) + "px");
+            out.push("PAGE scrollHeight = " + d.documentElement.scrollHeight);
+            document.getElementById("out").textContent = out.join("\n\n");
+            document.getElementById("frame").style.display = "none";
+        });
+    </script>
+</body>
+</html>

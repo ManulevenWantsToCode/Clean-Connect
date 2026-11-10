@@ -6,6 +6,7 @@ namespace Clean_Connect.Application.DTO
     {
         public decimal TotalRevenue { get; set; }
         public decimal RevenueThisMonth { get; set; }
+        public decimal RevenueThisWeek { get; set; }
         public decimal PlatformFeeShare { get; set; }
         public int ActiveBookings { get; set; }
         public int ScheduledToday { get; set; }
@@ -15,6 +16,7 @@ namespace Clean_Connect.Application.DTO
         public int NewClientsThisMonth { get; set; }
         public decimal EscrowHeld { get; set; }
         public List<MonthlyRevenueDto> MonthlyRevenue { get; set; } = new();
+        public List<WeeklyRevenueDto> WeeklyRevenue { get; set; } = new();
         public List<AdminRecentBookingDto> RecentBookings { get; set; } = new();
         public List<AuditActivityDto> AuditActivity { get; set; } = new();
     }
@@ -22,6 +24,13 @@ namespace Clean_Connect.Application.DTO
     public record MonthlyRevenueDto
     {
         public string Month { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public double Percentage { get; set; }
+    }
+
+    public record WeeklyRevenueDto
+    {
+        public string Week { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public double Percentage { get; set; }
     }
@@ -57,6 +66,7 @@ namespace Clean_Connect.Application.DTO
     public record AdminClientDto
     {
         public Guid Id { get; set; }
+        public bool IsSuspended { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Initials { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
@@ -92,6 +102,7 @@ namespace Clean_Connect.Application.DTO
         public string Specialty { get; set; } = string.Empty;
         public int CompletedJobs { get; set; }
         public string KycStatus { get; set; } = "Pending KYC";
+        public bool IsSuspended { get; set; }
         public string Availability { get; set; } = "Available";
         public bool HasBankDetails { get; set; }
         public string PayoutAccount { get; set; } = string.Empty;
@@ -198,19 +209,24 @@ namespace Clean_Connect.Application.DTO
         public string PlatformName { get; set; } = "Clean Connect";
         public string SupportEmail { get; set; } = "support@cleanconnect.com";
         public string CustomerServicePhone { get; set; } = "+234 800 253 2626";
-        public string BaseCurrency { get; set; } = "NGN (₦) - Nigerian Naira";
-        public string Timezone { get; set; } = "WAT";
+        public string BaseCurrency { get; set; } = "NGN";
+        public string Timezone { get; set; } = "Africa/Lagos";
         public bool MaintenanceMode { get; set; }
         public int AutoMatchCleanerTimeoutMinutes { get; set; } = 15;
         public int MinimumAdvanceNoticeHours { get; set; } = 2;
         public int FreeCancellationWindowHours { get; set; } = 4;
         public int MaxActiveJobsPerCleanerPerDay { get; set; } = 2;
-        public int CommissionPercent { get; set; } = 15;
+        public decimal CommissionPercent { get; set; } = 15;
         public int AutoReleaseEscrowDelayHours { get; set; } = 24;
+        public decimal MinimumPayoutAmount { get; set; }
         public string PaymentGatewayMode { get; set; } = "Paystack Live Production";
         public bool EmailAlertsOnNewBooking { get; set; } = true;
         public bool SmsToCleanerOnAssignment { get; set; } = true;
         public bool DisputeAndFlaggedReviewNotifications { get; set; } = true;
+        public bool EmailBookingConfirmation { get; set; } = true;
+        public bool EmailBookingCancellation { get; set; } = true;
+        public bool EmailPaymentNotifications { get; set; } = true;
+        public bool SmsBookingNotifications { get; set; } = true;
         public List<AdminUserDto> AdminUsers { get; set; } = new();
     }
 

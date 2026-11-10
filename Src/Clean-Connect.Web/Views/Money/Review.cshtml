@@ -6,7 +6,9 @@
     var unitLabel = Model.IsWorker ? "Income" : "Spending";
 }
 
-<link rel="stylesheet" href="~/css/money-review.css" asp-append-version="true" />
+@section Styles {
+    <link rel="stylesheet" href="~/css/money-review.css" asp-append-version="true" />
+}
 
 <div class="dash-page money-review-page">
     <div class="container">

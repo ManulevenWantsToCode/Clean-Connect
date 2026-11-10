@@ -17,6 +17,7 @@ namespace Clean_Connect.Application.Command.WebhookCommand
     public record ProcessPaystackWebhookCommand(string Payload, string Signature) : IRequest<Unit>;
     public class ProcessPaystackWebhookCommandHandler : IRequestHandler<ProcessPaystackWebhookCommand, Unit>
     {
+        private static readonly JsonSerializerOptions WebhookJsonOptions = new(JsonSerializerDefaults.Web);
 
         private readonly ILogger<ProcessPaystackWebhookCommandHandler> logger;
         private readonly IPaystackService paystackService;
@@ -39,17 +40,24 @@ namespace Clean_Connect.Application.Command.WebhookCommand
         {
             // 1. Verify signature
             var secret = configuration["Paystack:SecretKey"];
-            var computedHash = ComputeHash(request.Payload, secret);
-
-            if (computedHash != request.Signature)
+            if (string.IsNullOrWhiteSpace(secret) || !IsValidSignature(request.Payload, request.Signature, secret))
                 throw new UnauthorizedAccessException("Invalid signature");
 
-            var payload = JsonSerializer.Deserialize<PaystackWebhookDto>(request.Payload);
+            var payload = JsonSerializer.Deserialize<PaystackWebhookDto>(request.Payload, WebhookJsonOptions)
+                ?? throw new InvalidOperationException("Paystack webhook payload was empty or invalid.");
             logger.LogInformation("Received Paystack webhook event: {Event}", payload.Event);
 
+            if (payload.Event is "transfer.success" or "transfer.failed" or "transfer.reversed")
+            {
+                await ProcessTransferWebhookAsync(payload, cancellationToken);
+                return Unit.Value;
+            }
+
             if (payload.Event != "charge.success")
-                
-            return Unit.Value;
+                return Unit.Value;
+
+            if (payload.Data == null || string.IsNullOrWhiteSpace(payload.Data.Reference))
+                throw new InvalidOperationException("Paystack charge webhook did not include a payment reference.");
 
             var reference = payload.Data.Reference;
             logger.LogInformation("Processing payment with reference: {Reference}", reference);
@@ -120,7 +128,59 @@ namespace Clean_Connect.Application.Command.WebhookCommand
 
             return Unit.Value;
         }
-        private string ComputeHash(string payload, string secret)
+
+        private async Task ProcessTransferWebhookAsync(PaystackWebhookDto payload, CancellationToken cancellationToken)
+        {
+            var data = payload.Data;
+            if (data == null || string.IsNullOrWhiteSpace(data.Reference))
+                throw new InvalidOperationException("Paystack transfer webhook did not include a reference.");
+
+            var escrow = await unitOfWork.Escrows.GetByTransferReference(data.Reference, cancellationToken);
+            if (escrow == null)
+            {
+                logger.LogWarning("Transfer webhook reference {Reference} does not match a current payout attempt.", data.Reference);
+                return;
+            }
+
+            var expectedMinorUnits = decimal.Round(escrow.WorkerShare * 100m, 0, MidpointRounding.AwayFromZero);
+            if (data.Amount != expectedMinorUnits)
+                throw new InvalidOperationException($"Transfer amount mismatch for reference {data.Reference}.");
+
+            var providerStatus = payload.Event switch
+            {
+                "transfer.success" => "success",
+                "transfer.reversed" => "reversed",
+                _ => "failed"
+            };
+
+            if (providerStatus == "success")
+                escrow.RecordPayoutTransfer(data.TransferCode ?? string.Empty, providerStatus, "PaystackWebhook");
+            else
+                escrow.MarkPayoutRetryable(providerStatus, "PaystackWebhook");
+
+            await unitOfWork.Escrows.UpdateEscrow(escrow, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Applied Paystack transfer event {Event} for escrow {EscrowId}, transfer ref {Reference}.", payload.Event, escrow.Id, data.Reference);
+        }
+
+        private static bool IsValidSignature(string payload, string signature, string secret)
+        {
+            if (string.IsNullOrWhiteSpace(signature))
+                return false;
+
+            try
+            {
+                var expected = Convert.FromHexString(ComputeHash(payload, secret));
+                var supplied = Convert.FromHexString(signature);
+                return CryptographicOperations.FixedTimeEquals(expected, supplied);
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
+
+        private static string ComputeHash(string payload, string secret)
         {
             using var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(secret));
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));

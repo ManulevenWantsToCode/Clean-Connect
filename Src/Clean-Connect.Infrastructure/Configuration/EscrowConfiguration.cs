@@ -1,4 +1,5 @@
 using Clean_Connect.Domain.Entities;
+using Clean_Connect.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -45,6 +46,22 @@ namespace Clean_Connect.Infrastructure.Configuration
             builder.Property(x => x.PaystackTransferCode)
                 .HasMaxLength(100);
 
+            builder.Property(x => x.PaystackTransferReference)
+                .HasMaxLength(50);
+
+            builder.Property(x => x.TransferStatus)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .HasDefaultValue(PayoutTransferStatus.NotStarted)
+                .IsRequired();
+
+            builder.Property(x => x.DateModified)
+                .IsConcurrencyToken();
+
+            builder.Property(x => x.PayoutAttemptCount)
+                .HasDefaultValue(0)
+                .IsRequired();
+
             builder.Property(x => x.DatePaidOut);
 
             builder.HasIndex(x => x.BookingId)
@@ -52,6 +69,10 @@ namespace Clean_Connect.Infrastructure.Configuration
 
             builder.HasIndex(x => x.PaymentId)
                 .IsUnique();
+
+            builder.HasIndex(x => x.PaystackTransferReference)
+                .IsUnique()
+                .HasFilter("\"PaystackTransferReference\" IS NOT NULL");
 
             builder.HasIndex(x => new { x.WorkerId, x.Status });
 

@@ -28,6 +28,9 @@ namespace Clean_Connect.Application.DTO
 
     public class TransferInitiationResponse
     {
+        [JsonPropertyName("amount")]
+        public decimal Amount { get; set; }
+
         [JsonPropertyName("transfer_code")]
         public string TransferCode { get; set; } = default!;
 
@@ -38,7 +41,7 @@ namespace Clean_Connect.Application.DTO
         public string? Reference { get; set; }
     }
 
-    public record PayoutResult(bool Success, string Message, string? ProviderReference = null);
+    public record PayoutResult(bool Success, string Message, string? ProviderReference = null, string? TransferStatus = null);
 
     public class PaystackResolveAccountData
     {

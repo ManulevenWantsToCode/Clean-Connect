@@ -1,0 +1,15 @@
+/* Keep server-side notifications visible above dashboard navigation and overlays. */
+.notyf {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 20000 !important;
+    align-items: flex-end !important;
+    justify-content: flex-start !important;
+    padding: 20px !important;
+    pointer-events: none !important;
+}
+
+.notyf__toast {
+    max-width: min(420px, calc(100vw - 40px));
+    pointer-events: auto;
+}

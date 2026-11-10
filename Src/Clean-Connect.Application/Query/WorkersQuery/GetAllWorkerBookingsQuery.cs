@@ -50,7 +50,8 @@ namespace Clean_Connect.Application.Query.WorkersQuery
                 Rating = b.Ratings?.RatingValue ?? 0,
                 Address = b.Address,
                 PaymentStatus = b.PaymentStatus.ToString(),
-                BookingStatus = b.BookingStatus.ToString()
+                BookingStatus = b.BookingStatus.ToString(),
+                RejectionReason = b.RejectionReason
             }).ToList();
 
             if (!bookings.Any())

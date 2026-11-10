@@ -1,262 +1,107 @@
-﻿@model Clean_Connect.Application.Command.ServiceTypeCommands.UpdateServiceTypeCommands
+@model Clean_Connect.Application.Command.ServiceTypeCommands.UpdateServiceTypeCommands
 
 @{
     ViewData["Title"] = "Edit Service Type";
+    ViewData["ActivePage"] = "ServiceTypes";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<div class="page-card">
-
-    <!-- =========================================
-        PAGE HEADER
-    ========================================== -->
-
-    <div class="page-header">
-
-        <div>
-
-            <h2>
-
-                <i class="fa-solid fa-pen-to-square text-success me-2"></i>
-
-                Edit Service Type
-
-            </h2>
-
-            <p class="text-muted mb-0">
-
-                Update an existing cleaning service.
-
-            </p>
-
-        </div>
-
-        <a asp-action="Index"
-           class="btn btn-outline-secondary">
-
-            <i class="fa-solid fa-arrow-left me-2"></i>
-
-            Back
-
-        </a>
-
+<div class="admin-page-header">
+    <div class="admin-page-title-wrap">
+        <h2>
+            <i class="fa-solid fa-pen-to-square text-success me-2"></i>
+            Edit Service Type
+        </h2>
+        <p>Update an existing cleaning service category.</p>
     </div>
-
-    <!-- =========================================
-        CONTENT
-    ========================================== -->
-
-    <form method="post">
-
-        @Html.AntiForgeryToken()
-
-        <input asp-for="Id" type="hidden"/>
-
-        <div class="row g-4">
-
-            <!-- ================= LEFT ================= -->
-
-            <div class="col-lg-8">
-
-                <div class="card border-0 shadow-sm rounded-4">
-
-                    <div class="card-body p-4">
-
-                        <!-- Hero -->
-
-                        <div class="text-center mb-5">
-
-                            <div class="service-circle">
-
-                                <i class="fa-solid fa-broom"></i>
-
-                            </div>
-
-                            <h3 class="mt-4">
-
-                                @Model.Name
-
-                            </h3>
-
-                            <p class="text-muted">
-
-                                Modify the information below.
-
-                            </p>
-
-                        </div>
-
-                        <!-- Name -->
-
-                        <div class="form-floating mb-4">
-
-                            <input asp-for="Name"
-                                   class="form-control"
-                                   placeholder="Service Name"/>
-
-                            <label asp-for="Name"></label>
-
-                            <span asp-validation-for="Name"
-                                  class="text-danger">
-                            </span>
-
-                        </div>
-
-                        <!-- =====================================
-                            Description
-                        ====================================== -->
-
-                        <div class="form-floating mb-4">
-
-                            <textarea asp-for="Description"
-                                      class="form-control"
-                                      placeholder="Description"
-                                      style="height:150px"></textarea>
-
-                            <label asp-for="Description"></label>
-
-                            <span asp-validation-for="Description"
-                                  class="text-danger">
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- ================= RIGHT SIDE ================= -->
-
-            <div class="col-lg-4">
-
-                <div class="card border-0 shadow-sm rounded-4">
-
-                    <div class="card-body text-center p-4">
-
-                        <div class="service-preview">
-
-                            <i class="fa-solid fa-broom"></i>
-
-                        </div>
-
-                        <h4 class="fw-bold mt-4">
-
-                            Service Preview
-
-                        </h4>
-
-                        <p class="text-muted">
-
-                            Review your changes before saving.
-
-                        </p>
-
-                        <hr>
-
-                        <div class="preview-item">
-
-                            <small class="text-muted d-block">
-
-                                Service Name
-
-                            </small>
-
-                            <strong id="previewName">
-
-                                @Model.Name
-
-                            </strong>
-
-                        </div>
-
-                        <div class="alert alert-light mt-4 mb-0">
-
-                            <i class="fa-solid fa-circle-info text-success me-2"></i>
-
-                            Changes will immediately affect new worker registrations.
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <!-- =====================================
-            ACTION BUTTONS
-        ====================================== -->
-
-        <div class="d-flex justify-content-end gap-3 mt-5">
-
-            <a asp-action="Index"
-               class="btn btn-outline-secondary px-4">
-
-                <i class="fa-solid fa-arrow-left me-2"></i>
-
-                Cancel
-
-            </a>
-
-            <button type="submit"
-                    id="saveButton"
-                    class="btn btn-success px-5">
-
-                <i class="fa-solid fa-floppy-disk me-2"></i>
-
-                Save Changes
-
-            </button>
-
-        </div>
-
-    </form>
-
+    <div class="admin-page-actions">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Services
+        </a>
+    </div>
 </div>
 
-@section Scripts {
+<form method="post" id="updateServiceTypeForm">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
 
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4 rounded-3"></div>
+
+    <div class="row g-4">
+        <!-- Form Fields -->
+        <div class="col-lg-8">
+            <div class="data-table-card p-4">
+                <h5 class="fw-bold mb-3 text-dark">Modify Service Details</h5>
+
+                <!-- Name -->
+                <div class="mb-4">
+                    <label asp-for="Name" class="form-label fw-semibold text-dark">
+                        Service Name <span class="text-danger">*</span>
+                    </label>
+                    <input asp-for="Name" id="serviceNameInput" class="form-control form-control-lg" placeholder="e.g. Deep Cleaning" required />
+                    <span asp-validation-for="Name" class="text-danger small mt-1 d-block"></span>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label fw-semibold text-dark">
+                        Description <span class="text-danger">*</span>
+                    </label>
+                    <textarea asp-for="Description" class="form-control" rows="5" placeholder="Detailed description..." required></textarea>
+                    <span asp-validation-for="Description" class="text-danger small mt-1 d-block"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Preview -->
+        <div class="col-lg-4">
+            <div class="data-table-card p-4 text-center">
+                <div class="stat-icon-wrapper stat-icon-emerald mx-auto mb-3" style="width: 64px; height: 64px; font-size: 1.6rem;">
+                    <i class="fa-solid fa-broom"></i>
+                </div>
+                <h5 class="fw-bold mb-1" id="previewTitle">@Model.Name</h5>
+                <p class="text-muted small mb-3">Live Service Preview</p>
+                <div class="p-3 bg-light rounded-3 text-start small border">
+                    <span class="text-muted d-block mb-1">Impact note:</span>
+                    <span class="text-dark">Modifying this service name will be reflected across active cleaner profiles and booking choices.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="d-flex align-items-center gap-3 mt-4">
+        <button type="submit" id="saveButton" class="btn btn-admin-primary px-4 py-2">
+            <i class="fa-solid fa-floppy-disk me-2"></i> Save Changes
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary px-4 py-2">
+            Cancel
+        </a>
+    </div>
+</form>
+
+@section Scripts {
     <partial name="_ValidationScriptsPartial" />
 
     <script>
-
         document.addEventListener("DOMContentLoaded", function () {
-
-            const nameInput = document.getElementById("Name");
-
-            const previewName = document.getElementById("previewName");
-
-            if (nameInput) {
-
-                nameInput.addEventListener("keyup", function () {
-
-                    previewName.textContent =
-                        this.value || "Service Name";
-
-                });
-
-            }
-
-            const form = document.querySelector("form");
-
+            const nameInput = document.getElementById("serviceNameInput");
+            const previewTitle = document.getElementById("previewTitle");
+            const form = document.getElementById("updateServiceTypeForm");
             const saveButton = document.getElementById("saveButton");
 
-            form.addEventListener("submit", function () {
+            if (nameInput && previewTitle) {
+                nameInput.addEventListener("input", function () {
+                    previewTitle.textContent = this.value.trim() || "Service Name";
+                });
+            }
 
-                saveButton.disabled = true;
-
-                saveButton.innerHTML =
-
-                    '<span class="spinner-border spinner-border-sm me-2"></span>Saving Changes...';
-
-            });
-
+            if (form && saveButton) {
+                form.addEventListener("submit", function () {
+                    saveButton.disabled = true;
+                    saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+                });
+            }
         });
-
     </script>
-
 }

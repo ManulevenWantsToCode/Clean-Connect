@@ -54,6 +54,12 @@ namespace Clean_Connect.Domain.Entities
 
         public bool IsAvailable { get; private set; } = true;
 
+        public bool IsSuspended { get; private set; }
+
+        public void Suspend(string? modifiedBy = null) { IsSuspended = true; IsAvailable = false; UpdateMetadata(modifiedBy); }
+
+        public void Reinstate(string? modifiedBy = null) { IsSuspended = false; UpdateMetadata(modifiedBy); }
+
         public DateTime DateOfBirth { get; private set; } = default!;
 
         public decimal HourlyRate { get; private set; }

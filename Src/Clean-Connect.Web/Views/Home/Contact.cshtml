@@ -1,0 +1,203 @@
+@model Clean_Connect.Web.Models.ContactMessageViewModel
+
+@{
+    ViewData["Title"] = "Contact Us";
+}
+
+<div class="cc-marketing-page cc-contact-page">
+    <!-- Hero Section -->
+    <section class="cc-contact-hero">
+        <div class="container">
+            <span class="cc-page-kicker">
+                <i class="fa-solid fa-headset"></i> We're Here to Help
+            </span>
+            <h1>Get in touch with the Clean Connect team</h1>
+            <p>
+                Have a question about a booking, want to partner as a cleaning professional, or need assistance with your account? Our friendly support team in Lagos is ready to assist you.
+            </p>
+        </div>
+    </section>
+
+    <!-- Content: Support Channels + Contact Form -->
+    <section class="cc-contact-content">
+        <div class="container cc-contact-content__grid">
+            <!-- Left Info Panel -->
+            <aside class="cc-contact-details">
+                <span class="cc-section-eyebrow"><i class="fa-solid fa-comments"></i> Direct Channels</span>
+                <h2>Reach out through the channel that suits you best.</h2>
+                <p>
+                    We pride ourselves on prompt, helpful responses so you can schedule your cleaning with complete confidence.
+                </p>
+
+                <div class="cc-contact-detail-list">
+                    <a href="mailto:support@cleanconnect.com" class="cc-contact-card">
+                        <span class="cc-contact-card__icon green"><i class="fa-regular fa-envelope"></i></span>
+                        <div>
+                            <strong>Email Customer Support</strong>
+                            <span>support@cleanconnect.com</span>
+                            <small class="text-success"><i class="fa-regular fa-clock"></i> Typical response: within 2 hours</small>
+                        </div>
+                    </a>
+
+                    <a href="tel:+2340000000000" class="cc-contact-card">
+                        <span class="cc-contact-card__icon teal"><i class="fa-solid fa-phone"></i></span>
+                        <div>
+                            <strong>Call Us Directly</strong>
+                            <span>+234 000 000 0000</span>
+                            <small>Monday to Saturday: 8:00 AM &ndash; 6:00 PM</small>
+                        </div>
+                    </a>
+
+                    <div class="cc-contact-card">
+                        <span class="cc-contact-card__icon amber"><i class="fa-solid fa-location-dot"></i></span>
+                        <div>
+                            <strong>Operations Hub</strong>
+                            <span>Lagos, Nigeria</span>
+                            <small>Covering Island and Mainland regions</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Status & Reassurance -->
+                <div class="cc-contact-status-card">
+                    <div class="cc-contact-status-head">
+                        <span class="cc-pulse-dot"></span>
+                        <strong>Support Desk Online</strong>
+                    </div>
+                    <p class="small text-muted mb-0">
+                        Our customer care specialists are actively responding to enquiries. For urgent booking changes, you can also manage bookings directly from your client dashboard.
+                    </p>
+                </div>
+
+                <!-- Quick Help Shortcuts -->
+                <div class="cc-contact-faq-shortcuts">
+                    <h3>Frequently asked quick questions:</h3>
+                    <ul class="cc-faq-links">
+                        <li>
+                            <a asp-controller="Booking" asp-action="Create">
+                                <i class="fa-solid fa-calendar-check"></i> How do I book an available cleaner?
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Booking" asp-action="ChooseWorker">
+                                <i class="fa-solid fa-user-check"></i> How do I choose cleaners near me?
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Auth" asp-action="Register">
+                                <i class="fa-solid fa-briefcase"></i> How do I register as a cleaner?
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Right Form Panel -->
+            <div class="cc-contact-form-wrap">
+                <div class="cc-contact-form-wrap__head">
+                    <span class="cc-section-eyebrow"><i class="fa-solid fa-envelope-open-text"></i> Send a Message</span>
+                    <h2>Tell us how we can help.</h2>
+                    <p>Fill out the form below and we will follow up with you directly.</p>
+                </div>
+
+                <form asp-action="Contact" asp-controller="Home" method="post" class="cc-contact-form" id="contactForm">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="cc-contact-form__two-col">
+                        <div class="form-group">
+                            <label asp-for="Name" class="form-label">
+                                <i class="fa-regular fa-user me-1"></i> Full name <span class="text-danger">*</span>
+                            </label>
+                            <input asp-for="Name" class="form-control form-control-lg" type="text" autocomplete="name" placeholder="e.g. Tunde Adebayo" required />
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Email" class="form-label">
+                                <i class="fa-regular fa-envelope me-1"></i> Email address <span class="text-danger">*</span>
+                            </label>
+                            <input asp-for="Email" class="form-control form-control-lg" type="email" autocomplete="email" placeholder="you@example.com" required />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="cc-contact-form__two-col">
+                        <div class="form-group">
+                            <label asp-for="Phone" class="form-label">
+                                <i class="fa-solid fa-phone me-1"></i> Phone number <span class="text-muted">(Optional)</span>
+                            </label>
+                            <input asp-for="Phone" class="form-control form-control-lg" type="tel" autocomplete="tel" placeholder="+234 800 000 0000" />
+                            <span asp-validation-for="Phone" class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Topic" class="form-label">
+                                <i class="fa-solid fa-tag me-1"></i> Topic <span class="text-danger">*</span>
+                            </label>
+                            <select asp-for="Topic" class="form-select form-select-lg" required>
+                                <option value="">Select an enquiry topic</option>
+                                <option value="Making a booking">Making a booking</option>
+                                <option value="Worker support">Cleaner &amp; Worker support</option>
+                                <option value="Payment or escrow">Payment &amp; Escrow question</option>
+                                <option value="Account support">Account &amp; Login assistance</option>
+                                <option value="Partnership / Commercial">Commercial / Business partnership</option>
+                                <option value="Something else">Other enquiry</option>
+                            </select>
+                            <span asp-validation-for="Topic" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="Message" class="form-label">
+                            <i class="fa-regular fa-comment-dots me-1"></i> How can we help? <span class="text-danger">*</span>
+                        </label>
+                        <textarea asp-for="Message" class="form-control" rows="5" placeholder="Please describe your question or request in detail..." required></textarea>
+                        <span asp-validation-for="Message" class="text-danger"></span>
+                    </div>
+
+                    <div class="cc-form-security-note">
+                        <i class="fa-solid fa-shield-halved text-success"></i>
+                        <span>Your contact information is strictly confidential and protected by our privacy pledge.</span>
+                    </div>
+
+                    <button type="submit" class="btn cc-action-button cc-action-button--primary cc-action-button--large" id="sendContactBtn">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Send Message
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom Quick Booking CTA -->
+    <section class="cc-contact-cta">
+        <div class="container cc-contact-cta__inner">
+            <div class="cc-contact-cta__copy">
+                <span class="cc-section-eyebrow"><i class="fa-solid fa-bolt"></i> Need Cleaning Done Today?</span>
+                <h2>Skip the wait and book a verified cleaner now.</h2>
+                <p>Browse available cleaners, view transparent hourly rates, and schedule your appointment in seconds.</p>
+            </div>
+            <div class="cc-contact-cta__actions">
+                <a asp-controller="Booking" asp-action="Create" class="btn cc-action-button cc-action-button--primary cc-action-button--large">
+                    <i class="fa-solid fa-calendar-plus"></i> Create a Booking
+                </a>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.getElementById("contactForm");
+            const btn = document.getElementById("sendContactBtn");
+            if (form && btn) {
+                form.addEventListener("submit", function () {
+                    if (form.checkValidity()) {
+                        btn.disabled = true;
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+                    }
+                });
+            }
+        });
+    </script>
+}

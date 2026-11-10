@@ -11,12 +11,14 @@ namespace Clean_Connect.Application.Command.Services
         private readonly IUnitOfWork repo;
         private readonly ILogger<EscrowService> logger;
         private readonly IConfiguration configuration;
+        private readonly Clean_Connect.Application.Interface.Repositories.IPlatformSettingsRepository platformSettings;
 
-        public EscrowService(IUnitOfWork repo, ILogger<EscrowService> logger, IConfiguration configuration)
+        public EscrowService(IUnitOfWork repo, ILogger<EscrowService> logger, IConfiguration configuration, Clean_Connect.Application.Interface.Repositories.IPlatformSettingsRepository platformSettings)
         {
             this.repo = repo;
             this.logger = logger;
             this.configuration = configuration;
+            this.platformSettings = platformSettings;
         }
 
         public async Task HoldPaymentInEscrowAsync(Booking booking, Payment payment, CancellationToken cancellationToken)
@@ -34,7 +36,8 @@ namespace Clean_Connect.Application.Command.Services
                 return;
             }
 
-            var commissionRate = configuration.GetValue<decimal?>("Commission:Rate") ?? 10m;
+            var settings = await platformSettings.GetAsync(cancellationToken);
+            var commissionRate = settings.CommissionPercent;
             var commissionAmount = Math.Round(booking.OriginalAmount * (commissionRate / 100m), 2);
 
             var escrow = Escrow.Create(

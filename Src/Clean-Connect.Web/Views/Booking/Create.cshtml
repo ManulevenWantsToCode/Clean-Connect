@@ -7,143 +7,305 @@
     var workerCardsJson = JsonSerializer.Serialize(ViewBag.WorkerCards);
 }
 
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <style>.booking-location-map { height: 300px; width: 100%; margin-top: 1rem; border: 1px solid var(--border-color, #d1d5db); border-radius: 12px; overflow: hidden; background: var(--bg-card, #fff); } .booking-location-map .leaflet-control-attribution { font-size: 10px; }</style>
+}
+
 <div class="dash-page booking-workflow-page">
     <div class="container">
+        <!-- Hero Banner -->
         <div class="booking-hero">
             <div>
                 <span class="booking-kicker">
                     <i class="fa-solid fa-calendar-plus"></i>
-                    New Booking
+                    Schedule Service
                 </span>
                 <h1>Book a trusted cleaner with confidence</h1>
-                <p>Choose the service, match with a worker, confirm your location, and send the request for a fast response.</p>
+                <p>Choose your cleaning service, match with a verified professional, confirm your location, and send your request in minutes.</p>
             </div>
             <div class="booking-hero__summary">
-                <span>Secure request</span>
-                <strong>No payment until the worker accepts</strong>
+                <span>Estimated total</span>
+                <strong id="bookingHeroEstimate">Choose cleaner &amp; time</strong>
             </div>
         </div>
 
         <form asp-action="Create" asp-controller="Booking" method="post" id="createBookingForm" class="booking-shell">
             @Html.AntiForgeryToken()
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <div asp-validation-summary="All" class="alert alert-danger @(ViewData.ModelState.IsValid ? "d-none" : "")" role="alert"></div>
 
-            <section class="booking-panel">
-                <div class="booking-panel__head">
-                    <div>
-                        <h2>Service details</h2>
-                        <p>Select the cleaning type and preferred professional.</p>
-                    </div>
-                    <span class="booking-step">01</span>
+            <div class="row g-4">
+                <!-- Main Form Inputs Column -->
+                <div class="col-lg-8">
+                    <!-- Step 01: Service & Cleaner -->
+                    <section class="booking-panel mb-4">
+                        <div class="booking-panel__head">
+                            <div>
+                                <span class="booking-step-badge">Step 1 of 2</span>
+                                <h2>Service &amp; Cleaner Details</h2>
+                                <p>Select your cleaning type, preferred professional, and service schedule.</p>
+                            </div>
+                            <span class="booking-step-icon"><i class="fa-solid fa-broom"></i></span>
+                        </div>
+
+                        <div class="row g-3">
+                            <!-- Service Type Dropdown -->
+                            <div class="col-md-12">
+                                <label asp-for="ServiceTypeId" class="form-label">
+                                    <i class="fa-solid fa-spray-can-sparkles me-1 text-muted"></i> Cleaning service <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="ServiceTypeId" asp-items="ViewBag.ServiceTypes" class="form-select form-select-lg" id="serviceTypeSelect" required>
+                                    <option value="">-- Choose cleaning service --</option>
+                                </select>
+                                <span asp-validation-for="ServiceTypeId" class="text-danger"></span>
+                                <!-- Shown once a worker is chosen -->
+                                <div id="serviceTypeLockHint" class="d-none mt-2 d-flex align-items-center gap-2"
+                                     style="font-size:0.82rem; color:#047857;">
+                                    <i class="fa-solid fa-lock"></i>
+                                    <span>Service is fixed to match your selected cleaner. <a href="javascript:void(0)" id="serviceTypeLockChangeLink" class="fw-semibold text-decoration-none" style="color:#047857;">Change cleaner</a> to update it.</span>
+                                </div>
+                            </div>
+
+                            <!-- Preferred Cleaner Selection Section -->
+                            <div class="col-12">
+                                <label class="form-label">
+                                    <i class="fa-solid fa-user-check me-1 text-muted"></i> Cleaning professional <span class="text-danger">*</span>
+                                </label>
+                                <input type="hidden" asp-for="WorkerId" id="workerIdInput" />
+
+                                <!-- Selected Worker Card (Visible when worker is chosen) -->
+                                <div id="selectedWorkerBox" class="booking-selected-worker d-none">
+                                    <div class="booking-selected-worker__avatar" id="swAvatar">CC</div>
+                                    <div class="booking-selected-worker__info">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <strong id="swName" class="fs-5">Worker Name</strong>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                                                <i class="fa-solid fa-circle-check"></i> Verified Pro
+                                            </span>
+                                        </div>
+                                        <div class="booking-selected-worker__meta mt-1">
+                                            <span id="swService"><i class="fa-solid fa-broom"></i> Deep Cleaning</span>
+                                            <span class="mx-1">&bull;</span>
+                                            <span id="swLocation"><i class="fa-solid fa-location-dot"></i> Lagos</span>
+                                            <span class="mx-1">&bull;</span>
+                                            <span id="swRating"><i class="fa-solid fa-star text-warning"></i> 4.9</span>
+                                        </div>
+                                    </div>
+                                    <div class="booking-selected-worker__price-wrap text-end">
+                                        <span class="text-muted small d-block">Hourly rate</span>
+                                        <strong id="swRate" class="text-success fs-5">&#8358;0/hr</strong>
+                                        <a asp-action="ChooseWorker" asp-controller="Booking" id="changeWorkerBtn" class="d-block small text-decoration-none mt-1 text-teal fw-semibold">
+                                            <i class="fa-solid fa-arrows-rotate"></i> Change cleaner
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <!-- Unselected State: Prompt to Choose Cleaner -->
+                                <div id="unselectedWorkerBox" class="booking-unselected-worker">
+                                    <div class="booking-unselected-worker__icon">
+                                        <i class="fa-solid fa-users-viewfinder"></i>
+                                    </div>
+                                    <div class="booking-unselected-worker__copy">
+                                        <strong>Choose your preferred cleaner</strong>
+                                        <span>Pick from active, verified cleaners with transparent hourly rates and ratings.</span>
+                                    </div>
+                                    <a asp-action="ChooseWorker" asp-controller="Booking"
+                                       asp-route-serviceTypeId="@(Model.ServiceTypeId == Guid.Empty ? null : Model.ServiceTypeId.ToString())"
+                                       asp-route-dateOfService="@Model.DateOfService.ToString("yyyy-MM-dd")"
+                                       asp-route-timeRange="@Model.TimeRange"
+                                       asp-route-latitude="@Model.Latitude"
+                                       asp-route-longitude="@Model.Longitude"
+                                       class="btn cc-action-button cc-action-button--primary" id="chooseWorkerBtn">
+                                        <i class="fa-solid fa-user-check"></i> Browse Cleaners
+                                    </a>
+                                </div>
+                                <span asp-validation-for="WorkerId" class="text-danger mt-1 d-block"></span>
+                            </div>
+
+                            <!-- Schedule: Date & Time Range -->
+                            <div class="col-md-6">
+                                <label asp-for="DateOfService" class="form-label">
+                                    <i class="fa-regular fa-calendar me-1 text-muted"></i> Service date <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="DateOfService" type="date" class="form-control form-control-lg" id="serviceDateInput" required />
+                                <span asp-validation-for="DateOfService" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="TimeRange" class="form-label">
+                                    <i class="fa-regular fa-sun me-1 text-muted"></i> Preferred slot <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="TimeRange" asp-items="ViewBag.TimeRanges" class="form-select form-select-lg" id="timeRangeSelect" required></select>
+                                <span asp-validation-for="TimeRange" class="text-danger"></span>
+                            </div>
+
+                            <!-- Start Time & End Time -->
+                            <div class="col-md-6">
+                                <label asp-for="StartTime" class="form-label">
+                                    <i class="fa-regular fa-clock me-1 text-muted"></i> Start time <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="StartTime" type="time" class="form-control form-control-lg" id="startTimeInput" value="@Model.StartTime.ToString("HH:mm")" required />
+                                <span asp-validation-for="StartTime" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="EndTime" class="form-label">
+                                    <i class="fa-regular fa-hourglass me-1 text-muted"></i> End time <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="EndTime" type="time" class="form-control form-control-lg" id="endTimeInput" value="@Model.EndTime.ToString("HH:mm")" required />
+                                <span asp-validation-for="EndTime" class="text-danger"></span>
+                            </div>
+
+                            <!-- Calculated Duration & Rate Preview Strip -->
+                            <div class="col-12">
+                                <div class="booking-time-summary" aria-live="polite">
+                                    <span class="booking-time-summary__icon" aria-hidden="true">
+                                        <i class="fa-regular fa-clock"></i>
+                                    </span>
+                                    <div class="booking-time-summary__copy">
+                                        <strong id="bookingDurationValue">Set your service hours</strong>
+                                        <span id="bookingDurationHint">Estimate calculates automatically from cleaner's hourly rate.</span>
+                                    </div>
+                                    <div class="booking-time-summary__estimate">
+                                        <span>Estimated total</span>
+                                        <strong id="bookingTimeEstimate">&#8358;--</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Step 02: Location & Coordinates -->
+                    <section class="booking-panel">
+                        <div class="booking-panel__head">
+                            <div>
+                                <span class="booking-step-badge">Step 2 of 2</span>
+                                <h2>Location &amp; Coordinates</h2>
+                                <p>Confirm your address coordinates for accurate distance calculation and validation.</p>
+                            </div>
+                            <span class="booking-step-icon"><i class="fa-solid fa-map-location-dot"></i></span>
+                        </div>
+
+                        <!-- Geolocation Detector Banner -->
+                        <div class="location-detect-banner mb-4">
+                            <div class="location-detect-banner__icon">
+                                <i class="fa-solid fa-location-crosshairs"></i>
+                            </div>
+                            <div class="location-detect-banner__text">
+                                <strong>Automatic location detection</strong>
+                                <span>Clean Connect will retrieve your browser coordinates to verify cleaner proximity in Lagos.</span>
+                            </div>
+                            <button type="button" id="detectBookingLocationBtn" class="btn cc-action-button cc-action-button--secondary">
+                                <i class="fa-solid fa-location-crosshairs me-1"></i> Detect My Location
+                            </button>
+                        </div>
+
+                        <div id="bookingLocationMap" class="booking-location-map" role="application" aria-label="Select your service location by clicking the map or dragging the marker"></div>
+                        <p id="bookingLocationStatus" class="small text-muted mt-2 mb-3" role="status" aria-live="polite">Click the map or move the marker to choose the service location.</p>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label asp-for="Latitude" class="form-label">
+                                    Latitude <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="Latitude" id="bookingLatitude" class="form-control form-control-lg" placeholder="e.g. 6.5244" required />
+                                <span asp-validation-for="Latitude" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label asp-for="Longitude" class="form-label">
+                                    Longitude <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="Longitude" id="bookingLongitude" class="form-control form-control-lg" placeholder="e.g. 3.3792" required />
+                                <span asp-validation-for="Longitude" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label asp-for="CouponCode" class="form-label">
+                                    Discount coupon <span class="text-muted">(Optional)</span>
+                                </label>
+                                <input asp-for="CouponCode" class="form-control form-control-lg" placeholder="Promo code" />
+                                <span asp-validation-for="CouponCode" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
-                <div class="row g-4">
-                    <div class="col-lg-6">
-                        <label asp-for="ServiceTypeId" class="form-label">Cleaning service</label>
-                        <select asp-for="ServiceTypeId" asp-items="ViewBag.ServiceTypes" class="form-select form-select-lg" id="serviceTypeSelect">
-                            <option value="">Choose service</option>
-                        </select>
-                        <span asp-validation-for="ServiceTypeId" class="text-danger"></span>
-                    </div>
-                    <div class="col-lg-6">
-                        <label asp-for="WorkerId" class="form-label">Preferred worker</label>
-                        <input type="hidden" asp-for="WorkerId" id="workerIdInput" />
-                        <a asp-action="ChooseWorker" asp-controller="Booking"
-                           asp-route-serviceTypeId="@(Model.ServiceTypeId == Guid.Empty ? null : Model.ServiceTypeId.ToString())"
-                           asp-route-dateOfService="@Model.DateOfService.ToString("yyyy-MM-dd")"
-                           asp-route-timeRange="@Model.TimeRange"
-                           asp-route-latitude="@Model.Latitude"
-                           asp-route-longitude="@Model.Longitude"
-                           class="btn btn-outline-success btn-lg w-100 rounded-pill d-flex align-items-center justify-content-center gap-2" id="chooseWorkerBtn">
-                            <i class="fa-solid fa-user-check"></i>
-                            Choose a worker
-                        </a>
-                        <span class="form-text d-block mt-2">Available cleaners who are free on your service date are shown, closest first.</span>
-                        <span asp-validation-for="WorkerId" class="text-danger"></span>
-                    </div>
-                    <div class="col-lg-6">
-                        <label asp-for="DateOfService" class="form-label">Service date</label>
-                        <input asp-for="DateOfService" type="date" class="form-control form-control-lg" />
-                        <span asp-validation-for="DateOfService" class="text-danger"></span>
-                    </div>
-                    <div class="col-lg-6">
-                        <label asp-for="TimeRange" class="form-label">Time range</label>
-                        <select asp-for="TimeRange" asp-items="ViewBag.TimeRanges" class="form-select form-select-lg"></select>
-                        <span asp-validation-for="TimeRange" class="text-danger"></span>
-                    </div>
-                    <div class="col-lg-6">
-                        <label asp-for="StartTime" class="form-label">Start time</label>
-                        <input asp-for="StartTime" type="time" class="form-control form-control-lg" value="@Model.StartTime.ToString("HH:mm")" />
-                        <span asp-validation-for="StartTime" class="text-danger"></span>
-                    </div>
-                    <div class="col-lg-6">
-                        <label asp-for="EndTime" class="form-label">End time</label>
-                        <input asp-for="EndTime" type="time" class="form-control form-control-lg" value="@Model.EndTime.ToString("HH:mm")" />
-                        <span asp-validation-for="EndTime" class="text-danger"></span>
-                    </div>
-                </div>
+                <!-- Sticky Order & Price Summary Sidebar -->
+                <div class="col-lg-4">
+                    <aside class="booking-summary-sidebar" aria-label="Booking cost summary">
+                        <div class="booking-summary-card">
+                            <div class="booking-summary-card__head">
+                                <span class="cc-summary-icon"><i class="fa-solid fa-receipt"></i></span>
+                                <div>
+                                    <h3>Booking Summary</h3>
+                                    <p class="small text-muted mb-0">Live estimated cost breakdown</p>
+                                </div>
+                            </div>
 
-                <div id="workerPreview" class="worker-preview mt-4 d-none">
-                    <div class="worker-preview__avatar">
-                        <i class="fa-solid fa-user-check"></i>
-                    </div>
-                    <div>
-                        <strong id="workerPreviewName"></strong>
-                        <span id="workerPreviewMeta"></span>
-                    </div>
-                    <div class="worker-preview__price" id="workerPreviewPrice"></div>
-                </div>
-            </section>
+                            <div class="booking-summary-card__rows">
+                                <div class="summary-line">
+                                    <span class="summary-line__label"><i class="fa-solid fa-broom text-muted me-1"></i> Service</span>
+                                    <strong id="summaryServiceText" class="summary-line__val">Not selected</strong>
+                                </div>
 
-            <section class="booking-panel">
-                <div class="booking-panel__head">
-                    <div>
-                        <h2>Location and offer</h2>
-                        <p>Use your current location for accurate availability and address validation.</p>
-                    </div>
-                    <span class="booking-step">02</span>
-                </div>
+                                <div class="summary-line">
+                                    <span class="summary-line__label"><i class="fa-regular fa-user text-muted me-1"></i> Cleaner</span>
+                                    <strong id="summaryWorkerText" class="summary-line__val text-truncate" style="max-width: 170px;">Not selected</strong>
+                                </div>
 
-                <div class="location-detect-banner mb-4">
-                    <div class="location-detect-banner__icon">
-                        <i class="fa-solid fa-location-crosshairs"></i>
-                    </div>
-                    <div class="location-detect-banner__text">
-                        <strong>Detect service location</strong>
-                        <span>Clean Connect will use these coordinates to validate the Nigerian address.</span>
-                    </div>
-                    <button type="button" id="detectBookingLocationBtn" class="btn btn-success booking-action-btn rounded-pill px-4">
-                        <i class="fa-solid fa-location-crosshairs me-2"></i>Use my location
-                    </button>
-                </div>
+                                <div class="summary-line">
+                                    <span class="summary-line__label"><i class="fa-regular fa-calendar text-muted me-1"></i> Date</span>
+                                    <strong id="summaryDateText" class="summary-line__val">@Model.DateOfService.ToString("MMM dd, yyyy")</strong>
+                                </div>
 
-                <div class="row g-4">
-                    <div class="col-lg-4">
-                        <label asp-for="Latitude" class="form-label">Latitude</label>
-                        <input asp-for="Latitude" id="bookingLatitude" class="form-control form-control-lg" />
-                        <span asp-validation-for="Latitude" class="text-danger"></span>
-                    </div>
-                    <div class="col-lg-4">
-                        <label asp-for="Longitude" class="form-label">Longitude</label>
-                        <input asp-for="Longitude" id="bookingLongitude" class="form-control form-control-lg" />
-                        <span asp-validation-for="Longitude" class="text-danger"></span>
-                    </div>
-                    <div class="col-lg-4">
-                        <label asp-for="CouponCode" class="form-label">Coupon code</label>
-                        <input asp-for="CouponCode" class="form-control form-control-lg" placeholder="Optional" />
-                        <span asp-validation-for="CouponCode" class="text-danger"></span>
-                    </div>
-                </div>
-            </section>
+                                <div class="summary-line">
+                                    <span class="summary-line__label"><i class="fa-regular fa-clock text-muted me-1"></i> Time slot</span>
+                                    <strong id="summaryTimeText" class="summary-line__val">@Model.TimeRange</strong>
+                                </div>
 
-            <div class="booking-submit-bar">
-                <div>
-                    <strong>Ready to send?</strong>
-                    <span>The worker will receive a realtime booking request.</span>
+                                <hr class="my-3 opacity-10" />
+
+                                <div class="summary-line">
+                                    <span class="summary-line__label">Hourly Rate</span>
+                                    <strong id="bookingRateValue" class="summary-line__val text-success">Select cleaner</strong>
+                                </div>
+
+                                <div class="summary-line">
+                                    <span class="summary-line__label">Total Duration</span>
+                                    <strong id="bookingDurationSummary" class="summary-line__val">Set service times</strong>
+                                </div>
+
+                                <div class="summary-line">
+                                    <span class="summary-line__label">Escrow Protection</span>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Free &bull; Included</span>
+                                </div>
+                            </div>
+
+                            <div class="booking-summary-card__total">
+                                <div>
+                                    <span class="total-label">Estimated Total</span>
+                                    <small class="d-block text-muted">Confirmed on acceptance</small>
+                                </div>
+                                <strong id="bookingTotalValue" class="total-amount">&#8358;--</strong>
+                            </div>
+
+                            <!-- Escrow Trust Assurance -->
+                            <div class="booking-trust-note">
+                                <i class="fa-solid fa-shield-halved text-success"></i>
+                                <span>No upfront deduction. Payment is held in secure escrow and only released after job approval.</span>
+                            </div>
+
+                            <!-- Submit Action Button -->
+                            <button type="submit" id="submitBookingBtn" class="btn cc-action-button cc-action-button--primary cc-action-button--large w-100 mt-3">
+                                <i class="fa-solid fa-paper-plane me-1"></i> Send Booking Request
+                            </button>
+                            <span class="d-block text-center small text-muted mt-2" id="bookingSubmitEstimate">
+                                Cleaner will receive an instant notification to accept.
+                            </span>
+                        </div>
+                    </aside>
                 </div>
-                <button type="submit" id="submitBookingBtn" class="btn btn-success btn-lg booking-action-btn rounded-pill px-5">
-                    <i class="fa-solid fa-paper-plane me-2"></i>Send Booking Request
-                </button>
             </div>
         </form>
     </div>
@@ -151,25 +313,96 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const workerCards = @Html.Raw(workerCardsJson);
             const workerIdInput = document.getElementById("workerIdInput");
             const serviceTypeSelect = document.getElementById("serviceTypeSelect");
-            const serviceDateInput = document.querySelector('[name="DateOfService"]');
-            const timeRangeSelect = document.querySelector('[name="TimeRange"]');
-            const startTimeInput = document.querySelector('[name="StartTime"]');
-            const endTimeInput = document.querySelector('[name="EndTime"]');
+            const serviceDateInput = document.getElementById("serviceDateInput");
+            const timeRangeSelect = document.getElementById("timeRangeSelect");
+            const startTimeInput = document.getElementById("startTimeInput");
+            const endTimeInput = document.getElementById("endTimeInput");
             const chooseWorkerBtn = document.getElementById("chooseWorkerBtn");
-            const preview = document.getElementById("workerPreview");
-            const previewName = document.getElementById("workerPreviewName");
-            const previewMeta = document.getElementById("workerPreviewMeta");
-            const previewPrice = document.getElementById("workerPreviewPrice");
+            const changeWorkerBtn = document.getElementById("changeWorkerBtn");
+
+            // Selected worker elements
+            const selectedWorkerBox = document.getElementById("selectedWorkerBox");
+            const unselectedWorkerBox = document.getElementById("unselectedWorkerBox");
+            const swAvatar = document.getElementById("swAvatar");
+            const swName = document.getElementById("swName");
+            const swService = document.getElementById("swService");
+            const swLocation = document.getElementById("swLocation");
+            const swRating = document.getElementById("swRating");
+            const swRate = document.getElementById("swRate");
+
+            // Summary sidebar elements
+            const summaryServiceText = document.getElementById("summaryServiceText");
+            const summaryWorkerText = document.getElementById("summaryWorkerText");
+            const summaryDateText = document.getElementById("summaryDateText");
+            const summaryTimeText = document.getElementById("summaryTimeText");
+
+            // Dynamic calculation targets
+            const durationValue = document.getElementById("bookingDurationValue");
+            const durationHint = document.getElementById("bookingDurationHint");
+            const timeEstimate = document.getElementById("bookingTimeEstimate");
+            const rateValue = document.getElementById("bookingRateValue");
+            const durationSummary = document.getElementById("bookingDurationSummary");
+            const totalValue = document.getElementById("bookingTotalValue");
+            const heroEstimate = document.getElementById("bookingHeroEstimate");
+            const submitEstimate = document.getElementById("bookingSubmitEstimate");
+
+            // Location elements
             const detectBtn = document.getElementById("detectBookingLocationBtn");
             const latInput = document.getElementById("bookingLatitude");
             const lngInput = document.getElementById("bookingLongitude");
             const form = document.getElementById("createBookingForm");
             const submitBtn = document.getElementById("submitBookingBtn");
+            const locationStatus = document.getElementById("bookingLocationStatus");
+            let locationMap;
+            let locationMarker;
+            let reverseGeocodeTimer;
+
+            function syncBookingLocation(lat, lng, shouldGeocode) {
+                const latitude = Number(lat);
+                const longitude = Number(lng);
+                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+                latInput.value = latitude.toFixed(6);
+                lngInput.value = longitude.toFixed(6);
+                if (locationMap) {
+                    const point = [latitude, longitude];
+                    locationMarker.setLatLng(point);
+                    locationMap.setView(point, Math.max(locationMap.getZoom(), 14));
+                }
+                updateChooseWorkerUrl();
+                if (!shouldGeocode) return;
+                clearTimeout(reverseGeocodeTimer);
+                locationStatus.textContent = "Updating address…";
+                reverseGeocodeTimer = setTimeout(async function () {
+                    try {
+                        const response = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + encodeURIComponent(latInput.value) + "&lon=" + encodeURIComponent(lngInput.value));
+                        if (!response.ok) throw new Error("Reverse geocoding failed");
+                        const result = await response.json();
+                        locationStatus.textContent = result.display_name || "Location selected.";
+                    } catch { locationStatus.textContent = "Location selected. Address lookup is unavailable."; }
+                }, 500);
+            }
+
+            if (window.L && document.getElementById("bookingLocationMap")) {
+                const initialLat = Number(latInput.value);
+                const initialLng = Number(lngInput.value);
+                const hasCoordinates = latInput.value && lngInput.value && Number.isFinite(initialLat) && Number.isFinite(initialLng) && (initialLat !== 0 || initialLng !== 0);
+                const initialPoint = hasCoordinates ? [initialLat, initialLng] : [6.5244, 3.3792];
+                locationMap = L.map("bookingLocationMap").setView(initialPoint, hasCoordinates ? 14 : 11);
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors" }).addTo(locationMap);
+                locationMarker = L.marker(initialPoint, { draggable: true }).addTo(locationMap);
+                locationMap.on("click", function (event) { syncBookingLocation(event.latlng.lat, event.latlng.lng, true); });
+                locationMarker.on("dragend", function (event) { const point = event.target.getLatLng(); syncBookingLocation(point.lat, point.lng, true); });
+                if (hasCoordinates) syncBookingLocation(initialLat, initialLng, false);
+                setTimeout(function () { locationMap.invalidateSize(); }, 0);
+            }
+
+            const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
 
             function getDurationHours() {
                 if (!startTimeInput || !endTimeInput || !startTimeInput.value || !endTimeInput.value) return 0;
@@ -181,55 +414,157 @@
                 return diff > 0 ? diff / 60 : 0;
             }
 
-            const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
+            function formatDuration(hours) {
+                if (!hours || hours <= 0) return "Set service times";
+                const wholeHours = Math.floor(hours);
+                const minutes = Math.round((hours - wholeHours) * 60);
+                const hourText = wholeHours ? `${wholeHours} hr${wholeHours === 1 ? "" : "s"}` : "";
+                const minuteText = minutes ? `${minutes} min` : "";
+                return [hourText, minuteText].filter(Boolean).join(" ");
+            }
 
-            function syncWorkerPreview() {
-                const selected = workerCards.find(x => x.Id === workerIdInput.value);
-                if (!selected) {
-                    preview.classList.add("d-none");
-                    return;
+            function syncWorkerAndEstimate() {
+                const selected = workerCards ? workerCards.find(x => x.Id === workerIdInput.value) : null;
+                const hours = getDurationHours();
+                const durationText = formatDuration(hours);
+                const rate = selected ? Number(selected.HourlyRate || 0) : 0;
+                const hasEstimate = selected && hours > 0 && rate > 0;
+
+                // Lock/unlock the service type dropdown based on worker selection
+                const serviceTypeLockHint = document.getElementById("serviceTypeLockHint");
+                const serviceTypeLockChangeLink = document.getElementById("serviceTypeLockChangeLink");
+                if (selected) {
+                    // Worker chosen — lock the service field.
+                    // Never use `disabled` here: disabled controls are omitted from the
+                    // submitted form data, so ServiceTypeId would arrive as Guid.Empty.
+                    if (serviceTypeSelect) {
+                        serviceTypeSelect.disabled = false;
+                        serviceTypeSelect.style.pointerEvents = "none";
+                        serviceTypeSelect.tabIndex = -1;
+                        serviceTypeSelect.setAttribute("aria-disabled", "true");
+                        serviceTypeSelect.classList.add("bg-light", "text-muted");
+                    }
+                    if (serviceTypeLockHint) serviceTypeLockHint.classList.remove("d-none");
+                    // Wire the "Change cleaner" link to the change worker button
+                    if (serviceTypeLockChangeLink && changeWorkerBtn) {
+                        serviceTypeLockChangeLink.onclick = () => changeWorkerBtn.click();
+                    }
+                } else {
+                    // No worker — unlock
+                    if (serviceTypeSelect) {
+                        serviceTypeSelect.disabled = false;
+                        serviceTypeSelect.style.pointerEvents = "";
+                        serviceTypeSelect.tabIndex = 0;
+                        serviceTypeSelect.removeAttribute("aria-disabled");
+                        serviceTypeSelect.classList.remove("bg-light", "text-muted");
+                    }
+                    if (serviceTypeLockHint) serviceTypeLockHint.classList.add("d-none");
                 }
 
-                const hours = getDurationHours();
-                const rate = Number(selected.HourlyRate || 0);
-                previewName.textContent = selected.Name;
-                previewMeta.textContent = `${selected.ServiceName} in ${selected.State || "your area"} | ${naira.format(rate)}/hr`;
-                previewPrice.textContent = hours > 0
-                    ? `${naira.format(rate * hours)} for ${hours} hr${hours === 1 ? "" : "s"}`
-                    : "Set start and end times";
-                preview.classList.remove("d-none");
+                // Sync Service Name
+                if (serviceTypeSelect && serviceTypeSelect.selectedIndex > 0) {
+                    summaryServiceText.textContent = serviceTypeSelect.options[serviceTypeSelect.selectedIndex].text;
+                } else {
+                    summaryServiceText.textContent = selected ? selected.ServiceName : "Not selected";
+                }
+
+                // Sync Date & Time
+                if (serviceDateInput && serviceDateInput.value) {
+                    const parsedDate = new Date(serviceDateInput.value + "T00:00:00");
+                    if (!isNaN(parsedDate)) {
+                        summaryDateText.textContent = parsedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                    }
+                }
+                if (timeRangeSelect && timeRangeSelect.value) {
+                    summaryTimeText.textContent = timeRangeSelect.value;
+                }
+
+                // Sync Duration displays
+                if (hours > 0) {
+                    durationValue.textContent = `${durationText} of cleaning scheduled`;
+                } else {
+                    durationValue.textContent = "Set your service hours";
+                }
+
+                // Sync Hourly Rate
+                if (selected) {
+                    rateValue.textContent = `${naira.format(rate)} / hr`;
+                    durationHint.textContent = `${naira.format(rate)} per hour with ${selected.Name}.`;
+                    summaryWorkerText.textContent = selected.Name;
+
+                    // Display Selected Worker Card
+                    const parts = (selected.Name || "").split(" ").filter(Boolean);
+                    const inits = parts.map(p => p[0]).slice(0, 2).join("").toUpperCase();
+                    swAvatar.textContent = inits || "CC";
+                    swName.textContent = selected.Name;
+                    swService.innerHTML = `<i class="fa-solid fa-broom"></i> ${selected.ServiceName}`;
+                    swLocation.innerHTML = `<i class="fa-solid fa-location-dot"></i> ${selected.State || "Lagos"}`;
+                    swRating.innerHTML = `<i class="fa-solid fa-star text-warning"></i> ${(selected.Rating || 5.0).toFixed(1)}`;
+                    swRate.textContent = `${naira.format(rate)}/hr`;
+
+                    selectedWorkerBox.classList.remove("d-none");
+                    unselectedWorkerBox.classList.add("d-none");
+                } else {
+                    rateValue.textContent = "Select a cleaner";
+                    durationHint.textContent = "The estimate updates from your selected cleaner's hourly rate.";
+                    summaryWorkerText.textContent = "Not selected";
+
+                    selectedWorkerBox.classList.add("d-none");
+                    unselectedWorkerBox.classList.remove("d-none");
+                }
+
+                durationSummary.textContent = durationText;
+                const formattedTotal = hasEstimate ? naira.format(rate * hours) : "₦--";
+                totalValue.textContent = formattedTotal;
+                timeEstimate.textContent = formattedTotal;
+                heroEstimate.textContent = hasEstimate ? `${naira.format(rate * hours)} estimate` : "Choose cleaner & time";
+                submitEstimate.textContent = hasEstimate
+                    ? `${durationText} with ${selected.Name}: estimated ${naira.format(rate * hours)}.`
+                    : "Cleaner will receive an instant notification to accept.";
             }
 
             function updateChooseWorkerUrl() {
-                if (!chooseWorkerBtn) return;
-                const url = new URL(chooseWorkerBtn.href, window.location.origin);
-                if (serviceTypeSelect?.value) url.searchParams.set("serviceTypeId", serviceTypeSelect.value);
-                const date = serviceDateInput?.value;
-                if (date) url.searchParams.set("dateOfService", date);
-                if (timeRangeSelect?.value) url.searchParams.set("timeRange", timeRangeSelect.value);
-                if (latInput?.value) url.searchParams.set("latitude", latInput.value);
-                if (lngInput?.value) url.searchParams.set("longitude", lngInput.value);
-                chooseWorkerBtn.href = url.toString();
+                const updateLink = function (linkEl) {
+                    if (!linkEl) return;
+                    const url = new URL(linkEl.href, window.location.origin);
+                    if (serviceTypeSelect?.value) url.searchParams.set("serviceTypeId", serviceTypeSelect.value);
+                    const date = serviceDateInput?.value;
+                    if (date) url.searchParams.set("dateOfService", date);
+                    if (timeRangeSelect?.value) url.searchParams.set("timeRange", timeRangeSelect.value);
+                    if (latInput?.value) url.searchParams.set("latitude", latInput.value);
+                    if (lngInput?.value) url.searchParams.set("longitude", lngInput.value);
+                    linkEl.href = url.toString();
+                };
+                updateLink(chooseWorkerBtn);
+                updateLink(changeWorkerBtn);
             }
 
-            if (serviceTypeSelect || serviceDateInput || timeRangeSelect) {
-                [serviceTypeSelect, serviceDateInput, timeRangeSelect].forEach(el => {
-                    if (el) el.addEventListener("change", updateChooseWorkerUrl);
-                });
+            if (serviceTypeSelect) serviceTypeSelect.addEventListener("change", function () { syncWorkerAndEstimate(); updateChooseWorkerUrl(); });
+            if (serviceDateInput) {
+                serviceDateInput.min = new Date().toISOString().split("T")[0];
+                serviceDateInput.addEventListener("change", function () { syncWorkerAndEstimate(); updateChooseWorkerUrl(); });
             }
-
-            if (startTimeInput || endTimeInput) {
-                [startTimeInput, endTimeInput].forEach(el => {
-                    if (el) el.addEventListener("change", syncWorkerPreview);
-                });
+            if (timeRangeSelect) timeRangeSelect.addEventListener("change", function () { syncWorkerAndEstimate(); updateChooseWorkerUrl(); });
+            if (startTimeInput) startTimeInput.addEventListener("change", syncWorkerAndEstimate);
+            if (endTimeInput) endTimeInput.addEventListener("change", syncWorkerAndEstimate);
+            function syncMapFromCoordinateFields() {
+                updateChooseWorkerUrl();
+                if (!locationMap || !latInput.value || !lngInput.value) return;
+                const latitude = Number(latInput.value);
+                const longitude = Number(lngInput.value);
+                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+                const point = [latitude, longitude];
+                locationMarker.setLatLng(point);
+                locationMap.setView(point, Math.max(locationMap.getZoom(), 14));
             }
+            if (latInput) latInput.addEventListener("input", syncMapFromCoordinateFields);
+            if (lngInput) lngInput.addEventListener("input", syncMapFromCoordinateFields);
 
-            if (latInput && lngInput) {
-                [latInput, lngInput].forEach(el => el.addEventListener("input", updateChooseWorkerUrl));
-            }
+            // Initial render
+            syncWorkerAndEstimate();
+            updateChooseWorkerUrl();
 
-            syncWorkerPreview();
-
+            // Geolocation detection
             if (detectBtn) {
                 detectBtn.addEventListener("click", function () {
                     if (!navigator.geolocation) {
@@ -238,39 +573,59 @@
                     }
 
                     detectBtn.disabled = true;
-                    detectBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Detecting';
+                    detectBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Detecting location...';
                     navigator.geolocation.getCurrentPosition(
                         function (position) {
-                            latInput.value = position.coords.latitude.toFixed(6);
-                            lngInput.value = position.coords.longitude.toFixed(6);
+                            syncBookingLocation(position.coords.latitude, position.coords.longitude, true);
                             detectBtn.disabled = false;
-                            detectBtn.innerHTML = '<i class="fa-solid fa-circle-check me-2"></i>Location ready';
-                            detectBtn.classList.add("booking-action-btn--complete");
+                            detectBtn.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> Location Ready';
+                            detectBtn.classList.add("border-success", "text-success");
+                            updateChooseWorkerUrl();
                         },
                         function () {
                             detectBtn.disabled = false;
-                            detectBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2"></i>Use my location';
-                            detectBtn.classList.remove("booking-action-btn--complete");
-                            alert("Unable to retrieve your location.");
+                            detectBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs me-1"></i> Detect My Location';
+                            alert("Unable to retrieve your location automatically. Please enter your coordinates.");
                         },
                         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                     );
                 });
             }
 
+            // Form validation before submit
             if (form) {
                 form.addEventListener("submit", function (e) {
+                    // Safety net: a locked/disabled service select would be dropped from the
+                    // POST body, so make sure it is enabled and carries a value before submit.
+                    if (serviceTypeSelect) serviceTypeSelect.disabled = false;
+
+                    if (!serviceTypeSelect || !serviceTypeSelect.value || serviceTypeSelect.value === "@Guid.Empty") {
+                        e.preventDefault();
+                        alert("Please choose a cleaning service before submitting.");
+                        if (serviceTypeSelect) serviceTypeSelect.focus();
+                        return;
+                    }
+
+                    if (!workerIdInput.value || workerIdInput.value === "@Guid.Empty") {
+                        e.preventDefault();
+                        alert("Please select a cleaning professional before submitting.");
+                        if (chooseWorkerBtn) chooseWorkerBtn.focus();
+                        return;
+                    }
+
                     if (startTimeInput && endTimeInput && startTimeInput.value && endTimeInput.value) {
                         const [sh, sm] = startTimeInput.value.split(":").map(Number);
                         const [eh, em] = endTimeInput.value.split(":").map(Number);
                         if ((eh * 60 + em) - (sh * 60 + sm) <= 0) {
                             e.preventDefault();
                             alert("End time must be after start time.");
+                            endTimeInput.focus();
                             return;
                         }
                     }
+
                     submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending request';
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending request...';
                 });
             }
         });

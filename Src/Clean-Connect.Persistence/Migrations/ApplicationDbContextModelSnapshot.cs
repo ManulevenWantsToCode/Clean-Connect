@@ -156,6 +156,10 @@ namespace Clean_Connect.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<Guid>("ServiceTypeId")
                         .HasColumnType("uuid");
 
@@ -186,6 +190,92 @@ namespace Clean_Connect.Persistence.Migrations
                     b.ToTable("Bookings");
                 });
 
+            modelBuilder.Entity("Clean_Connect.Domain.Entities.BookingChat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClientLastReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ClientProviderUserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ClientUnreadCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DateModified")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LastMessageSender")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("LastMessageSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastMessageText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ProviderConversationId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("WorkerLastReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WorkerProviderUserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("WorkerUnreadCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
+
+                    b.HasIndex("ClientProviderUserId");
+
+                    b.HasIndex("ProviderConversationId")
+                        .IsUnique();
+
+                    b.HasIndex("WorkerProviderUserId");
+
+                    b.ToTable("BookingChats", (string)null);
+                });
+
             modelBuilder.Entity("Clean_Connect.Domain.Entities.Client", b =>
                 {
                     b.Property<Guid>("Id")
@@ -209,6 +299,9 @@ namespace Clean_Connect.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSuspended")
                         .HasColumnType("boolean");
 
                     b.Property<string>("ModifiedBy")
@@ -325,6 +418,7 @@ namespace Clean_Connect.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DateModified")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DatePaidOut")
@@ -342,14 +436,30 @@ namespace Clean_Connect.Persistence.Migrations
                     b.Property<Guid>("PaymentId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("PayoutAttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("PaystackTransferCode")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PaystackTransferReference")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("TransferStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("NotStarted");
 
                     b.Property<Guid>("WorkerId")
                         .HasColumnType("uuid");
@@ -361,6 +471,10 @@ namespace Clean_Connect.Persistence.Migrations
 
                     b.HasIndex("PaymentId")
                         .IsUnique();
+
+                    b.HasIndex("PaystackTransferReference")
+                        .IsUnique()
+                        .HasFilter("\"PaystackTransferReference\" IS NOT NULL");
 
                     b.HasIndex("WorkerId", "Status");
 
@@ -532,6 +646,117 @@ namespace Clean_Connect.Persistence.Migrations
                     b.ToTable("Payments", (string)null);
                 });
 
+            modelBuilder.Entity("Clean_Connect.Domain.Entities.PlatformSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AutoMatchCleanerTimeoutMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("AutoReleaseEscrowDelayHours")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("BaseCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<decimal>("CommissionPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<string>("CustomerServicePhone")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("EmailAlertsOnNewBooking")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("EmailBookingCancellation")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("EmailBookingConfirmation")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("EmailPaymentNotifications")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("FreeCancellationWindowHours")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("MaintenanceMode")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxActiveJobsPerCleanerPerDay")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MinimumAdvanceNoticeHours")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MinimumPayoutAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("PlatformName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("SmsBookingNotifications")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("SmsToCleanerOnAssignment")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SupportEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<string>("Timezone")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PlatformSettings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AutoMatchCleanerTimeoutMinutes = 15,
+                            AutoReleaseEscrowDelayHours = 24,
+                            BaseCurrency = "NGN",
+                            CommissionPercent = 15m,
+                            CustomerServicePhone = "+234 800 253 2626",
+                            EmailAlertsOnNewBooking = true,
+                            EmailBookingCancellation = true,
+                            EmailBookingConfirmation = true,
+                            EmailPaymentNotifications = true,
+                            FreeCancellationWindowHours = 4,
+                            MaintenanceMode = false,
+                            MaxActiveJobsPerCleanerPerDay = 2,
+                            MinimumAdvanceNoticeHours = 2,
+                            MinimumPayoutAmount = 0m,
+                            PlatformName = "Clean Connect",
+                            SmsBookingNotifications = true,
+                            SmsToCleanerOnAssignment = true,
+                            SupportEmail = "support@cleanconnect.com",
+                            Timezone = "Africa/Lagos",
+                            UpdatedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
+                });
+
             modelBuilder.Entity("Clean_Connect.Domain.Entities.Ratings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -652,6 +877,9 @@ namespace Clean_Connect.Persistence.Migrations
                         .HasDefaultValue(true);
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSuspended")
                         .HasColumnType("boolean");
 
                     b.Property<string>("ModifiedBy")
@@ -961,6 +1189,17 @@ namespace Clean_Connect.Persistence.Migrations
                     b.Navigation("ServiceType");
 
                     b.Navigation("Worker");
+                });
+
+            modelBuilder.Entity("Clean_Connect.Domain.Entities.BookingChat", b =>
+                {
+                    b.HasOne("Clean_Connect.Domain.Entities.Booking", "Booking")
+                        .WithOne("BookingChat")
+                        .HasForeignKey("Clean_Connect.Domain.Entities.BookingChat", "BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
                 });
 
             modelBuilder.Entity("Clean_Connect.Domain.Entities.Client", b =>
@@ -1347,6 +1586,9 @@ namespace Clean_Connect.Persistence.Migrations
 
             modelBuilder.Entity("Clean_Connect.Domain.Entities.Booking", b =>
                 {
+                    b.Navigation("BookingChat")
+                        .IsRequired();
+
                     b.Navigation("Ratings")
                         .IsRequired();
                 });

@@ -16,21 +16,27 @@ namespace Clean_Connect.Application.Command.Services
         private readonly IUnitOfWork _repo;
         private readonly WorkerAvailabilityService _availabilityService;
         private readonly ILogger<BookingRuleService> _logger;
+        private readonly IPlatformSettingsRepository _platformSettings;
 
 
         public BookingRuleService(
             IUnitOfWork repo,
             WorkerAvailabilityService availabilityService,
-            ILogger<BookingRuleService> logger)
+            ILogger<BookingRuleService> logger,
+            IPlatformSettingsRepository platformSettings)
         {
             _repo = repo;
             _availabilityService = availabilityService;
             _logger = logger;
+            _platformSettings = platformSettings;
         }
 
 
         public async Task ValidateBookingAsync(Guid workerId, Guid clientId, Guid serviceTypeId, decimal totalAmount, decimal amount, decimal hourlyRate, double durationHours, DateTime dateOfService, TimeRange timeRange, CancellationToken cancellationToken)
         {
+            var settings = await _platformSettings.GetAsync(cancellationToken);
+            if (settings.MaintenanceMode)
+                throw new ValidationException("New bookings are temporarily unavailable while the platform is under maintenance.");
             var checkWorkerId = await _repo.Workers.GetWorkerById(workerId, cancellationToken);
 
 
@@ -72,6 +78,12 @@ namespace Clean_Connect.Application.Command.Services
 
             }
 
+            var activeStatuses = new[] { BookingStatus.Pending, BookingStatus.AcceptedAwaitingPayment, BookingStatus.MarkAsPaid,
+                BookingStatus.AwaitingClientStartConfirmation, BookingStatus.InProgress, BookingStatus.AwaitingClientConfirmation };
+            if (checkWorkerId.Bookings.Count(b => b.DateOfService.Date == dateOfService.Date && activeStatuses.Contains(b.BookingStatus))
+                >= settings.MaxActiveJobsPerCleanerPerDay)
+                throw new ValidationException("This worker has reached the maximum number of active jobs for that day.");
+
             if (hourlyRate <= 0 || totalAmount != Math.Round(hourlyRate * (decimal)durationHours, 2))
             {
                 _logger.LogWarning("Booking creation failed. Total does not match hourly rate and duration: {TotalAmount}", totalAmount);
@@ -84,10 +96,10 @@ namespace Clean_Connect.Application.Command.Services
                 throw new ValidationException("Invalid booking amount");
             }
 
-            if (dateOfService.Date < DateTime.UtcNow.Date)
+            if (dateOfService < DateTime.Now.AddHours(settings.MinimumAdvanceNoticeHours))
             {
-                _logger.LogWarning("Booking creation failed. Date of service cannot be in the past: {DateOfService}", dateOfService);
-                throw new ValidationException("Date of service cannot be in the past");
+                _logger.LogWarning("Booking creation failed. Date of service is before the configured advance notice: {DateOfService}", dateOfService);
+                throw new ValidationException($"Bookings must be made at least {settings.MinimumAdvanceNoticeHours} hours in advance.");
             }
         }
     }

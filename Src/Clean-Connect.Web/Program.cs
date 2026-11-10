@@ -101,7 +101,8 @@ if (!string.IsNullOrWhiteSpace(googleSection["ClientId"]) && !string.IsNullOrWhi
 // --------------------
 builder.Services.AddAuthorization();
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+    options.Filters.Add<Clean_Connect.Web.Services.AdminSidebarCountsFilter>());
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<Clean_Connect.Web.Services.IWorkerPresenceService, Clean_Connect.Web.Services.WorkerPresenceService>();
 
@@ -125,14 +126,21 @@ builder.Services.AddScoped<EscrowService>();
 builder.Services.AddScoped<PayoutService>();
 builder.Services.AddScoped<RefundService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-builder.Services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
+builder.Services.AddScoped<RealtimeNotificationService>();
+builder.Services.AddScoped<IRealtimeNotificationService>(sp => sp.GetRequiredService<RealtimeNotificationService>());
+builder.Services.AddScoped<IMessageRealtimeNotificationService>(sp => sp.GetRequiredService<RealtimeNotificationService>());
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IPaystackService, PaystackService>();
+builder.Services.Configure<AgoraChatOptions>(
+    builder.Configuration.GetSection(AgoraChatOptions.SectionName));
+builder.Services.AddScoped<IAgoraChatTokenService, AgoraChatTokenService>();
+builder.Services.AddHttpClient<IAgoraChatProvisioningService, AgoraChatProvisioningService>();
 
 // --------------------
 // Background services
 // --------------------
 builder.Services.AddHostedService<BookingExpirationService>();
+builder.Services.AddHostedService<PayoutRecoveryService>();
 
 
 // --------------------
@@ -143,11 +151,13 @@ builder.Services.AddScoped<IWorkerRepository, WorkerRepository>();
 builder.Services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IBookingChatRepository, BookingChatRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IWorkerBankDetailRepository, WorkerBankDetailRepository>();
 builder.Services.AddScoped<IEscrowRepository, EscrowRepository>();
 builder.Services.AddScoped<ICouponRepository, CouponRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IPlatformSettingsRepository, PlatformSettingsRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 
@@ -193,6 +203,7 @@ app.UseAuthorization();
 
 app.MapHub<NotificationHub>("/hubs/notifications");
 
+app.UseStaticFiles();
 app.MapStaticAssets();
 
 app.MapControllerRoute(

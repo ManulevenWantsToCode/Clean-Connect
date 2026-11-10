@@ -1,0 +1,217 @@
+@{
+    ViewData["Title"] = "About Us";
+}
+
+<div class="cc-marketing-page cc-about-page">
+    <!-- Hero Section -->
+    <section class="cc-about-hero">
+        <div class="container">
+            <div class="cc-about-hero__grid">
+                <div class="cc-about-hero__copy">
+                    <span class="cc-page-kicker">
+                        <i class="fa-solid fa-sparkles"></i> The Clean Connect Story
+                    </span>
+                    <h1>A modern way to connect great homes with trusted cleaners.</h1>
+                    <p>
+                        Clean Connect is transforming home and commercial care in Nigeria. We eliminate guesswork by pairing clients with thoroughly vetted, top-rated cleaners who offer transparent hourly rates, verified identities, and dependable scheduling.
+                    </p>
+                    <div class="cc-page-actions">
+                        <a asp-controller="Booking" asp-action="Create" class="btn cc-action-button cc-action-button--primary cc-action-button--large">
+                            <i class="fa-solid fa-calendar-check"></i> Book a Cleaner
+                        </a>
+                        <a asp-controller="Booking" asp-action="ChooseWorker" class="btn cc-action-button cc-action-button--secondary cc-action-button--large">
+                            <i class="fa-solid fa-user-check"></i> Browse Cleaners
+                        </a>
+                    </div>
+                </div>
+
+                <div class="cc-about-hero__visual" aria-hidden="true">
+                    <div class="cc-about-hero__image-wrap">
+                        <img src="~/images/hero/cleaner.jfif" alt="Clean Connect Professional" />
+                    </div>
+                    <div class="cc-about-hero__note cc-about-hero__note--top">
+                        <span class="cc-note-icon green"><i class="fa-solid fa-shield-halved"></i></span>
+                        <div>
+                            <strong>100% Verified</strong>
+                            <small>ID &amp; Background Vetted</small>
+                        </div>
+                    </div>
+                    <div class="cc-about-hero__note cc-about-hero__note--bottom">
+                        <span class="cc-note-icon amber"><i class="fa-solid fa-star"></i></span>
+                        <div>
+                            <strong>4.9 / 5 Rating</strong>
+                            <small>Thousands of spotless cleans</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Metrics / Numbers -->
+    <section class="cc-metrics-strip">
+        <div class="container">
+            <div class="cc-metrics-grid">
+                <div class="cc-metric-item">
+                    <span class="cc-metric-value">15,000+</span>
+                    <span class="cc-metric-label">Cleanings Completed</span>
+                    <small>Across homes &amp; offices in Lagos</small>
+                </div>
+                <div class="cc-metric-item">
+                    <span class="cc-metric-value">4.9 / 5</span>
+                    <span class="cc-metric-label">Client Satisfaction</span>
+                    <small>Real feedback from real clients</small>
+                </div>
+                <div class="cc-metric-item">
+                    <span class="cc-metric-value">98.4%</span>
+                    <span class="cc-metric-label">On-Time Arrival</span>
+                    <small>Punctual, professional service</small>
+                </div>
+                <div class="cc-metric-item">
+                    <span class="cc-metric-value">100%</span>
+                    <span class="cc-metric-label">Escrow Protected</span>
+                    <small>Funds released only upon approval</small>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mission & Story -->
+    <section class="cc-about-story">
+        <div class="container cc-about-story__grid">
+            <div class="cc-about-story__intro">
+                <span class="cc-section-eyebrow"><i class="fa-solid fa-bullseye"></i> Our Purpose</span>
+                <h2>Home care should feel dependable, transparent and dignified.</h2>
+                <p class="cc-lead">
+                    Finding trusted help shouldn't involve endless phone calls, uncertain pricing, or safety concerns. We founded Clean Connect with a dual mission: to give homeowners complete peace of mind, and to empower cleaning professionals with fair compensation and steady opportunities.
+                </p>
+            </div>
+            <div class="cc-about-story__cards">
+                <div class="cc-story-card">
+                    <div class="cc-story-card__icon"><i class="fa-solid fa-house-chimney-user"></i></div>
+                    <div>
+                        <h3>For Clients &amp; Businesses</h3>
+                        <p>
+                            Clear hourly rates, real reviews, instant availability tracking, and guaranteed security. You know who is coming into your space, how much it costs, and your payment is only released once the job is confirmed to your satisfaction.
+                        </p>
+                    </div>
+                </div>
+                <div class="cc-story-card">
+                    <div class="cc-story-card__icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                    <div>
+                        <h3>For Cleaning Professionals</h3>
+                        <p>
+                            Dignified, predictable earnings without hidden commission cuts. Cleaners build their own independent reputations, set their own rates, manage their schedules, and get paid directly to their bank accounts.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4 Core Pillars / Bento Grid -->
+    <section class="cc-about-values">
+        <div class="container">
+            <div class="cc-section-heading text-center">
+                <span class="cc-section-eyebrow"><i class="fa-solid fa-cubes"></i> The Clean Connect Difference</span>
+                <h2>Built on standards that put you first.</h2>
+                <p class="cc-section-subtitle">
+                    Every feature of our platform was engineered around trust, quality, and simplicity.
+                </p>
+            </div>
+
+            <div class="cc-bento-grid">
+                <article class="cc-bento-card cc-bento-card--featured">
+                    <div class="cc-bento-card__badge">Security &amp; Safety</div>
+                    <span class="cc-bento-card__icon"><i class="fa-solid fa-id-card-clip"></i></span>
+                    <h3>Thorough Identity &amp; Background Vetting</h3>
+                    <p>
+                        We verify every cleaner's government-issued identity and verify background records before any job is accepted. Our rigorous onboarding ensures only trustworthy, dependable professionals enter your space.
+                    </p>
+                    <ul class="cc-check-list">
+                        <li><i class="fa-solid fa-circle-check"></i> Government ID &amp; facial matching</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Reference &amp; track record validation</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Periodic quality check-ins</li>
+                    </ul>
+                </article>
+
+                <article class="cc-bento-card">
+                    <div class="cc-bento-card__badge">Fair Pricing</div>
+                    <span class="cc-bento-card__icon"><i class="fa-solid fa-receipt"></i></span>
+                    <h3>Transparent Hourly Rates</h3>
+                    <p>
+                        No mystery bills or surge fees. Cleaner hourly rates are visible upfront, and our live calculator tells you the exact estimated total based on duration.
+                    </p>
+                </article>
+
+                <article class="cc-bento-card">
+                    <div class="cc-bento-card__badge">Smart Matching</div>
+                    <span class="cc-bento-card__icon"><i class="fa-solid fa-location-crosshairs"></i></span>
+                    <h3>Proximity &amp; Real-Time Availability</h3>
+                    <p>
+                        Discover available cleaners near your home or office. Sort by active status, customer ratings, and distance to get fast arrival when you need it.
+                    </p>
+                </article>
+
+                <article class="cc-bento-card">
+                    <div class="cc-bento-card__badge">Escrow Protection</div>
+                    <span class="cc-bento-card__icon"><i class="fa-solid fa-shield-halved"></i></span>
+                    <h3>Secure Escrow System</h3>
+                    <p>
+                        Powered by Paystack. Your payment is held securely in escrow and only released to the worker once you confirm the cleaning is completed to your liking.
+                    </p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="cc-about-how">
+        <div class="container">
+            <div class="cc-section-heading text-center">
+                <span class="cc-section-eyebrow"><i class="fa-solid fa-list-check"></i> Simple &amp; Fast</span>
+                <h2>How Clean Connect works in 3 easy steps</h2>
+            </div>
+
+            <div class="cc-steps-grid">
+                <div class="cc-step-box">
+                    <div class="cc-step-box__num">01</div>
+                    <div class="cc-step-box__icon"><i class="fa-solid fa-magnifying-glass-location"></i></div>
+                    <h3>Select Service &amp; Schedule</h3>
+                    <p>Choose your cleaning service, set your preferred date, time slot, and location in Lagos.</p>
+                </div>
+                <div class="cc-step-box">
+                    <div class="cc-step-box__num">02</div>
+                    <div class="cc-step-box__icon"><i class="fa-solid fa-user-check"></i></div>
+                    <h3>Pick Your Cleaner</h3>
+                    <p>Compare available cleaners by verified rating, hourly rate, and proximity. View their full profile and book directly.</p>
+                </div>
+                <div class="cc-step-box">
+                    <div class="cc-step-box__num">03</div>
+                    <div class="cc-step-box__icon"><i class="fa-solid fa-broom"></i></div>
+                    <h3>Enjoy Your Clean Space</h3>
+                    <p>Your cleaner arrives promptly. Once the work is done and approved, payment is safely released.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cc-about-cta">
+        <div class="container cc-about-cta__inner">
+            <div class="cc-about-cta__copy">
+                <span class="cc-page-kicker"><i class="fa-solid fa-broom"></i> Ready for a Spotless Space?</span>
+                <h2>Experience the Clean Connect difference today.</h2>
+                <p>Book a verified cleaning professional in minutes, or contact our support team for customized commercial requests.</p>
+            </div>
+            <div class="cc-about-cta__actions">
+                <a asp-controller="Booking" asp-action="Create" class="btn cc-action-button cc-action-button--light cc-action-button--large">
+                    <i class="fa-solid fa-calendar-plus"></i> Book a Cleaner Now
+                </a>
+                <a asp-controller="Home" asp-action="Contact" class="btn cc-action-button cc-action-button--secondary cc-action-button--large">
+                    <i class="fa-regular fa-message"></i> Contact Our Team
+                </a>
+            </div>
+        </div>
+    </section>
+</div>

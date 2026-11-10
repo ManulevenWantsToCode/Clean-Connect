@@ -30,6 +30,9 @@ namespace Clean_Connect.Application.Command.Services
         }
 
         public async Task<PayoutResult> PayoutAsync(Booking booking, string? modifiedBy, CancellationToken cancellationToken)
+            => await PayoutAsync(booking, modifiedBy, reconcileExisting: false, cancellationToken);
+
+        private async Task<PayoutResult> PayoutAsync(Booking booking, string? modifiedBy, bool reconcileExisting, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Starting payout orchestration for booking: {BookingId}, worker: {WorkerId}", booking.Id, booking.WorkerId);
 
@@ -54,7 +57,9 @@ namespace Clean_Connect.Application.Command.Services
 
             if (escrow.Status == EscrowStatus.PaidOut)
             {
-                return new PayoutResult(false, "This payout has already been transferred to the worker bank account.", escrow.PaystackTransferCode);
+                if (escrow.TransferStatus == PayoutTransferStatus.LegacyUnverified)
+                    return await ReconcileLegacyPayoutAsync(escrow, modifiedBy, cancellationToken);
+                return new PayoutResult(true, "This payout has been confirmed by Paystack.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
             }
 
             if (escrow.Status != EscrowStatus.Held)
@@ -69,46 +74,80 @@ namespace Clean_Connect.Application.Command.Services
                 return new PayoutResult(false, "Worker has not added payout bank details. The transfer will be completed automatically once bank details are added.");
             }
 
+            if (!reconcileExisting && escrow.TransferStatus == PayoutTransferStatus.Pending)
+                return new PayoutResult(false, "Paystack is processing this transfer. The payout will update when Paystack confirms its final status.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
+            if (!reconcileExisting && escrow.TransferStatus == PayoutTransferStatus.OtpRequired)
+                return new PayoutResult(false, "Paystack requires OTP approval before this transfer can continue. Approve it in Paystack, then wait for the transfer webhook.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
+
             return await PayoutToExternalTransferAsync(booking, bankDetail, escrow, modifiedBy, cancellationToken);
         }
 
         public async Task PayoutPendingForWorkerAsync(Guid workerId, string? modifiedBy, CancellationToken cancellationToken)
         {
-            var bankDetail = await _repo.WorkerBankDetails.GetActiveByWorkerIdAsync(workerId, cancellationToken);
-            if (bankDetail == null)
-            {
-                _logger.LogInformation("Worker {WorkerId} has no bank details yet; no pending payouts processed.", workerId);
-                return;
-            }
-
             var escrows = await _repo.Escrows.GetByWorkerId(workerId, cancellationToken);
-            var paid = 0;
-            foreach (var escrow in escrows.Where(x => x.Status == EscrowStatus.Held).ToList())
+            foreach (var escrow in escrows.Where(x => x.Status == EscrowStatus.Held
+                || x.TransferStatus == PayoutTransferStatus.LegacyUnverified).ToList())
             {
                 var booking = await _repo.Bookings.GetBookingById(escrow.BookingId, cancellationToken);
-                if (booking.BookingStatus != BookingStatus.Completed || booking.PaymentStatus != PaymentStatus.Successful)
+                if (booking == null || booking.BookingStatus != BookingStatus.Completed || booking.PaymentStatus != PaymentStatus.Successful)
                 {
                     continue;
                 }
 
-                var result = await PayoutAsync(booking, modifiedBy, cancellationToken);
-                if (result.Success)
-                {
-                    paid++;
-                }
-                else
-                {
-                    _logger.LogInformation("Pending payout for booking {BookingId} not completed: {Message}", booking.Id, result.Message);
-                }
+                var result = await PayoutAsync(booking, modifiedBy, reconcileExisting: true, cancellationToken);
+                _logger.LogInformation("Payout recovery for booking {BookingId}: {Message}", booking.Id, result.Message);
             }
+        }
 
-            _logger.LogInformation("Processed pending payouts for worker {WorkerId}: {Paid} paid out.", workerId, paid);
+        private async Task<PayoutResult> ReconcileLegacyPayoutAsync(Escrow escrow, string? modifiedBy, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(escrow.PaystackTransferCode))
+                return new PayoutResult(false, "This older payout has no Paystack transfer code. Verify it manually in Paystack before taking any action.", null, escrow.TransferStatus.ToString());
+
+            try
+            {
+                var transfer = await _paystackService.FetchTransferAsync(escrow.PaystackTransferCode, cancellationToken);
+                if (transfer == null)
+                    return new PayoutResult(false, "Paystack could not find this older transfer. It was not retried to avoid a duplicate payment; review it manually.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
+
+                var expectedMinorUnits = decimal.Round(escrow.WorkerShare * 100m, 0, MidpointRounding.AwayFromZero);
+                if (transfer.Amount != expectedMinorUnits)
+                    return new PayoutResult(false, "The Paystack transfer amount does not match escrow. Manual review is required.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
+
+                await _repo.Escrows.RefreshAsync(escrow, cancellationToken);
+                if (escrow.TransferStatus == PayoutTransferStatus.LegacyUnverified)
+                {
+                    escrow.ReconcileLegacyPayout(transfer.Status, transfer.TransferCode, modifiedBy);
+                    await _repo.Escrows.UpdateEscrow(escrow, cancellationToken);
+                    await _repo.SaveChangesAsync(cancellationToken);
+                }
+
+                var completed = escrow.Status == EscrowStatus.PaidOut
+                    && escrow.TransferStatus == PayoutTransferStatus.Succeeded;
+                return new PayoutResult(completed, completed
+                    ? "Paystack confirmed this legacy payout."
+                    : $"Legacy transfer status from Paystack: {transfer.Status}.", transfer.TransferCode, escrow.TransferStatus.ToString());
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to reconcile legacy payout for escrow {EscrowId}.", escrow.Id);
+                return new PayoutResult(false, "Legacy payout status could not be verified. No new transfer was created.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
+            }
         }
 
         private async Task<PayoutResult> PayoutToExternalTransferAsync(Booking booking, WorkerBankDetail bankDetail, Escrow escrow, string? modifiedBy, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Executing direct transfer payout for booking: {BookingId}, account tail: {Tail}", booking.Id, Tail(bankDetail.AccountNumber));
 
+            var wasUnresolved = escrow.TransferStatus is PayoutTransferStatus.Initiating
+                or PayoutTransferStatus.Unknown
+                or PayoutTransferStatus.Pending
+                or PayoutTransferStatus.OtpRequired;
+            var verifyOnly = escrow.TransferStatus == PayoutTransferStatus.OtpRequired;
             try
             {
                 var recipientCode = bankDetail.RecipientCode;
@@ -124,24 +163,82 @@ namespace Clean_Connect.Application.Command.Services
                     recipientCode = recipient.RecipientCode;
                     bankDetail.SetRecipientCode(recipientCode, modifiedBy);
                     await _repo.WorkerBankDetails.UpdateAsync(bankDetail, cancellationToken);
+                    await _repo.SaveChangesAsync(cancellationToken);
                 }
 
-                var reason = $"Payout for booking {booking.Id}";
-                _logger.LogDebug("Initiating transfer for booking: {BookingId}, amount: {Amount}", booking.Id, escrow.WorkerShare);
-                var transferResult = await _paystackService.InitiateTransferAsync(recipientCode, escrow.WorkerShare, reason, cancellationToken);
-                _logger.LogInformation("Transfer initiated. TransferCode: {TransferCode}, Status: {Status}", transferResult.TransferCode, transferResult.Status);
+                if (escrow.WorkerShare <= 0)
+                    return new PayoutResult(false, "The worker payout amount must be greater than zero.");
 
-                escrow.MarkPaidOut(transferResult.TransferCode, modifiedBy);
-                await _repo.Escrows.UpdateEscrow(escrow, cancellationToken);
-                await _repo.SaveChangesAsync(cancellationToken);
+                var reference = wasUnresolved
+                    ? escrow.PaystackTransferReference
+                    : escrow.BeginPayoutAttempt(modifiedBy);
+                if (string.IsNullOrWhiteSpace(reference))
+                    throw new InvalidOperationException("The payout is missing its persisted transfer reference.");
+                if (!wasUnresolved)
+                {
+                    await _repo.Escrows.UpdateEscrow(escrow, cancellationToken);
+                    await _repo.SaveChangesAsync(cancellationToken);
+                }
 
-                _logger.LogInformation("Direct transfer payout completed for booking: {BookingId}. ProviderRef: {ProviderRef}", booking.Id, transferResult.TransferCode);
-                return new PayoutResult(true, "Transfer initiated to worker bank account.", transferResult.TransferCode);
+                TransferInitiationResponse? transferResult = null;
+                if (wasUnresolved)
+                    transferResult = await _paystackService.VerifyTransferAsync(reference, cancellationToken);
+
+                if (transferResult == null)
+                {
+                    if (verifyOnly)
+                        return new PayoutResult(false, "This transfer is awaiting OTP approval in Paystack; no duplicate transfer was created.", escrow.PaystackTransferCode);
+
+                    var reason = $"Payout for booking {booking.Id}";
+                    _logger.LogInformation("Initiating payout transfer for booking {BookingId}, reference {Reference}", booking.Id, reference);
+                    transferResult = await _paystackService.InitiateTransferAsync(recipientCode, escrow.WorkerShare, reason, reference, cancellationToken);
+                }
+
+                await _repo.Escrows.RefreshAsync(escrow, cancellationToken);
+                if (escrow.Status != EscrowStatus.PaidOut)
+                {
+                    escrow.RecordPayoutTransfer(transferResult.TransferCode, transferResult.Status, modifiedBy);
+                    await _repo.Escrows.UpdateEscrow(escrow, cancellationToken);
+                    await _repo.SaveChangesAsync(cancellationToken);
+                }
+
+                var completed = escrow.Status == EscrowStatus.PaidOut;
+                var message = escrow.TransferStatus switch
+                {
+                    PayoutTransferStatus.Succeeded => "Paystack confirmed the transfer.",
+                    PayoutTransferStatus.Pending => "Paystack accepted the transfer; awaiting final confirmation.",
+                    PayoutTransferStatus.OtpRequired => "Paystack requires OTP approval before the transfer can continue.",
+                    PayoutTransferStatus.Failed => "Paystack rejected the transfer. It is eligible for a safe retry.",
+                    PayoutTransferStatus.Reversed => "Paystack reversed the transfer. It is eligible for a safe retry.",
+                    _ => "The transfer outcome is not yet confirmed. The same transfer reference will be checked before retrying."
+                };
+                _logger.LogInformation("Payout state for booking {BookingId} is {Status}, reference {Reference}", booking.Id, escrow.TransferStatus, reference);
+                return new PayoutResult(completed, message, transferResult.TransferCode, escrow.TransferStatus.ToString());
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Direct transfer payout failed for booking: {BookingId}. Payout deferred for retry.", booking.Id);
-                return new PayoutResult(false, "Transfer could not be completed right now. It will be retried automatically.");
+                try
+                {
+                    await _repo.Escrows.RefreshAsync(escrow, cancellationToken);
+                    if (escrow.Status == EscrowStatus.PaidOut)
+                        return new PayoutResult(true, "Paystack confirmed the transfer.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
+                    if (escrow.Status != EscrowStatus.PaidOut)
+                    {
+                        escrow.MarkPayoutUnknown(modifiedBy);
+                        await _repo.Escrows.UpdateEscrow(escrow, cancellationToken);
+                        await _repo.SaveChangesAsync(cancellationToken);
+                    }
+                }
+                catch (Exception persistenceException)
+                {
+                    _logger.LogError(persistenceException, "Could not persist the unknown payout state for booking {BookingId}.", booking.Id);
+                }
+                return new PayoutResult(false, "Paystack did not return a conclusive result. The payout is saved for reconciliation and will reuse its transfer reference.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
             }
         }
 

@@ -1,0 +1,101 @@
+@inject Clean_Connect.Application.Interface.Repositories.IPlatformSettingsRepository PlatformSettingsRepository
+@{ var platformSettings = await PlatformSettingsRepository.GetAsync(Context.RequestAborted); }
+<footer class="cc-site-footer" role="contentinfo">
+    <div class="container">
+        <!-- Reassurance & Trust Ribbon -->
+        <div class="cc-footer-ribbon">
+            <div class="cc-footer-ribbon__item">
+                <span class="cc-footer-ribbon__icon"><i class="fa-solid fa-shield-halved"></i></span>
+                <div>
+                    <strong>100% Vetted Cleaners</strong>
+                    <small>Identity &amp; background verified</small>
+                </div>
+            </div>
+            <div class="cc-footer-ribbon__item">
+                <span class="cc-footer-ribbon__icon"><i class="fa-solid fa-lock"></i></span>
+                <div>
+                    <strong>Escrow Protected</strong>
+                    <small>Payment released upon approval</small>
+                </div>
+            </div>
+            <div class="cc-footer-ribbon__item">
+                <span class="cc-footer-ribbon__icon"><i class="fa-solid fa-bolt"></i></span>
+                <div>
+                    <strong>Fast Realtime Match</strong>
+                    <small>Available professionals near you</small>
+                </div>
+            </div>
+            <div class="cc-footer-ribbon__item">
+                <span class="cc-footer-ribbon__icon"><i class="fa-solid fa-headset"></i></span>
+                <div>
+                    <strong>Dedicated Support</strong>
+                    <small>Mon - Sat, 8:00 AM - 6:00 PM</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="cc-site-footer__grid">
+            <div class="cc-site-footer__brand">
+                <a class="cc-site-footer__logo" asp-controller="Home" asp-action="Index" aria-label="Clean Connect Home">
+                    <span class="cc-site-footer__mark"><i class="fa-solid fa-broom"></i></span>
+                    <span class="cc-site-footer__brand-text">@platformSettings.PlatformName</span>
+                </a>
+                <p class="cc-site-footer__tagline">
+                    Connecting homes and workplaces with dependable, top-rated cleaning professionals across Nigeria. Transparent hourly rates, verified talent, and hassle-free scheduling.
+                </p>
+                <div class="cc-site-footer__pills">
+                    <span class="cc-site-footer__location"><i class="fa-solid fa-location-dot"></i> Lagos, Nigeria</span>
+                    <span class="cc-site-footer__status"><span class="cc-pulse-dot"></span> Booking active</span>
+                </div>
+            </div>
+
+            <nav class="cc-site-footer__links" aria-label="Explore Clean Connect">
+                <h2>Explore</h2>
+                <a asp-controller="Home" asp-action="Index"><i class="fa-solid fa-angle-right"></i> Home</a>
+                <a asp-controller="Home" asp-action="About"><i class="fa-solid fa-angle-right"></i> About Clean Connect</a>
+                <a asp-controller="Home" asp-action="Contact"><i class="fa-solid fa-angle-right"></i> Contact &amp; Support</a>
+                <a asp-controller="Home" asp-action="Privacy"><i class="fa-solid fa-angle-right"></i> Privacy Policy</a>
+            </nav>
+
+            <nav class="cc-site-footer__links" aria-label="Clean Connect Services">
+                <h2>Services</h2>
+                <a asp-controller="Booking" asp-action="Create"><i class="fa-solid fa-calendar-plus"></i> Book a Cleaner</a>
+                <a asp-controller="Booking" asp-action="ChooseWorker"><i class="fa-solid fa-user-check"></i> Choose a Cleaner</a>
+                <a asp-controller="Auth" asp-action="Register"><i class="fa-solid fa-briefcase"></i> Work as a Cleaner</a>
+            </nav>
+
+            <div class="cc-site-footer__contact">
+                <h2>Get in touch</h2>
+                <a href="mailto:@platformSettings.SupportEmail" class="cc-site-footer__contact-link">
+                    <span class="cc-footer-contact-icon"><i class="fa-regular fa-envelope"></i></span>
+                    <div>
+                        <span class="cc-contact-label">Email us</span>
+                        <strong>@platformSettings.SupportEmail</strong>
+                    </div>
+                </a>
+                <a href="tel:@platformSettings.CustomerServicePhone" class="cc-site-footer__contact-link">
+                    <span class="cc-footer-contact-icon"><i class="fa-solid fa-phone"></i></span>
+                    <div>
+                        <span class="cc-contact-label">Call support</span>
+                        <strong>@platformSettings.CustomerServicePhone</strong>
+                    </div>
+                </a>
+                <div class="cc-site-footer__hours">
+                    <i class="fa-regular fa-clock"></i>
+                    <span>Operating Hours: Mon &ndash; Sat, 8:00 AM &ndash; 6:00 PM</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="cc-site-footer__bottom">
+            <span>&copy; @DateTime.Now.Year @platformSettings.PlatformName. All rights reserved.</span>
+            <div class="cc-site-footer__bottom-links">
+                <a asp-controller="Home" asp-action="Privacy">Privacy Policy</a>
+                <span class="cc-dot-sep">&bull;</span>
+                <a asp-controller="Home" asp-action="Contact">Support</a>
+                <span class="cc-dot-sep">&bull;</span>
+                <span>Trusted cleaning, clearly connected.</span>
+            </div>
+        </div>
+    </div>
+</footer>

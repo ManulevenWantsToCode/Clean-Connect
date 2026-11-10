@@ -11,37 +11,8 @@
 
 <div class="cc-dashboard cc-dashboard--client">
     <div class="cc-dashboard-shell">
-        <aside class="cc-rail" aria-label="Client dashboard navigation">
-            <a class="cc-rail__brand" asp-controller="Home" asp-action="Index" aria-label="Clean Connect home">
-                <span class="cc-rail__logo"><i class="fa-solid fa-broom"></i></span>
-                <span>
-                    <strong>Clean Connect</strong>
-                    <small>Client workspace</small>
-                </span>
-            </a>
-
-            <nav class="cc-rail__nav">
-                <a class="cc-rail__link is-active" asp-controller="Client" asp-action="Dashboard">
-                    <i class="fa-solid fa-table-cells-large"></i>
-                    <span>Overview</span>
-                </a>
-                <a class="cc-rail__link" asp-controller="Booking" asp-action="ChooseWorker">
-                    <i class="fa-solid fa-calendar-plus"></i>
-                    <span>Book service</span>
-                </a>
-                <a class="cc-rail__link" asp-controller="Booking" asp-action="ClientResponses">
-                    <i class="fa-solid fa-clipboard-check"></i>
-                    <span>Bookings</span>
-                </a>
-                <a class="cc-rail__link" asp-controller="Notifications" asp-action="Index">
-                    <i class="fa-solid fa-bell"></i>
-                    <span>Updates</span>
-                </a>
-                <a class="cc-rail__link" href="/Update-Client-Details">
-                    <i class="fa-solid fa-id-card"></i>
-                    <span>Profile</span>
-                </a>
-            </nav>
+        <aside class="cc-rail" id="ccSidebar" aria-label="Client dashboard navigation">
+            <partial name="_DashboardRailNavigation" />
 
             <div class="cc-rail__panel">
                 <span class="cc-rail__panel-label">Referral code</span>
@@ -144,7 +115,6 @@
                             @foreach (var booking in Model.RecentBookings)
                             {
                                 var bookingStatus = (booking.BookingStatus ?? "").ToLower().Replace(" ", "");
-                                var paymentStatus = (booking.PaymentStatus ?? "").ToLower().Replace(" ", "");
                                 var workerInitial = string.IsNullOrWhiteSpace(booking.WorkerName) ? "C" : booking.WorkerName.Substring(0, 1).ToUpper();
 
                                 <article class="cc-booking-row" onclick="window.location.href='/Client-Booking-Details/@booking.BookingId'">
@@ -163,7 +133,6 @@
                                     </div>
                                     <div class="cc-booking-row__status">
                                         <span class="cc-status cc-status--@bookingStatus">@booking.BookingStatus</span>
-                                        <span class="cc-status cc-status--payment cc-status--@paymentStatus">@booking.PaymentStatus</span>
                                     </div>
                                     <a asp-controller="Booking" asp-action="Details" asp-route-bookingId="@booking.BookingId"
                                        class="cc-icon-button" aria-label="View booking details" onclick="event.stopPropagation();">
@@ -193,6 +162,11 @@
                             <a asp-controller="Booking" asp-action="ClientResponses" class="cc-action-link">
                                 <span class="cc-action-link__icon cc-tone-blue"><i class="fa-solid fa-user-check"></i></span>
                                 <span><strong>Worker responses</strong><small>Review offers and payments</small></span>
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </a>
+                            <a asp-controller="Booking" asp-action="Messages" class="cc-action-link">
+                                <span class="cc-action-link__icon cc-tone-teal"><i class="fa-solid fa-comments"></i></span>
+                                <span><strong>Messages</strong><small>Open booking conversations</small></span>
                                 <i class="fa-solid fa-arrow-right"></i>
                             </a>
                             <a asp-controller="Notifications" asp-action="Index" class="cc-action-link">

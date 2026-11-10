@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Clean_Connect.Web.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Client")]
     public class ClientController : Controller
     {
         private readonly IMediator _mediator;
@@ -63,19 +63,19 @@ namespace Clean_Connect.Web.Controllers
             catch (FluentValidation.ValidationException vex)
             {
                 _logger.LogWarning(vex, "Client profile creation validation failed.");
-                _notyf.Error(vex.Message);
+                _notyf.Error("Some profile details need attention. Please correct the highlighted fields.");
                 return View("CreateClientProfile", command);
             }
             catch (UnauthorizedAccessException uex)
             {
                 _logger.LogWarning(uex, "Client profile creation unauthorized.");
-                _notyf.Error(uex.Message);
+                _notyf.Error("Please sign in again to continue.");
                 return RedirectToAction("Login", "Auth");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Client profile creation failed.");
-                _notyf.Error($"Something went wrong: {ex.Message}");
+                _notyf.Error("We couldn't save your client profile. Please check the form and try again.");
                 return View("CreateClientProfile", command);
             }
         }
@@ -177,7 +177,7 @@ namespace Clean_Connect.Web.Controllers
             catch (FluentValidation.ValidationException vex)
             {
                 _logger.LogWarning(vex, "Client update validation failed.");
-                _notyf.Error(vex.Message);
+                _notyf.Error("Some profile details need attention. Please correct the highlighted fields.");
                 return View(command);
             }
             catch (KeyNotFoundException)
@@ -188,7 +188,7 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Client update failed.");
-                _notyf.Error($"Something went wrong: {ex.Message}");
+                _notyf.Error("We couldn't save your profile changes. Please try again.");
                 return View(command);
             }
         }

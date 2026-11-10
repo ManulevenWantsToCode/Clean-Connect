@@ -71,6 +71,12 @@ namespace Clean_Connect.Domain.Entities
 
         public int SuccessfulReferralCount { get; private set; }
 
+        public bool IsSuspended { get; private set; }
+
+        public void Suspend(string? modifiedBy = null) { IsSuspended = true; UpdateMetadata(modifiedBy); }
+
+        public void Reinstate(string? modifiedBy = null) { IsSuspended = false; UpdateMetadata(modifiedBy); }
+
         // Factory method to create a new Clients instance
         public static Client Create(FullName name, Address address, Email email, Location location, Gender gender, PhoneNumber contact, string state, DateTime dob, string referralCode, string? createdBy = null)
         {

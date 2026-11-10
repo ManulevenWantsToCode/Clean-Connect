@@ -172,19 +172,20 @@ namespace Clean_Connect.Application.Command.Services
             return paystackResponse;
         }
 
-        public async Task<TransferInitiationResponse> InitiateTransferAsync(string recipientCode, decimal amount, string reason, CancellationToken cancellationToken)
+        public async Task<TransferInitiationResponse> InitiateTransferAsync(string recipientCode, decimal amount, string reason, string reference, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Initiating transfer to recipient: {RecipientCode}, amount: {Amount}, reason: {Reason}", recipientCode, amount, reason);
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
-            var amountKobo = (int)(amount * 100m);
+            var amountKobo = ToMinorUnits(amount);
             var requestData = new
             {
                 source = "balance",
                 amount = amountKobo,
                 recipient = recipientCode,
-                reason = reason
+                reason = reason,
+                reference
             };
 
             _logger.LogDebug("Transfer initiation request data: {@RequestData}", requestData);
@@ -216,6 +217,57 @@ namespace Clean_Connect.Application.Command.Services
             _logger.LogInformation("Transfer initiated successfully. TransferCode: {TransferCode}, Status: {Status}", paystackResponse.Data.TransferCode, paystackResponse.Data.Status);
 
             return paystackResponse.Data;
+        }
+
+        public async Task<TransferInitiationResponse?> VerifyTransferAsync(string reference, CancellationToken cancellationToken)
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
+            using var response = await _httpClient.GetAsync(
+                $"{_paystackBase}/transfer/verify/{Uri.EscapeDataString(reference)}",
+                cancellationToken);
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound
+                || content.Contains("transfer not found", StringComparison.OrdinalIgnoreCase))
+                return null;
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Paystack transfer verification failed ({(int)response.StatusCode}): {content}");
+
+            var result = JsonSerializer.Deserialize<PaystackTransferResponse>(content, JsonOptions);
+            if (result == null || !result.Status || result.Data == null)
+                throw new InvalidOperationException($"Invalid Paystack transfer verification response: {result?.Message ?? content}");
+            return result.Data;
+        }
+
+        public async Task<TransferInitiationResponse?> FetchTransferAsync(string transferCode, CancellationToken cancellationToken)
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
+            using var response = await _httpClient.GetAsync(
+                $"{_paystackBase}/transfer/{Uri.EscapeDataString(transferCode)}",
+                cancellationToken);
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound
+                || content.Contains("transfer not found", StringComparison.OrdinalIgnoreCase))
+                return null;
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Paystack transfer lookup failed ({(int)response.StatusCode}): {content}");
+
+            var result = JsonSerializer.Deserialize<PaystackTransferResponse>(content, JsonOptions);
+            if (result == null || !result.Status || result.Data == null)
+                throw new InvalidOperationException($"Invalid Paystack transfer lookup response: {result?.Message ?? content}");
+            return result.Data;
+        }
+
+        private static int ToMinorUnits(decimal amount)
+        {
+            if (amount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(amount), "Transfer amount must be positive.");
+
+            var minorUnits = amount * 100m;
+            if (minorUnits != decimal.Truncate(minorUnits))
+                throw new ArgumentException("Transfer amount has more than two decimal places.", nameof(amount));
+            return checked((int)minorUnits);
         }
 
         public async Task<bool> RefundTransactionAsync(string transactionReference, decimal amount, CancellationToken cancellationToken)

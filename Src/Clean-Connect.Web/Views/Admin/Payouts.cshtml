@@ -7,12 +7,23 @@
     var withBank = Model.Count(p => p.HasBankDetails);
     var totalNet = Model.Sum(p => p.Net);
     string FormatNaira(decimal amount) => $"₦{amount:N0}";
+    string PayoutStatusLabel(string status) => status switch
+    {
+        "Pending" => "Awaiting Paystack confirmation",
+        "OtpRequired" => "OTP approval required in Paystack",
+        "Unknown" => "Checking transfer status",
+        "Failed" => "Transfer failed; retry available",
+        "Reversed" => "Transfer reversed; retry available",
+        "Initiating" => "Transfer request being reconciled",
+        "LegacyUnverified" => "Older payout is being checked with Paystack",
+        _ => "Not yet sent"
+    };
 }
 
 <div class="admin-page-header">
     <div class="admin-page-title-wrap">
         <h2>Worker Payouts</h2>
-        <p>Completed jobs whose net settlement is still in escrow. Transfers run automatically once the worker adds bank details; use Pay Now to retry a transfer.</p>
+        <p>Completed jobs whose net settlement is still in escrow. Transfers are reconciled with Paystack; failed transfers can be safely retried.</p>
     </div>
 </div>
 
@@ -31,7 +42,7 @@
             <div class="stat-card-value">@pendingCount.ToString("N0")</div>
             <div class="stat-card-meta">
                 <span class="trend-badge trend-badge-up">@pendingCount</span>
-                <span>completed & awaiting transfer</span>
+                <span>completed & not yet settled</span>
             </div>
         </div>
     </div>
@@ -127,7 +138,7 @@
                                     <div class="user-avatar-initials bg-success-subtle text-success">@p.WorkerInitials</div>
                                     <div class="user-details">
                                         <span class="user-name">@p.WorkerName</span>
-                                        <span class="user-subtext">@p.PayoutStatus</span>
+                                        <span class="user-subtext">@PayoutStatusLabel(p.PayoutStatus)</span>
                                     </div>
                                 </div>
                             </td>
@@ -137,13 +148,25 @@
                                 <span class="fw-bold text-success">@FormatNaira(p.Net)</span>
                             </td>
                             <td>
-                                @if (p.HasBankDetails)
+                                @if (p.HasBankDetails && p.PayoutStatus is not "Pending" and not "OtpRequired" and not "LegacyUnverified")
                                 {
                                     <span class="badge-status badge-status-success">
                                         <span class="badge-status-dot"></span> @p.PayoutAccount
                                     </span>
                                 }
-                                else
+                                else if (p.PayoutStatus == "OtpRequired")
+                                {
+                                    <span class="text-muted small">Approve OTP in Paystack</span>
+                                }
+                                else if (p.PayoutStatus == "Pending")
+                                {
+                                    <span class="text-muted small">Awaiting Paystack</span>
+                                }
+                                else if (p.PayoutStatus == "LegacyUnverified")
+                                {
+                                    <span class="text-muted small">Checking old transfer; no retry sent</span>
+                                }
+                                else if (!p.HasBankDetails)
                                 {
                                     <span class="badge-status badge-status-danger">
                                         <span class="badge-status-dot"></span> No bank details
@@ -192,14 +215,26 @@
             })
             .then(r => r.json())
             .then(data => {
+                const row = document.getElementById('payout-row-' + bookingId);
+                if (!row) return;
+
                 if (data.ok) {
-                    document.getElementById('payout-row-' + bookingId).style.opacity = '0.4';
-                    document.getElementById('payout-row-' + bookingId).querySelector('td:last-child').innerHTML =
-                        '<span class="badge-status badge-status-success"><span class="badge-status-dot"></span> Transfer sent</span>';
-                    alert('Payout sent: ' + data.message);
-                } else {
-                    alert(data.message || 'Payout could not be completed.');
+                    row.style.opacity = '0.4';
+                    row.querySelector('td:last-child').innerHTML =
+                        '<span class="badge-status badge-status-success"><span class="badge-status-dot"></span> Paid by Paystack</span>';
+                    alert(data.message);
+                    return;
                 }
+
+                if (data.status === 'Pending' || data.status === 'OtpRequired') {
+                    const statusLabels = {
+                        Pending: 'Awaiting Paystack confirmation',
+                        OtpRequired: 'OTP approval required in Paystack'
+                    };
+                    row.querySelector('.user-subtext').textContent = statusLabels[data.status];
+                    row.querySelector('td:last-child').textContent = statusLabels[data.status];
+                }
+                alert(data.message || 'Payout could not be completed.');
             })
             .catch(() => alert('Payout request failed. Try again.'));
         }

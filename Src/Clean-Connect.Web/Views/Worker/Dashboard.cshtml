@@ -11,37 +11,8 @@
 
 <div class="cc-dashboard cc-dashboard--worker">
     <div class="cc-dashboard-shell">
-        <aside class="cc-rail" aria-label="Worker dashboard navigation">
-            <a class="cc-rail__brand" asp-controller="Home" asp-action="Index" aria-label="Clean Connect home">
-                <span class="cc-rail__logo"><i class="fa-solid fa-broom"></i></span>
-                <span>
-                    <strong>Clean Connect</strong>
-                    <small>Worker workspace</small>
-                </span>
-            </a>
-
-            <nav class="cc-rail__nav">
-                <a class="cc-rail__link is-active" asp-controller="Worker" asp-action="Dashboard">
-                    <i class="fa-solid fa-table-cells-large"></i>
-                    <span>Overview</span>
-                </a>
-                <a class="cc-rail__link" asp-controller="Booking" asp-action="Responses">
-                    <i class="fa-solid fa-inbox"></i>
-                    <span>Requests</span>
-                </a>
-                <a class="cc-rail__link" href="/Payout-Details">
-                    <i class="fa-solid fa-bank"></i>
-                    <span>Payout details</span>
-                </a>
-                <a class="cc-rail__link" asp-controller="Notifications" asp-action="Index">
-                    <i class="fa-solid fa-bell"></i>
-                    <span>Updates</span>
-                </a>
-                <a class="cc-rail__link" href="/Update-Worker-Details">
-                    <i class="fa-solid fa-user-gear"></i>
-                    <span>Profile</span>
-                </a>
-            </nav>
+        <aside class="cc-rail" id="ccSidebar" aria-label="Worker dashboard navigation">
+            <partial name="_DashboardRailNavigation" />
 
             <div class="cc-rail__panel">
                 <span class="cc-rail__panel-label">Availability</span>
@@ -210,6 +181,11 @@
                             <a href="/Payout-Details" class="cc-action-link">
                                 <span class="cc-action-link__icon cc-tone-teal"><i class="fa-solid fa-bank"></i></span>
                                 <span><strong>Payout bank details</strong><small>Receive transfers after each job</small></span>
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </a>
+                            <a asp-controller="Booking" asp-action="Messages" class="cc-action-link">
+                                <span class="cc-action-link__icon cc-tone-blue"><i class="fa-solid fa-comments"></i></span>
+                                <span><strong>Messages</strong><small>Open client conversations</small></span>
                                 <i class="fa-solid fa-arrow-right"></i>
                             </a>
                             <a asp-controller="Notifications" asp-action="Index" class="cc-action-link">

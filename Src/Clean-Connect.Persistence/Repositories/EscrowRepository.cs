@@ -25,6 +25,17 @@ namespace Clean_Connect.Persistence.Repositories
                 .FirstOrDefaultAsync(x => x.PaymentId == paymentId, cancellationToken);
         }
 
+        public async Task<Escrow?> GetByTransferReference(string reference, CancellationToken cancellationToken)
+        {
+            return await dbContext.Escrows
+                .FirstOrDefaultAsync(x => x.PaystackTransferReference == reference, cancellationToken);
+        }
+
+        public async Task RefreshAsync(Escrow escrow, CancellationToken cancellationToken)
+        {
+            await dbContext.Entry(escrow).ReloadAsync(cancellationToken);
+        }
+
         public async Task<List<Escrow>> GetByWorkerId(Guid workerId, CancellationToken cancellationToken)
         {
             return await dbContext.Escrows
@@ -46,7 +57,8 @@ namespace Clean_Connect.Persistence.Repositories
 
         public Task UpdateEscrow(Escrow escrow, CancellationToken cancellationToken)
         {
-            dbContext.Escrows.Update(escrow);
+            if (dbContext.Entry(escrow).State == EntityState.Detached)
+                dbContext.Escrows.Update(escrow);
             return Task.CompletedTask;
         }
     }

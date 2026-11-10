@@ -26,26 +26,29 @@
 
 <div class="dash-page booking-workflow-page">
     <div class="container">
+        <!-- Back Link -->
         <a asp-controller="Booking" asp-action="ClientResponses" class="booking-back-link mb-4">
             <i class="fa-solid fa-arrow-left"></i>
-            Back to bookings
+            <span>Back to my bookings</span>
         </a>
 
+        <!-- Hero Section -->
         <div class="booking-hero booking-hero--detail">
             <div>
                 <span class="booking-kicker">
                     <i class="fa-solid fa-receipt"></i>
-                    Booking Details
+                    Booking #@Model.Id.ToString().Substring(0, 8).ToUpper()
                 </span>
                 <h1>@Model.ServiceName</h1>
-                <p>Your cleaning request with @Model.WorkersName, requested on @Model.BookingDate.ToString("MMM dd, yyyy").</p>
+                <p>Your cleaning appointment with <strong>@Model.WorkersName</strong>, requested on @Model.BookingDate.ToString("MMM dd, yyyy").</p>
             </div>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
                 <span class="status-badge tone-@statusTone">@statusLabel</span>
                 <span class="status-badge tone-@paymentTone">@paymentLabel</span>
             </div>
         </div>
 
+        <!-- Flow Progress -->
         <div class="booking-flow-progress mb-4">
             <div class="client-flow-card">
                 <div class="client-flow-card__top">
@@ -53,8 +56,8 @@
                         <i class="fa-solid @(isRejected ? "fa-circle-xmark" : isCancelled || isExpired ? "fa-ban" : isAccepted ? "fa-circle-check" : "fa-clock")"></i>
                     </div>
                     <div>
-                        <h2>@(isRejected ? "Declined by worker" : isCancelled ? "Booking cancelled" : isExpired ? "Booking expired" : "Progress")</h2>
-                        <p>@(isResolved ? "This request is no longer active. You can start a new booking at any time." : "Here's where your request stands.")</p>
+                        <h2>@(isRejected ? "Declined by cleaner" : isCancelled ? "Booking cancelled" : isExpired ? "Booking expired" : "Service Progress")</h2>
+                        <p class="mb-0">@(isResolved ? "This request is no longer active. You can find another cleaner at any time." : "Track the realtime status of your booking below.")</p>
                     </div>
                 </div>
 
@@ -71,18 +74,9 @@
                                     else { <i class="fa-solid @(steps[i] switch { "Requested" => "fa-paper-plane", "Accepted" => "fa-handshake", "Payment" => "fa-credit-card", "In Progress" => "fa-hammer", _ => "fa-flag-checkered" })"></i> }
                                 </span>
                                 <strong>@steps[i]</strong>
-                                <small>@(i == 0 ? "Request placed" : i == 1 ? "Worker accepted" : i == 2 ? "Payment secured" : i == 3 ? "Worker on the job" : "Service finished")</small>
+                                <small>@(i == 0 ? "Request placed" : i == 1 ? "Cleaner accepted" : i == 2 ? "Payment secured" : i == 3 ? "Cleaner on the job" : "Service finished")</small>
                             </div>
                         }
-                    </div>
-                }
-                else
-                {
-                    <div class="booking-inactive">
-                        <i class="fa-solid fa-arrow-rotate-left"></i>
-                        <a asp-controller="Booking" asp-action="ChooseWorker" class="btn btn-success rounded-pill px-4">
-                            <i class="fa-solid fa-magnifying-glass me-2"></i>Find Another Worker
-                        </a>
                     </div>
                 }
             </div>
@@ -97,111 +91,147 @@
                         </div>
                         <div>
                             <h2>@Model.WorkersName</h2>
-                            <p>@Model.ServiceName</p>
+                            <p class="text-muted mb-0">Assigned Professional &bull; @Model.ServiceName</p>
                         </div>
                     </div>
 
                     <div class="booking-response-card__details booking-flow-details flex-wrap">
-                        <span><i class="fa-solid fa-calendar"></i>Service Date: @Model.DateOfService.ToString("MMM dd, yyyy")</span>
-                        <span><i class="fa-solid fa-clock"></i>@Model.TimeRange</span>
-                        <span><i class="fa-solid fa-wallet"></i>&#8358;@Model.Amount.ToString("N0")</span>
-                        <span><i class="fa-solid fa-location-dot"></i>@Model.Address</span>
+                        <span><i class="fa-regular fa-calendar"></i> Service Date: <strong>@Model.DateOfService.ToString("MMM dd, yyyy")</strong></span>
+                        <span><i class="fa-regular fa-clock"></i> Time Slot: <strong>@Model.TimeRange</strong></span>
+                        <span><i class="fa-solid fa-coins text-success"></i> Amount: <strong>&#8358;@Model.Amount.ToString("N0")</strong></span>
+                        <span><i class="fa-solid fa-location-dot text-teal"></i> Address: <strong>@Model.Address</strong></span>
                     </div>
 
-                    <div class="client-flow-card__footer">
+                    @if (isRejected && !string.IsNullOrWhiteSpace(Model.RejectionReason))
+                    {
+                        <div class="booking-rejection-reason">
+                            <i class="fa-solid fa-comment-dots text-danger"></i>
+                            <div>
+                                <strong>Reason provided by the cleaner:</strong>
+                                <p class="mb-0">@Model.RejectionReason</p>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="client-flow-card__footer @(isAccepted ? "client-flow-card__footer--payment" : "")">
                         <span class="booking-response-note">
                             @if (isAccepted) {
-                                <text><i class="fa-solid fa-lock me-2"></i>Complete payment to confirm your booking.</text>
+                                <text><i class="fa-solid fa-lock text-success me-1"></i> Cleaner accepted your request! Proceed to secure your booking with escrow payment.</text>
                             }
                             else if (isAwaitingStart) {
-                                <text><i class="fa-solid fa-user-check me-2"></i>@Model.WorkersName says the job is starting. Confirm to mark it as in progress.</text>
+                                <text><i class="fa-solid fa-user-check text-success me-1"></i> @Model.WorkersName has arrived. Confirm to mark the job as started.</text>
                             }
                             else if (isInProgress) {
-                                <text><i class="fa-solid fa-hammer me-2"></i>@Model.WorkersName is on the job today. Track updates here.</text>
+                                <text><i class="fa-solid fa-broom text-teal me-1"></i> @Model.WorkersName is currently on the job. Track updates here.</text>
                             }
                             else if (isAwaitingConfirm) {
-                                <text><i class="fa-solid fa-circle-check me-2"></i>@Model.WorkersName finished the job. Confirm to release payment.</text>
+                                <text><i class="fa-solid fa-circle-check text-success me-1"></i> @Model.WorkersName completed the job. Confirm completion to release payment.</text>
                             }
                             else if (isRejected) {
-                                <text><i class="fa-solid fa-circle-info me-2"></i>This worker declined; you can find another.</text>
+                                <text><i class="fa-solid fa-circle-info text-danger me-1"></i> This cleaner was unable to take your request.</text>
                             }
                             else if (isCancelled) {
-                                <text><i class="fa-solid fa-circle-info me-2"></i>This booking has been cancelled.</text>
+                                <text><i class="fa-solid fa-circle-info text-muted me-1"></i> This booking has been cancelled.</text>
                             }
                             else if (isExpired) {
-                                <text><i class="fa-solid fa-circle-info me-2"></i>This booking expired because it was not completed by the service date.</text>
+                                <text><i class="fa-solid fa-clock text-warning me-1"></i> This booking expired because it was not completed by the service date.</text>
                             }
                             else if (isCompleted && Model.HasRating) {
-                                <text><i class="fa-solid fa-star me-2"></i>You rated @Model.WorkersName. Thanks for the feedback.</text>
+                                <text><i class="fa-solid fa-star text-warning me-1"></i> Thank you! Your review for @Model.WorkersName has been recorded.</text>
                             }
                             else if (isCompleted) {
-                                <text><i class="fa-solid fa-star me-2"></i>Job completed. Leave a rating for @Model.WorkersName.</text>
+                                <text><i class="fa-solid fa-star text-warning me-1"></i> Job successfully completed! Please rate your experience with @Model.WorkersName.</text>
                             }
                             else {
-                                <text><i class="fa-solid fa-hourglass-half me-2"></i>Waiting for the worker to respond.</text>
+                                <text><i class="fa-solid fa-hourglass-half text-teal me-1"></i> Waiting for @Model.WorkersName to respond to your request.</text>
                             }
                         </span>
 
-                        @if (isAccepted)
-                        {
-                            <form asp-action="Pay" asp-controller="Booking" asp-route-bookingId="@Model.Id" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-success rounded-pill px-4">
-                                    <i class="fa-solid fa-lock me-2"></i>Proceed to Payment
-                                </button>
-                            </form>
-                        }
-                        else if (isAwaitingStart)
-                        {
-                            <form asp-action="ConfirmStart" asp-controller="Booking" asp-route-bookingId="@Model.Id" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-success rounded-pill px-4">
-                                    <i class="fa-solid fa-play me-2"></i>Confirm Job Started
-                                </button>
-                            </form>
-                        }
-                        else if (isAwaitingConfirm)
-                        {
-                            <form asp-action="ConfirmCompletion" asp-controller="Booking" asp-route-bookingId="@Model.Id" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-success rounded-pill px-4">
-                                    <i class="fa-solid fa-circle-check me-2"></i>Confirm Completion
-                                </button>
-                            </form>
-                        }
-                        else if (isRejected)
-                        {
-                            <a asp-controller="Booking" asp-action="ChooseWorker" class="btn btn-outline-success rounded-pill px-4">
-                                <i class="fa-solid fa-magnifying-glass me-2"></i>Find Another Worker
-                            </a>
-                        }
-                        else if (isCompleted && !Model.HasRating)
-                        {
-                            <form asp-action="Rate" asp-controller="Booking" asp-route-bookingId="@Model.Id" method="post" class="booking-rating-form">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="RatingValue" id="ratingValue" value="5" />
-                                <div class="booking-rating-stars">
-                                    @for (int s = 5; s >= 1; s--)
-                                    {
-                                        <button type="button" class="booking-rating-star is-active" data-value="@s"><i class="fa-solid fa-star"></i></button>
-                                    }
+                        <div class="@(isAccepted ? "booking-payment-actions" : "mt-3")">
+                            @if (isAccepted)
+                            {
+                                <div class="booking-payment-actions__stack">
+                                <a asp-controller="Booking" asp-action="Chat" asp-route-bookingId="@Model.Id" class="btn cc-action-button cc-action-button--secondary">
+                                    <i class="fa-solid fa-message me-1"></i> Message Worker
+                                </a>
+                                <form class="booking-payment-actions__form" asp-action="Pay" asp-controller="Booking" asp-route-bookingId="@Model.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn cc-action-button cc-action-button--primary cc-action-button--large booking-payment-actions__button">
+                                        <i class="fa-solid fa-lock me-1"></i> Proceed to Payment (&#8358;@Model.Amount.ToString("N0"))
+                                    </button>
+                                </form>
                                 </div>
-                                <textarea name="Comment" class="form-control mt-2" rows="2" placeholder="Share your experience with @Model.WorkersName (optional)" maxlength="500"></textarea>
-                                <button type="submit" class="btn btn-success rounded-pill px-4 mt-2">
-                                    <i class="fa-solid fa-star me-2"></i>Submit Rating
-                                </button>
-                            </form>
-                        }
-                        else if (isCompleted && Model.HasRating)
-                        {
-                            <span class="booking-rating-done">
-                                <i class="fa-solid fa-circle-check me-2"></i>You rated this worker.
-                            </span>
-                        }
+                            }
+                            else if (isAwaitingStart)
+                            {
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <a asp-controller="Booking" asp-action="Chat" asp-route-bookingId="@Model.Id" class="btn cc-action-button cc-action-button--secondary">
+                                    <i class="fa-solid fa-message me-1"></i> Message Worker
+                                </a>
+                                <form asp-action="ConfirmStart" asp-controller="Booking" asp-route-bookingId="@Model.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn cc-action-button cc-action-button--primary">
+                                        <i class="fa-solid fa-play me-1"></i> Confirm Job Started
+                                    </button>
+                                </form>
+                                </div>
+                            }
+                            else if (isAwaitingConfirm)
+                            {
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <a asp-controller="Booking" asp-action="Chat" asp-route-bookingId="@Model.Id" class="btn cc-action-button cc-action-button--secondary">
+                                    <i class="fa-solid fa-message me-1"></i> Message Worker
+                                </a>
+                                <form asp-action="ConfirmCompletion" asp-controller="Booking" asp-route-bookingId="@Model.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn cc-action-button cc-action-button--primary">
+                                        <i class="fa-solid fa-circle-check me-1"></i> Confirm Completion &amp; Release Funds
+                                    </button>
+                                </form>
+                                </div>
+                            }
+                            else if (!isResolved && !isCompleted)
+                            {
+                                <a asp-controller="Booking" asp-action="Chat" asp-route-bookingId="@Model.Id" class="btn cc-action-button cc-action-button--secondary">
+                                    <i class="fa-solid fa-message me-1"></i> Message Worker
+                                </a>
+                            }
+                            else if (isRejected)
+                            {
+                                <a asp-controller="Booking" asp-action="ChooseWorker" class="btn cc-action-button cc-action-button--secondary">
+                                    <i class="fa-solid fa-magnifying-glass me-1"></i> Find Another Cleaner
+                                </a>
+                            }
+                            else if (isCompleted && !Model.HasRating)
+                            {
+                                <form asp-action="Rate" asp-controller="Booking" asp-route-bookingId="@Model.Id" method="post" class="booking-rating-form mt-3">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="RatingValue" id="ratingValue" value="5" />
+                                    <label class="form-label fw-bold">Rate @Model.WorkersName:</label>
+                                    <div class="booking-rating-stars">
+                                        @for (int s = 5; s >= 1; s--)
+                                        {
+                                            <button type="button" class="booking-rating-star is-active" data-value="@s" title="@s Stars"><i class="fa-solid fa-star"></i></button>
+                                        }
+                                    </div>
+                                    <textarea name="Comment" class="form-control mt-2" rows="2" placeholder="Share your experience with @Model.WorkersName (optional)" maxlength="500"></textarea>
+                                    <button type="submit" class="btn cc-action-button cc-action-button--primary mt-2">
+                                        <i class="fa-solid fa-star me-1"></i> Submit Review
+                                    </button>
+                                </form>
+                            }
+                            else if (isCompleted && Model.HasRating)
+                            {
+                                <span class="booking-rating-done d-inline-flex align-items-center gap-1 text-success fw-semibold">
+                                    <i class="fa-solid fa-circle-check"></i> Review submitted. Thank you!
+                                </span>
+                            }
+                        </div>
                     </div>
                 </article>
             </div>
 
+            <!-- Summary Sidebar -->
             <div class="col-lg-4">
                 <article class="client-flow-card request-summary-card">
                     <div class="client-flow-card__top">
@@ -210,13 +240,13 @@
                         </div>
                         <div>
                             <h2>Request Summary</h2>
-                            <p class="small text-muted mb-0">Booking breakdown & details</p>
+                            <p class="small text-muted mb-0">Booking breakdown &amp; details</p>
                         </div>
                     </div>
 
                     <div class="booking-review-list">
                         <div class="booking-review-row">
-                            <span><i class="fa-solid fa-user text-muted me-2"></i>Worker</span>
+                            <span><i class="fa-solid fa-user text-muted me-2"></i>Cleaner</span>
                             <strong>@Model.WorkersName</strong>
                         </div>
                         <div class="booking-review-row">
@@ -246,7 +276,7 @@
                     </div>
 
                     <div class="request-summary-price-box">
-                        <span class="request-summary-price-label">Total Amount</span>
+                        <span class="request-summary-price-label">Total Booking Amount</span>
                         <strong class="request-summary-price-value">&#8358;@Model.Amount.ToString("N0")</strong>
                     </div>
                 </article>

@@ -1,4 +1,5 @@
 @model List<Clean_Connect.Application.DTO.AdminClientDto>
+@Html.AntiForgeryToken()
 @{
     ViewData["Title"] = "Clients";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
@@ -186,8 +187,8 @@
                                         <button class="btn-action-icon" data-bs-toggle="modal" data-bs-target="#addClientModal" title="Edit Client">
                                             <i class="fa-solid fa-pen-to-square"></i>
                                         </button>
-                                        <button class="btn-action-icon text-danger" title="Suspend Client">
-                                            <i class="fa-solid fa-ban"></i>
+                                        <button class="btn-action-icon @(c.IsSuspended ? "text-success" : "text-danger")" onclick="toggleClientSuspension('@c.Id', this)" title="@(c.IsSuspended ? "Reinstate Client" : "Suspend Client")">
+                                            <i class="fa-solid @(c.IsSuspended ? "fa-rotate-left" : "fa-ban")"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -213,6 +214,18 @@
         </div>
     </div>
 </div>
+
+<script>
+async function toggleClientSuspension(id, button) {
+    const suspended = button.title === "Suspend Client";
+    if (!confirm(suspended ? "Suspend this client? Their booking access will be restricted." : "Reinstate this client?")) return;
+    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+    const response = await fetch(`/Admin/Clients/${id}/Suspend`, { method: "POST", headers: { "RequestVerificationToken": token }, credentials: "same-origin" });
+    const result = await response.json();
+    if (!result.ok) { alert(result.message || "Unable to update client status."); return; }
+    location.reload();
+}
+</script>
 
 <!-- Empty State Container -->
 <div id="clients-empty" class="d-none">

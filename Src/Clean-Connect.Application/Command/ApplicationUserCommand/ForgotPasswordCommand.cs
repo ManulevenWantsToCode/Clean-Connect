@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Clean_Connect.Application.Command.ApplicationUserCommand
 {
-    public record ForgotPasswordCommand(string Email) : IRequest<bool>;
+    public record ForgotPasswordCommand(string Email, string? BaseUrl = null) : IRequest<bool>;
 
     public class ForgotPasswordCommandValidator : AbstractValidator<ForgotPasswordCommand>
     {
@@ -42,7 +42,10 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
 
                 var encodedToken = Uri.EscapeDataString(token);
 
-                var baseUrl = configuration["App:ClientUrl"];
+                var baseUrl = request.BaseUrl;
+
+                if (string.IsNullOrWhiteSpace(baseUrl))
+                    baseUrl = configuration["App:ClientUrl"];
 
                 if (string.IsNullOrWhiteSpace(baseUrl))
                 {
@@ -52,7 +55,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
 
                 // Use the server-side MVC route that AuthController exposes.
                 // AuthController has [HttpGet("Reset-Password")] so the endpoint is "/Reset-Password".
-                var resetLink = $"{baseUrl.TrimEnd('/')}/Reset-Password?email={Uri.EscapeDataString(user.Email)}&token={encodedToken}";
+                var resetLink = $"{baseUrl.TrimEnd('/')}/Reset-Password?email={Uri.EscapeDataString(user.Email ?? request.Email)}&token={encodedToken}";
                 var emailBody = $"<p>You requested a password reset. Click the link below to reset your password:</p><p><a href='{resetLink}'>Reset Password</a></p>";
                 var emailSubject = "Password Reset Request";
                 await mediator.Send(new EmailSenderCommand(request.Email, emailBody, emailSubject));

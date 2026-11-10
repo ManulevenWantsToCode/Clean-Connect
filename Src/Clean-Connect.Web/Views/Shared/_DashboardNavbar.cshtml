@@ -1,0 +1,20 @@
+@inject Clean_Connect.Application.Interface.Repositories.IPlatformSettingsRepository PlatformSettingsRepository
+@{ var platformSettings = await PlatformSettingsRepository.GetAsync(Context.RequestAborted); }
+<nav class="cc-dashboard-navbar" aria-label="Dashboard global actions">
+    <a class="cc-dashboard-navbar__brand" asp-controller="Home" asp-action="Index">
+        <span class="navbar-brand-icon"><i class="fas fa-broom" aria-hidden="true"></i></span>
+        <span>@platformSettings.PlatformName</span>
+    </a>
+    <div class="cc-dashboard-navbar__actions">
+        <a class="cc-dashboard-navbar__action" asp-controller="Notifications" asp-action="Index" aria-label="Notifications" title="Notifications">
+            <i class="fa-solid fa-bell" aria-hidden="true"></i>
+            <span class="nav-notification-badge" id="notificationBadge" data-count="0">0</span>
+        </a>
+        <button id="themeToggle" class="cc-dashboard-navbar__action" type="button" title="Toggle theme" aria-label="Toggle theme">
+            <i id="themeIcon" class="fa-solid fa-moon" aria-hidden="true"></i>
+        </button>
+        <a class="cc-dashboard-navbar__user" asp-controller="@(User.IsInRole("Worker") ? "Worker" : "Client")" asp-action="UpdateDetails" title="Profile">
+            <i class="fa-solid fa-circle-user" aria-hidden="true"></i><span>@(User.Identity?.Name ?? "Account")</span>
+        </a>
+    </div>
+</nav>

@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Clean_Connect.Application.Command.WorkerCommands
 {
-    public record RejectBookingCommand(Guid BookingId, Guid WorkerId) : IRequest<bool>;
+    public record RejectBookingCommand(Guid BookingId, Guid WorkerId, string? RejectionReason = null) : IRequest<bool>;
 
     public class RejectBookingValidator : AbstractValidator<RejectBookingCommand>
     {
@@ -24,6 +24,11 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             RuleFor(x => x.WorkerId)
             .NotEmpty()
             .Must(id => id != Guid.Empty);
+            RuleFor(x => x.RejectionReason)
+            .NotEmpty()
+            .WithMessage("A rejection reason is required.")
+            .MaximumLength(500)
+            .WithMessage("Rejection reason must not exceed 500 characters.");
         }
 
     }
@@ -49,7 +54,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             await _acceptBookingService.AcceptBookingAsync(request.BookingId, request.WorkerId, cancellationToken);
             _logger.LogInformation("Worker {WorkerId} Rejected booking {BookingId}", request.WorkerId, request.BookingId);
 
-            booking.Reject();
+            booking.Reject(request.RejectionReason);
             await _repo.SaveChangesAsync(cancellationToken);
             await _notificationService.BookingRejectedAsync(booking, cancellationToken);
 

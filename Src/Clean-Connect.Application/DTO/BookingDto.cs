@@ -33,6 +33,8 @@ namespace Clean_Connect.Application.DTO
 
         public string BookingStatus { get; set; }
 
+        public string? RejectionReason { get; set; }
+
         public bool HasRating { get; set; }
     }
 }

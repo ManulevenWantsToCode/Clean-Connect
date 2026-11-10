@@ -1,422 +1,270 @@
 @model Clean_Connect.Application.Command.WorkerCommands.UpdateWorkerCommand
 
 @{
-    ViewData["Title"] = "Update Profile";
+    ViewData["Title"] = "Edit Profile";
     Layout = "_DashboardLayout";
+    var completedSections = new[]
+    {
+        !string.IsNullOrWhiteSpace(Model.FirstName) && !string.IsNullOrWhiteSpace(Model.LastName) && !string.IsNullOrWhiteSpace(Model.Email) && !string.IsNullOrWhiteSpace(Model.Contact) && !string.IsNullOrWhiteSpace(Model.Gender) && Model.DateOfBirth != default,
+        Model.ServiceTypeId != Guid.Empty,
+        Model.HourlyRate > 0,
+        !string.IsNullOrWhiteSpace(Model.State) && !string.IsNullOrWhiteSpace(Model.Address)
+    }.Count(done => done);
+    var profileProgress = completedSections * 25;
 }
 
-<div class="dash-page">
-    <div class="container py-4">
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+}
 
-        <!-- Page Header -->
-        <div class="profile-edit-header mb-5">
-            <div class="profile-edit-header__inner">
-                <a asp-action="Dashboard" class="profile-back-link">
-                    <i class="fa-solid fa-arrow-left me-2"></i>Back to Dashboard
-                </a>
-                <div class="mt-3">
-                    <h1 class="profile-edit-title">
-                        <span class="profile-edit-title__icon"><i class="fa-solid fa-user-pen"></i></span>
-                        Edit Worker Profile
-                    </h1>
-                    <p class="profile-edit-subtitle">Keep your information accurate to attract more clients and jobs.</p>
-                </div>
-            </div>
-            <span class="profile-role-badge worker">
-                <i class="fa-solid fa-hard-hat me-1"></i> Worker
-            </span>
-        </div>
+<main class="dash-page worker-profile-workspace">
+    <div class="worker-profile-workspace__grid">
+        <aside class="worker-profile-nav" aria-label="Worker account navigation">
+            <span class="worker-profile-nav__label">Account</span>
+            <a asp-controller="Worker" asp-action="Dashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i>Dashboard</a>
+            <span class="worker-profile-nav__label">Profile</span>
+            <a asp-controller="Worker" asp-action="UpdateDetails" class="is-current" aria-current="page"><i class="fa-solid fa-user-pen" aria-hidden="true"></i>Edit profile</a>
+            <a asp-controller="Worker" asp-action="PayoutDetails"><i class="fa-solid fa-building-columns" aria-hidden="true"></i>Payout details</a>
+            <a asp-controller="Notifications" asp-action="Index"><i class="fa-regular fa-bell" aria-hidden="true"></i>Notifications</a>
+        </aside>
 
-        <form asp-action="UpdateDetails" asp-controller="Worker" method="post" id="updateWorkerForm">
-            @Html.AntiForgeryToken()
-            <input asp-for="WorkerId" type="hidden" />
+        <div class="worker-profile-workspace__main">
+            <header class="worker-profile-workspace__header">
+                <div><span>Worker account</span><h1>Edit profile</h1><p>Keep your information current so clients can find and contact you.</p></div>
+                <a asp-controller="Worker" asp-action="Dashboard" class="worker-profile-workspace__mobile-back"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Dashboard</a>
+            </header>
 
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4 rounded-4"></div>
-
-            <div class="profile-edit-layout">
-
-                <!-- LEFT SIDEBAR -->
-                <aside class="profile-edit-sidebar">
-
-                    <!-- Avatar / Identity Card -->
-                    <div class="profile-id-card">
-                        <div class="profile-avatar-wrap">
-                            <div class="profile-avatar">
-                                <i class="fa-solid fa-user-tie"></i>
-                            </div>
-                            <div class="profile-avatar-ring"></div>
-                        </div>
-                        <div class="profile-id-name">@Model.FirstName @Model.LastName</div>
-                        <div class="profile-id-role">Cleaning Professional</div>
-                        <div class="profile-id-divider"></div>
-                        <div class="profile-id-stat">
-                            <i class="fa-solid fa-envelope"></i>
-                            <span class="text-truncate">@Model.Email</span>
-                        </div>
-                        <div class="profile-id-stat">
-                            <i class="fa-solid fa-phone"></i>
-                            <span>@(string.IsNullOrEmpty(Model.Contact) ? "Not set" : Model.Contact)</span>
-                        </div>
-                        <div class="profile-id-stat">
-                            <i class="fa-solid fa-map-pin"></i>
-                            <span>@(string.IsNullOrEmpty(Model.State) ? "No location" : Model.State)</span>
-                        </div>
-                    </div>
-
-                    <!-- Tips Card -->
-                    <div class="profile-tips-card">
-                        <div class="profile-tips-card__header">
-                            <i class="fa-solid fa-lightbulb"></i> Pro Tips
-                        </div>
-                        <ul class="profile-tips-list">
-                            <li>Keep your phone number up to date so clients can reach you.</li>
-                            <li>An accurate address helps match you with nearby bookings.</li>
-                            <li>Detecting your GPS location improves job matching accuracy.</li>
-                        </ul>
-                    </div>
-
+            @if (profileProgress < 100)
+            {
+                <aside class="worker-profile-completion" aria-label="Profile completion">
+                    <h2>Complete your profile</h2>
+                    <div class="worker-profile-completion__meter" role="img" aria-label="Profile is @profileProgress percent complete" style="--profile-progress: @profileProgress%"><span>@profileProgress<small>%</small></span></div>
+                    <ul>
+                        <li class="@(completedSections > 0 ? "is-complete" : "")"><i class="fa-solid @(completedSections > 0 ? "fa-check" : "fa-xmark")" aria-hidden="true"></i><span>Personal information</span></li>
+                        <li class="@(Model.ServiceTypeId != Guid.Empty ? "is-complete" : "")"><i class="fa-solid @(Model.ServiceTypeId != Guid.Empty ? "fa-check" : "fa-xmark")" aria-hidden="true"></i><span>Service category</span></li>
+                        <li class="@(Model.HourlyRate > 0 ? "is-complete" : "")"><i class="fa-solid @(Model.HourlyRate > 0 ? "fa-check" : "fa-xmark")" aria-hidden="true"></i><span>Hourly rate</span></li>
+                        <li class="@(!string.IsNullOrWhiteSpace(Model.State) && !string.IsNullOrWhiteSpace(Model.Address) ? "is-complete" : "")"><i class="fa-solid @(!string.IsNullOrWhiteSpace(Model.State) && !string.IsNullOrWhiteSpace(Model.Address) ? "fa-check" : "fa-xmark")" aria-hidden="true"></i><span>Work location</span></li>
+                    </ul>
                 </aside>
+            }
 
-                <!-- RIGHT FORM PANEL -->
-                <div class="profile-edit-main">
+            <form asp-action="UpdateDetails" asp-controller="Worker" method="post" id="updateWorkerForm" aria-busy="false">
+                @Html.AntiForgeryToken()
+                <input asp-for="WorkerId" type="hidden" />
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-                    <!-- PERSONAL INFORMATION CARD -->
-                    <div class="dash-card mb-4">
-                        <div class="card-head">
-                            <h4>
-                                <i class="fa-solid fa-user text-success me-2"></i>
-                                Personal Information
-                            </h4>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-4">
-                                <!-- First Name -->
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="FirstName" class="form-control" placeholder="First Name" />
-                                            <label asp-for="FirstName"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="FirstName" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <!-- Last Name -->
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="LastName" class="form-control" placeholder="Last Name" />
-                                            <label asp-for="LastName"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="LastName" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <!-- Email -->
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="Email" class="form-control" placeholder="Email Address" />
-                                            <label asp-for="Email"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="Email" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <!-- Contact -->
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="Contact" class="form-control" placeholder="Phone Number" />
-                                            <label asp-for="Contact"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="Contact" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <!-- Gender -->
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-venus-mars"></i></span>
-                                        <div class="form-floating">
-                                            <select asp-for="Gender" class="form-select">
-                                                <option value=""></option>
-                                                <option value="Male">Male</option>
-                                                <option value="Female">Female</option>
-                                            </select>
-                                            <label asp-for="Gender"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="Gender" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <!-- Date Of Birth -->
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-calendar-days"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="DateOfBirth" type="date" class="form-control" />
-                                            <label asp-for="DateOfBirth"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="DateOfBirth" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <!-- Service Type -->
-                                <div class="col-md-12">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-broom"></i></span>
-                                        <div class="form-floating">
-                                            <select asp-for="ServiceTypeId" asp-items="ViewBag.ServiceType" class="form-select">
-                                                <option value="">Select Service Type</option>
-                                            </select>
-                                            <label asp-for="ServiceTypeId"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="ServiceTypeId" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <!-- Hourly Rate -->
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-naira-sign"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="HourlyRate" type="number" min="1" max="1000000" step="0.01" class="form-control" placeholder="2000" />
-                                            <label asp-for="HourlyRate">Hourly Rate (₦/hr)</label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="HourlyRate" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-                            </div>
-                        </div>
+                <section class="worker-profile-photo" aria-labelledby="worker-photo-heading">
+                    <div class="worker-profile-photo__preview" aria-hidden="true"><i class="fa-solid fa-user-tie"></i></div>
+                    <div class="worker-profile-photo__copy">
+                        <h2 id="worker-photo-heading">Profile photo</h2>
+                        <strong>@Model.FirstName @Model.LastName</strong>
+                        <p>Your photo and profile details are shown to clients when they view your worker profile.</p>
                     </div>
+                </section>
 
-                    <!-- LOCATION CARD -->
-                    <div class="dash-card mb-4">
-                        <div class="card-head">
-                            <h4>
-                                <i class="fa-solid fa-location-dot text-success me-2"></i>
-                                Location Information
-                            </h4>
-                        </div>
-                        <div class="card-body">
-
-                            <!-- GPS Detection Banner -->
-                            <div class="location-detect-banner mb-4">
-                                <div class="location-detect-banner__icon">
-                                    <i class="fa-solid fa-location-crosshairs"></i>
-                                </div>
-                                <div class="location-detect-banner__text">
-                                    <strong>Auto-detect your location</strong>
-                                    <span>Tap the button to fill your coordinates and state automatically.</span>
-                                </div>
-                                <button type="button" id="detectLocationBtn" class="btn btn-success btn-location px-4">
-                                    <i class="fa-solid fa-location-crosshairs me-2"></i>Detect Location
-                                </button>
-                            </div>
-
-                            <!-- Input Fields -->
-                            <div class="row g-4 mb-4">
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-map"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="State" id="state" class="form-control" placeholder="State" />
-                                            <label asp-for="State"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="State" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-house"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="Address" class="form-control" placeholder="Address" />
-                                            <label asp-for="Address"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="Address" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-location-dot"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="Latitude" id="latitude" class="form-control" readonly />
-                                            <label asp-for="Latitude"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="Latitude" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="input-group custom-input">
-                                        <span class="input-group-text"><i class="fa-solid fa-location-crosshairs"></i></span>
-                                        <div class="form-floating">
-                                            <input asp-for="Longitude" id="longitude" class="form-control" readonly />
-                                            <label asp-for="Longitude"></label>
-                                        </div>
-                                    </div>
-                                    <span asp-validation-for="Longitude" class="text-danger small ms-2 mt-1 d-block"></span>
-                                </div>
-                            </div>
-
-                            <!-- Location Preview Chips -->
-                            <div class="location-chips mb-4">
-                                <div class="location-chip">
-                                    <i class="fa-solid fa-map text-success"></i>
-                                    <div>
-                                        <div class="location-chip__label">State</div>
-                                        <div class="location-chip__value" id="statePreview">Not Detected</div>
-                                    </div>
-                                </div>
-                                <div class="location-chip">
-                                    <i class="fa-solid fa-location-dot text-danger"></i>
-                                    <div>
-                                        <div class="location-chip__label">Latitude</div>
-                                        <div class="location-chip__value" id="latPreview">---</div>
-                                    </div>
-                                </div>
-                                <div class="location-chip">
-                                    <i class="fa-solid fa-location-crosshairs" style="color:#3b82f6;"></i>
-                                    <div>
-                                        <div class="location-chip__label">Longitude</div>
-                                        <div class="location-chip__value" id="lngPreview">---</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Map -->
-                            <iframe id="mapFrame" width="100%" height="300" style="border:0;border-radius:16px;" loading="lazy"></iframe>
-                        </div>
+                <section class="worker-profile-section" aria-labelledby="worker-personal-heading">
+                    <div class="worker-profile-section__head"><h2 id="worker-personal-heading">Personal information</h2><p>Contact details and basic information.</p></div>
+                    <div class="worker-profile-fields worker-profile-fields--three">
+                        <div class="worker-profile-field"><label asp-for="FirstName">First name</label><input asp-for="FirstName" class="form-control" placeholder="Enter first name" autocomplete="given-name" maxlength="50" /><span asp-validation-for="FirstName" class="text-danger"></span></div>
+                        <div class="worker-profile-field"><label asp-for="LastName">Last name</label><input asp-for="LastName" class="form-control" placeholder="Enter last name" autocomplete="family-name" maxlength="50" /><span asp-validation-for="LastName" class="text-danger"></span></div>
+                        <div class="worker-profile-field"><label asp-for="Email">Email address</label><input asp-for="Email" type="email" class="form-control" placeholder="you@example.com" autocomplete="email" maxlength="100" /><span asp-validation-for="Email" class="text-danger"></span></div>
+                        <div class="worker-profile-field"><label asp-for="Contact">Phone number</label><input asp-for="Contact" type="tel" class="form-control" placeholder="0803 555 0142" autocomplete="tel" inputmode="tel" minlength="11" maxlength="15" /><span asp-validation-for="Contact" class="text-danger"></span></div>
+                        <div class="worker-profile-field"><label asp-for="Gender"></label><select asp-for="Gender" class="form-select"><option value="">Select gender</option><option value="Male">Male</option><option value="Female">Female</option></select><span asp-validation-for="Gender" class="text-danger"></span></div>
+                        <div class="worker-profile-field"><label asp-for="DateOfBirth">Date of birth</label><input asp-for="DateOfBirth" type="date" class="form-control" max="@DateTime.Today.ToString("yyyy-MM-dd")" /><span asp-validation-for="DateOfBirth" class="text-danger"></span></div>
                     </div>
+                </section>
 
-                    <!-- ACTION BUTTONS -->
-                    <div class="d-flex justify-content-end gap-3 mt-2 mb-5">
-                        <a asp-action="Dashboard" class="btn btn-lg btn-outline-secondary px-4 rounded-pill">
-                            <i class="fa-solid fa-xmark me-2"></i>Cancel
-                        </a>
-                        <button type="submit" class="btn btn-success btn-lg px-5 rounded-pill">
-                            <i class="fa-solid fa-save me-2"></i>Save Changes
-                        </button>
+                <section class="worker-profile-section" aria-labelledby="worker-service-heading">
+                    <div class="worker-profile-section__head"><h2 id="worker-service-heading">Service and rate</h2><p>Tell clients what work you take on.</p></div>
+                    <div class="worker-profile-fields worker-profile-fields--service">
+                        <div class="worker-profile-field"><label asp-for="ServiceTypeId">Service type</label><select asp-for="ServiceTypeId" asp-items="ViewBag.ServiceType" class="form-select"><option value="">Select service type</option></select><span asp-validation-for="ServiceTypeId" class="text-danger"></span></div>
+                        <div class="worker-profile-field"><label asp-for="HourlyRate">Hourly rate (₦/hr)</label><div class="worker-profile-rate"><span aria-hidden="true">₦</span><input asp-for="HourlyRate" type="number" min="1" max="1000000" step="0.01" class="form-control" /></div><span asp-validation-for="HourlyRate" class="text-danger"></span></div>
                     </div>
+                </section>
 
-                </div>
-            </div>
-        </form>
+                <section class="worker-profile-section" aria-labelledby="worker-location-heading">
+                    <div class="worker-profile-section__head"><h2 id="worker-location-heading">Work location</h2><p>Used to match your services with nearby clients.</p></div>
+                    <div class="location-detect-banner">
+                        <div class="location-detect-banner__icon"><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i></div>
+                        <div class="location-detect-banner__text">
+                            <strong>Automatic location detection</strong>
+                            <span>We'll retrieve your browser coordinates to match you with nearby clients.</span>
+                        </div>
+                        <button type="button" id="detectLocationBtn" class="btn btn-outline-success"><i class="fa-solid fa-location-crosshairs me-2" aria-hidden="true"></i>Detect My Location</button>
+                    </div>
+                    <div id="profileLocationMap" class="worker-profile-map__canvas" role="application" aria-label="Select your location by clicking the map or dragging the marker"></div>
+                    <p id="locationStatus" class="worker-profile-location-status" role="status" aria-live="polite">Click the map or move the marker to choose your location.</p>
+                    <div class="worker-profile-fields">
+                        <div class="worker-profile-field"><label asp-for="State">State</label><input asp-for="State" id="state" class="form-control" placeholder="e.g. Lagos" autocomplete="address-level1" maxlength="20" /><span asp-validation-for="State" class="text-danger"></span></div>
+                        <div class="worker-profile-field"><label asp-for="Address">Address</label><input asp-for="Address" class="form-control" placeholder="Street, area, city" autocomplete="street-address" minlength="10" maxlength="200" /><span asp-validation-for="Address" class="text-danger"></span></div>
+                        <div class="worker-profile-field"><label asp-for="Latitude">Latitude</label><input asp-for="Latitude" id="latitude" class="form-control" readonly /><span asp-validation-for="Latitude" class="text-danger"></span></div>
+                        <div class="worker-profile-field"><label asp-for="Longitude">Longitude</label><input asp-for="Longitude" id="longitude" class="form-control" readonly /><span asp-validation-for="Longitude" class="text-danger"></span></div>
+                    </div>
+                </section>
+
+                <footer class="worker-profile-actions"><a asp-controller="Worker" asp-action="Dashboard" class="btn btn-outline-secondary">Cancel</a><button type="submit" id="saveWorkerProfile" class="btn btn-success"><i class="fa-solid fa-check me-2" aria-hidden="true"></i>Save changes</button></footer>
+            </form>
+        </div>
     </div>
-</div>
+</main>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const detectLocationBtn = document.getElementById("detectLocationBtn");
-            const latitudeInput = document.getElementById("latitude");
-            const longitudeInput = document.getElementById("longitude");
-            const stateInput = document.getElementById("state");
-            const latPreview = document.getElementById("latPreview");
-            const lngPreview = document.getElementById("lngPreview");
-            const statePreview = document.getElementById("statePreview");
-            const mapFrame = document.getElementById("mapFrame");
+            const form = document.getElementById("updateWorkerForm");
+            const saveButton = document.getElementById("saveWorkerProfile");
+            const detectButton = document.getElementById("detectLocationBtn");
+            const latitude = document.getElementById("latitude");
+            const longitude = document.getElementById("longitude");
+            const state = document.getElementById("state");
+            const address = document.getElementById("Address");
+            const mapElement = document.getElementById("profileLocationMap");
+            const status = document.getElementById("locationStatus");
 
-            function showToast(message, type) {
-                let toast = document.getElementById("locationToast");
-                if (!toast) {
-                    toast = document.createElement("div");
-                    toast.id = "locationToast";
-                    toast.style.cssText = "position:fixed;top:30px;right:30px;z-index:99999;padding:15px 20px;border-radius:12px;color:#fff;font-weight:600;min-width:280px;box-shadow:0 10px 30px rgba(0,0,0,.15);transition:.35s;opacity:0;";
-                    document.body.appendChild(toast);
-                }
-                var bg = "#0ea5e9";
-                switch (type) {
-                    case "success": bg = "#10b981"; break;
-                    case "danger": bg = "#ef4444"; break;
-                    case "warning": bg = "#f59e0b"; break;
-                }
-                toast.style.background = bg;
-                toast.innerHTML = message;
-                toast.style.opacity = "1";
-                setTimeout(function () { toast.style.opacity = "0"; }, 3000);
+            let locationMap;
+            let locationMarker;
+            let reverseGeocodeTimer;
+
+            function parseCoordinate(value) {
+                if (value === null || value === undefined || String(value).trim() === "") return null;
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : null;
             }
 
-            function updatePreviews(lat, lng, state) {
-                if (latPreview) latPreview.innerText = lat;
-                if (lngPreview) lngPreview.innerText = lng;
-                if (statePreview) statePreview.innerText = state || "Not Detected";
+            function setMapPosition(lat, lng) {
+                const resolvedLat = Number(lat);
+                const resolvedLng = Number(lng);
+                if (!locationMap || !locationMarker || !Number.isFinite(resolvedLat) || !Number.isFinite(resolvedLng)) return;
+                const point = [resolvedLat, resolvedLng];
+                locationMarker.setLatLng(point);
+                locationMap.setView(point, Math.max(locationMap.getZoom(), 14));
             }
 
-            if (detectLocationBtn) {
-                detectLocationBtn.addEventListener("click", function () {
-                    if (!navigator.geolocation) {
-                        showToast("Geolocation is not supported by your browser.", "danger");
-                        return;
+            function setPickedLocation(lat, lng) {
+                const resolvedLat = Number(lat);
+                const resolvedLng = Number(lng);
+                if (!Number.isFinite(resolvedLat) || !Number.isFinite(resolvedLng)) return;
+                latitude.value = resolvedLat.toFixed(6);
+                longitude.value = resolvedLng.toFixed(6);
+                setMapPosition(resolvedLat, resolvedLng);
+                status.textContent = "Updating address...";
+                clearTimeout(reverseGeocodeTimer);
+                reverseGeocodeTimer = setTimeout(async function () {
+                    const resolved = await fillLocationDetails(true);
+                    status.textContent = resolved
+                        ? "Location updated from the map. Save your changes to keep it."
+                        : "Coordinates updated. Address lookup is unavailable.";
+                }, 350);
+            }
+            form.addEventListener("submit", function () {
+                const validator = window.jQuery && window.jQuery(form).data("validator");
+                if (validator && !window.jQuery(form).valid()) return;
+                if (!form.checkValidity()) return;
+                form.setAttribute("aria-busy", "true");
+                saveButton.disabled = true;
+                saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving changes…';
+            });
+            const hasSavedCoordinates = function () {
+                const lat = parseCoordinate(latitude.value);
+                const lng = parseCoordinate(longitude.value);
+                return lat !== null && lng !== null && (lat !== 0 || lng !== 0);
+            };
+
+            let detectingLocation = false;
+
+            function resetDetectButton() {
+                detectButton.disabled = false;
+                detectButton.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2" aria-hidden="true"></i>Detect My Location';
+            }
+
+            async function fillLocationDetails(overwriteExisting) {
+                try {
+                    const response = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + latitude.value + "&lon=" + longitude.value);
+                    if (!response.ok) throw new Error("Reverse geocoding failed");
+                    const result = await response.json();
+                    const detectedState = result.address?.state || result.address?.county || result.address?.city;
+                    if (detectedState && (overwriteExisting || !state.value.trim())) state.value = detectedState;
+                    if (result.display_name && address && (overwriteExisting || !address.value.trim())) {
+                        address.value = result.display_name.slice(0, 200);
                     }
-                    detectLocationBtn.disabled = true;
-                    detectLocationBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Detecting...';
-
-                    navigator.geolocation.getCurrentPosition(
-                        async function (position) {
-                            var lat = position.coords.latitude.toFixed(6);
-                            var lng = position.coords.longitude.toFixed(6);
-                            latitudeInput.value = lat;
-                            longitudeInput.value = lng;
-                            if (mapFrame) mapFrame.src = "https://maps.google.com/maps?q=" + lat + "," + lng + "&z=15&output=embed";
-                            try {
-                                var response = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + lat + "&lon=" + lng);
-                                var result = await response.json();
-                                var state = "";
-                                if (result.address) {
-                                    state = result.address.state || result.address.county || result.address.city || "";
-                                }
-                                stateInput.value = state;
-                                updatePreviews(lat, lng, state);
-                            } catch {
-                                updatePreviews(lat, lng, "Unable to detect state");
-                            }
-                            detectLocationBtn.classList.add("btn-success");
-                            detectLocationBtn.innerHTML = '<i class="fa-solid fa-circle-check me-2"></i>Location Detected';
-                            detectLocationBtn.disabled = false;
-                            showToast("Location detected successfully.", "success");
-                        },
-                        function (error) {
-                            detectLocationBtn.disabled = false;
-                            detectLocationBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2"></i>Detect Location';
-                            var msg = "Unable to retrieve location.";
-                            switch (error.code) {
-                                case error.PERMISSION_DENIED: msg = "Location permission denied."; break;
-                                case error.POSITION_UNAVAILABLE: msg = "Location unavailable."; break;
-                                case error.TIMEOUT: msg = "Location request timed out."; break;
-                            }
-                            showToast(msg, error.code === error.PERMISSION_DENIED ? "danger" : "warning");
-                        },
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                    );
-                });
-            }
-
-            function initPreview() {
-                if (latitudeInput && latPreview) latPreview.innerText = latitudeInput.value || "---";
-                if (longitudeInput && lngPreview) lngPreview.innerText = longitudeInput.value || "---";
-                if (stateInput && statePreview) statePreview.innerText = stateInput.value || "Not Detected";
-                if (latitudeInput && longitudeInput && latitudeInput.value && longitudeInput.value && mapFrame) {
-                    mapFrame.src = "https://maps.google.com/maps?q=" + latitudeInput.value + "," + longitudeInput.value + "&z=15&output=embed";
+                    return true;
+                } catch {
+                    return false;
                 }
             }
 
-            if (stateInput) {
-                stateInput.addEventListener("keyup", function () {
-                    if (statePreview) statePreview.innerText = stateInput.value || "Not Detected";
+            if (window.L && mapElement) {
+                const initialLat = parseCoordinate(latitude.value);
+                const initialLng = parseCoordinate(longitude.value);
+                const hasInitialCoordinates = initialLat !== null && initialLng !== null && (initialLat !== 0 || initialLng !== 0);
+                const initialPoint = hasInitialCoordinates ? [initialLat, initialLng] : [6.5244, 3.3792];
+
+                locationMap = L.map(mapElement).setView(initialPoint, hasInitialCoordinates ? 14 : 11);
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                    maxZoom: 19,
+                    attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
+                }).addTo(locationMap);
+                locationMarker = L.marker(initialPoint, { draggable: true }).addTo(locationMap);
+
+                locationMap.on("click", function (event) {
+                    setPickedLocation(event.latlng.lat, event.latlng.lng);
                 });
+                locationMarker.on("dragend", function (event) {
+                    const point = event.target.getLatLng();
+                    setPickedLocation(point.lat, point.lng);
+                });
+                setTimeout(function () { locationMap.invalidateSize(); }, 0);
             }
 
-            initPreview();
+            function detectLocation(automatic) {
+                if (detectingLocation) return;
+                if (!navigator.geolocation) {
+                    if (!automatic) status.textContent = "Geolocation is not supported by your browser.";
+                    return;
+                }
+
+                detectingLocation = true;
+                detectButton.disabled = true;
+                detectButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Detecting location...';
+                status.textContent = automatic ? "Detecting your current location..." : "Requesting your current location...";
+
+                navigator.geolocation.getCurrentPosition(async function (position) {
+                    const detectedLat = position.coords.latitude;
+                    const detectedLng = position.coords.longitude;
+                    latitude.value = detectedLat.toFixed(6);
+                    longitude.value = detectedLng.toFixed(6);
+                    setMapPosition(detectedLat, detectedLng);
+                    await fillLocationDetails(!automatic);
+                    detectingLocation = false;
+                    detectButton.disabled = false;
+                    detectButton.innerHTML = '<i class="fa-solid fa-circle-check me-2" aria-hidden="true"></i>Location detected';
+                    status.textContent = "Location detected. Check the state and address before saving.";
+                }, function (error) {
+                    detectingLocation = false;
+                    resetDetectButton();
+                    if (error.code === error.PERMISSION_DENIED) {
+                        status.textContent = automatic
+                            ? "Location permission was denied. Enter your location manually."
+                            : "Location permission was denied.";
+                    } else if (error.code === error.TIMEOUT) {
+                        status.textContent = automatic
+                            ? "Automatic location detection timed out. Retry or enter your location manually."
+                            : "Location request timed out.";
+                    } else {
+                        status.textContent = automatic
+                            ? "We couldn't detect your location. Enter it manually or retry."
+                            : "Unable to retrieve your location.";
+                    }
+                }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+            }
+
+            detectButton.addEventListener("click", function () { detectLocation(false); });
+
+            if (!hasSavedCoordinates()) {
+                detectLocation(true);
+            }
         });
     </script>
 }

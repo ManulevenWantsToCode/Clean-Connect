@@ -1,34 +1,68 @@
-﻿@model ErrorViewModel
+@model ErrorViewModel
 @{
-    ViewData["Title"] = "Error";
+    ViewData["Title"] = Model.Title ?? "Error";
+    var statusCode = Model.StatusCode == 0 ? 500 : Model.StatusCode;
+
+    var statusLabel = statusCode switch
+    {
+        404 => "Page not found",
+        403 => "Access denied",
+        401 => "Sign in required",
+        500 => "Something went wrong",
+        _ => "Something went wrong"
+    };
+
+    var userFriendlyMessage = !string.IsNullOrWhiteSpace(Model.Message)
+        ? Model.Message
+        : statusCode switch
+        {
+            404 => "The page you're looking for doesn't exist or may have been moved.",
+            403 => "You don't have permission to view this page. If this seems wrong, contact support.",
+            401 => "Please sign in to your account to continue.",
+            _ => "We ran into an unexpected problem. Our team has been notified and your data is safe."
+        };
 }
 
-<div class="error-page">
-    <div class="error-page__card">
-        <div class="error-page__icon">
-            <i class="fa-solid @(Model.StatusCode == 404 ? "fa-compass" : Model.StatusCode == 403 ? "fa-lock" : Model.StatusCode == 401 ? "fa-user-lock" : "fa-circle-exclamation")"></i>
-        </div>
+<div class="cc-error-container" data-request-id="@Model.RequestId">
+    @if (Model.ShowRequestId)
+    {
+        <!-- Support Reference: @Model.RequestId -->
+    }
 
-        <span class="error-page__code">@(Model.StatusCode == 0 ? "500" : Model.StatusCode.ToString())</span>
+    <div class="cc-error-card" role="region" aria-labelledby="errorHeading">
+        <p class="cc-error-code">@statusCode</p>
+        <h1 id="errorHeading" class="cc-error-title">@statusLabel</h1>
+        <p class="cc-error-desc">@userFriendlyMessage</p>
 
-        <h1>@Model.Title</h1>
-        <p>@Model.Message</p>
+        <div class="cc-error-actions">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                var dashboardController = User.IsInRole("Worker") ? "Worker" : User.IsInRole("Client") ? "Client" : "Dashboard";
+                <a asp-controller="@dashboardController"
+                   asp-action="Dashboard"
+                   class="btn cc-action-button cc-action-button--primary">
+                    Go to dashboard
+                </a>
+            }
+            else
+            {
+                <a asp-controller="Home"
+                   asp-action="Index"
+                   class="btn cc-action-button cc-action-button--primary">
+                    Go to homepage
+                </a>
+            }
 
-        @if (Model.ShowRequestId)
-        {
-            <div class="error-page__trace">
-                <span>Request ID</span>
-                <code>@Model.RequestId</code>
-            </div>
-        }
-
-        <div class="error-page__actions">
-            <a asp-controller="Home" asp-action="Index" class="btn btn-success rounded-pill px-4">
-                <i class="fa-solid fa-house me-2"></i>Back to Home
-            </a>
-            <button type="button" onclick="history.back()" class="btn btn-outline-success rounded-pill px-4">
-                <i class="fa-solid fa-arrow-left me-2"></i>Go Back
+            <button type="button"
+                    onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '@Url.Action("Index", "Home")'; }"
+                    class="btn cc-action-button cc-action-button--secondary">
+                Go back
             </button>
         </div>
+
+        <p class="cc-error-help">
+            Need help?
+            <a asp-controller="Home" asp-action="Contact">Contact support</a>
+        </p>
     </div>
 </div>

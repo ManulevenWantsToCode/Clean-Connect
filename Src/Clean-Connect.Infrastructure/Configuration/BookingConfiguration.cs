@@ -81,6 +81,9 @@ namespace Clean_Connect.Infrastructure.Configuration
                 .HasConversion<string>()
                 .IsRequired();
 
+            builder.Property(x => x.RejectionReason)
+                .HasMaxLength(500);
+
             builder.Property(x => x.Amount)
                 .HasPrecision(18, 2)
                 .IsRequired();

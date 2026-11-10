@@ -1,4 +1,5 @@
 @model List<Clean_Connect.Application.DTO.AdminWorkerDto>
+@Html.AntiForgeryToken()
 @{
     ViewData["Title"] = "Workers";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
@@ -217,8 +218,8 @@
                                         <button class="btn-action-icon" data-bs-toggle="modal" data-bs-target="#workerVerificationModal" title="Verify KYC">
                                             <i class="fa-solid fa-id-card"></i>
                                         </button>
-                                        <button class="btn-action-icon text-danger" title="Suspend Worker">
-                                            <i class="fa-solid fa-ban"></i>
+                                        <button class="btn-action-icon @(w.IsSuspended ? "text-success" : "text-danger")" onclick="toggleWorkerSuspension('@w.Id', this)" title="@(w.IsSuspended ? "Reinstate Worker" : "Suspend Worker")">
+                                            <i class="fa-solid @(w.IsSuspended ? "fa-rotate-left" : "fa-ban")"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -350,6 +351,16 @@
             document.getElementById('wp-kyc').textContent = w.kycStatus;
             document.getElementById('wp-avail').textContent = w.availability === 'Available' ? 'Available for Jobs' : w.availability;
             bootstrap.Modal.getOrCreateInstance(document.getElementById('workerProfileModal')).show();
+        }
+
+        async function toggleWorkerSuspension(id, button) {
+            const suspending = button.title === 'Suspend Worker';
+            if (!confirm(suspending ? 'Suspend this worker? Booking access will be restricted.' : 'Reinstate this worker?')) return;
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const response = await fetch(`/Admin/Workers/${id}/Suspend`, { method: 'POST', headers: { 'RequestVerificationToken': token }, credentials: 'same-origin' });
+            const result = await response.json();
+            if (!result.ok) { alert(result.message || 'Unable to update worker status.'); return; }
+            location.reload();
         }
     </script>
 }

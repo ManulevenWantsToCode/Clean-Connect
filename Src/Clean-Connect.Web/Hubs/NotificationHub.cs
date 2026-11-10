@@ -1,4 +1,7 @@
+using Clean_Connect.Application.Command.BookingChatCommand;
+using Clean_Connect.Application.Query.BookingChatQuery;
 using Clean_Connect.Web.Services;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -8,10 +11,12 @@ namespace Clean_Connect.Web.Hubs
     public class NotificationHub : Hub
     {
         private readonly IWorkerPresenceService _presence;
+        private readonly IMediator _mediator;
 
-        public NotificationHub(IWorkerPresenceService presence)
+        public NotificationHub(IWorkerPresenceService presence, IMediator mediator)
         {
             _presence = presence;
+            _mediator = mediator;
         }
 
         public override async Task OnConnectedAsync()
@@ -46,6 +51,21 @@ namespace Clean_Connect.Web.Hubs
             }
 
             await base.OnDisconnectedAsync(exception);
+        }
+
+        public async Task<int> GetUnreadMessageCount()
+        {
+            return await _mediator.Send(new GetUnreadMessageCountQuery());
+        }
+
+        public async Task<int> MarkConversationRead(Guid bookingId)
+        {
+            return await _mediator.Send(new MarkConversationReadCommand(bookingId));
+        }
+
+        public async Task<object> SendChatMessageNotification(Guid bookingId, string messageText, string? messageId = null)
+        {
+            return await _mediator.Send(new RecordMessageSentCommand(bookingId, messageText, messageId));
         }
     }
 }

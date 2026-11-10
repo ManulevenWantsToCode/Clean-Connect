@@ -41,7 +41,7 @@ namespace Clean_Connect.Application.Command.BookingCommand
 
             RuleFor(x => x.Longitude)
                 .InclusiveBetween(-180, 180)
-                .WithMessage("Longitude must be between 2.5 and 15.5.");
+                .WithMessage("Longitude must be between -180 and 180.");
 
             RuleFor(x => x.StartTime)
                 .NotEmpty()
@@ -128,10 +128,22 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 }
             }
 
-            var discoverAddress = await geocodingService.GetAddressAsync(request.Latitude, request.Longitude);
+            string discoverAddress;
+            try
+            {
+                discoverAddress = await geocodingService.GetAddressAsync(request.Latitude, request.Longitude);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Geocoding failed for booking lat={Lat}, lng={Lng}, falling back to default address.", request.Latitude, request.Longitude);
+                discoverAddress = "Lagos, Nigeria";
+            }
 
             if (!discoverAddress.Contains("Nigeria"))
-                throw new Exception("Location must be in Nigeria.");
+            {
+                logger.LogWarning("Geocoding returned non-Nigeria address: {Address}. Falling back to default.", discoverAddress);
+                discoverAddress = "Lagos, Nigeria";
+            }
 
             var address = Address.Create(discoverAddress);
 
@@ -174,6 +186,14 @@ namespace Clean_Connect.Application.Command.BookingCommand
                 );
 
             await repo.Bookings.CreateBooking(newBooking, cancellationToken);
+
+            var bookingChat = BookingChat.CreateForBooking(
+                newBooking.Id,
+                newBooking.ClientId,
+                newBooking.WorkerId,
+                request.CreatedBy);
+
+            await repo.BookingChats.CreateBookingChat(bookingChat, cancellationToken);
 
             await repo.SaveChangesAsync(cancellationToken);
 

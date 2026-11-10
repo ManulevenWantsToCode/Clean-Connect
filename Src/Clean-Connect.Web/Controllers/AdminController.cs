@@ -20,6 +20,7 @@ namespace Clean_Connect.Web.Controllers
         private readonly IConfiguration _config;
         private readonly IRealtimeNotificationService _notifications;
         private readonly PayoutService _payoutService;
+        private readonly IPlatformSettingsRepository _platformSettings;
 
         private static readonly BookingStatus[] ActiveStatuses =
         {
@@ -31,7 +32,7 @@ namespace Clean_Connect.Web.Controllers
             BookingStatus.AwaitingClientConfirmation
         };
 
-        public AdminController(IUnitOfWork repo, ILogger<AdminController> logger, UserManager<ApplicationUser> userManager, IConfiguration config, IRealtimeNotificationService notifications, PayoutService payoutService)
+        public AdminController(IUnitOfWork repo, ILogger<AdminController> logger, UserManager<ApplicationUser> userManager, IConfiguration config, IRealtimeNotificationService notifications, PayoutService payoutService, IPlatformSettingsRepository platformSettings)
         {
             _repo = repo;
             _logger = logger;
@@ -39,6 +40,7 @@ namespace Clean_Connect.Web.Controllers
             _config = config;
             _notifications = notifications;
             _payoutService = payoutService;
+            _platformSettings = platformSettings;
         }
 
         [HttpGet("")]
@@ -58,8 +60,7 @@ namespace Clean_Connect.Web.Controllers
             var completed = bookings.Where(b => b.BookingStatus == BookingStatus.Completed).ToList();
             var totalRevenue = completed.Sum(b => b.Amount);
             var revenueThisMonth = completed.Where(b => b.DateOfService.Month == now.Month && b.DateOfService.Year == now.Year).Sum(b => b.Amount);
-            var commissionPercent = _config.GetValue<decimal>("Commission:Rate");
-            if (commissionPercent <= 0) commissionPercent = 15;
+            var commissionPercent = (await _platformSettings.GetAsync(ct)).CommissionPercent;
             var platformFeeShare = revenueThisMonth * (commissionPercent / 100m);
 
             var activeBookings = bookings.Count(b => ActiveStatuses.Contains(b.BookingStatus));
@@ -87,6 +88,30 @@ namespace Clean_Connect.Web.Controllers
             foreach (var m in monthlyRevenue)
                 m.Percentage = maxMonthly > 0 ? (double)(m.Amount / maxMonthly) * 100d : 0d;
 
+            var currentWeekStart = now.Date.AddDays(-(((int)now.DayOfWeek + 6) % 7));
+            var weeklyRevenue = new List<WeeklyRevenueDto>();
+            var maxWeekly = 0m;
+            for (var i = 5; i >= 0; i--)
+            {
+                var weekStart = currentWeekStart.AddDays(-7 * i);
+                var weekEnd = weekStart.AddDays(7);
+                var amount = completed
+                    .Where(b => b.DateOfService.Date >= weekStart && b.DateOfService.Date < weekEnd)
+                    .Sum(b => b.Amount);
+                weeklyRevenue.Add(new WeeklyRevenueDto
+                {
+                    Week = weekStart.ToString("MMM d"),
+                    Amount = amount,
+                    Percentage = 0
+                });
+                if (amount > maxWeekly) maxWeekly = amount;
+            }
+            foreach (var week in weeklyRevenue)
+                week.Percentage = maxWeekly > 0 ? (double)(week.Amount / maxWeekly) * 100d : 0d;
+            var revenueThisWeek = completed
+                .Where(b => b.DateOfService.Date >= currentWeekStart && b.DateOfService.Date < currentWeekStart.AddDays(7))
+                .Sum(b => b.Amount);
+
             var recent = bookings
                 .OrderByDescending(b => b.DateCreated)
                 .Take(10)
@@ -111,12 +136,15 @@ namespace Clean_Connect.Web.Controllers
                 })
                 .ToList();
 
-            var audit = BuildAuditActivity(recent, now);
+            var payments = await _repo.Payments.GetAllPayments(ct);
+            var ratings = await _repo.Ratings.GetAllRatingsAsync(ct);
+            var audit = BuildAuditActivity(bookings, payments, ratings, now);
 
             var model = new AdminDashboardDto
             {
                 TotalRevenue = totalRevenue,
                 RevenueThisMonth = revenueThisMonth,
+                RevenueThisWeek = revenueThisWeek,
                 PlatformFeeShare = platformFeeShare,
                 ActiveBookings = activeBookings,
                 ScheduledToday = scheduledToday,
@@ -126,6 +154,7 @@ namespace Clean_Connect.Web.Controllers
                 NewClientsThisMonth = newClientsThisMonth,
                 EscrowHeld = escrowsHeld.Sum(e => e.Amount),
                 MonthlyRevenue = monthlyRevenue,
+                WeeklyRevenue = weeklyRevenue,
                 RecentBookings = recent,
                 AuditActivity = audit
             };
@@ -182,7 +211,8 @@ namespace Clean_Connect.Web.Controllers
                     Phone = c.PhoneNumber?.ToString() ?? "",
                     City = c.State ?? "",
                     TotalBookings = cBookings.Count,
-                    Status = "Active",
+                    Status = c.IsSuspended ? "Suspended" : "Active",
+                    IsSuspended = c.IsSuspended,
                     TotalSpent = totalSpent,
                     DateJoined = c.DateCreated,
                     PreferredService = preferred,
@@ -191,6 +221,38 @@ namespace Clean_Connect.Web.Controllers
             }).ToList();
 
             return View(items);
+        }
+
+        [HttpPost("Clients/{clientId:guid}/Suspend")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleClientSuspension(Guid clientId, CancellationToken ct)
+        {
+            var client = await _repo.Clients.GetClientById(clientId, ct);
+            if (client == null) return Json(new { ok = false, message = "Client not found." });
+
+            var suspending = !client.IsSuspended;
+            if (suspending) client.Suspend(User.Identity?.Name);
+            else client.Reinstate(User.Identity?.Name);
+            await _repo.Clients.UpdateClient(client, ct);
+
+            if (suspending)
+            {
+                var bookings = (await _repo.Bookings.GetAllBookings(ct))
+                    .Where(b => !b.IsDeleted && b.ClientId == client.Id && ActiveStatuses.Contains(b.BookingStatus)).ToList();
+                foreach (var booking in bookings.Where(b => b.WorkerId != Guid.Empty))
+                {
+                    var workerNote = Notification.Create(booking.WorkerId, booking.Id, NotificationAudience.Worker,
+                        "Client suspended", $"{client.FullName} has been suspended. Please review your active booking.",
+                        "Suspended", "warning", "fa-user-slash", "View Booking", $"/Worker-Booking-Details/{booking.Id}", true, User.Identity?.Name);
+                    await _repo.Notifications.CreateAsync(workerNote, ct);
+                }
+                var clientNote = Notification.Create(client.Id, Guid.Empty, NotificationAudience.Client,
+                    "Your account has been suspended", "Your account is suspended. Booking and service access is restricted. Contact support for assistance.",
+                    "Suspended", "danger", "fa-user-slash", "Contact Support", "/Home/Contact", true, User.Identity?.Name);
+                await _repo.Notifications.CreateAsync(clientNote, ct);
+            }
+            await _repo.SaveChangesAsync(ct);
+            return Json(new { ok = true, suspended = suspending, message = suspending ? "Client suspended." : "Client reinstated." });
         }
 
         [HttpGet("Workers")]
@@ -216,7 +278,8 @@ namespace Clean_Connect.Web.Controllers
                     Email = w.Email?.ToString() ?? "",
                     Specialty = w.ServiceType?.Name ?? "",
                     CompletedJobs = completedJobs,
-                    KycStatus = "Verified",
+                    KycStatus = w.IsSuspended ? "Suspended" : "Verified",
+                    IsSuspended = w.IsSuspended,
                     Availability = w.IsAvailable ? "Available" : "Off-Duty",
                     HasBankDetails = bankDetail != null,
                     PayoutAccount = bankDetail != null
@@ -230,13 +293,46 @@ namespace Clean_Connect.Web.Controllers
             return View(items);
         }
 
+        [HttpPost("Workers/{workerId:guid}/Suspend")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleWorkerSuspension(Guid workerId, CancellationToken ct)
+        {
+            var worker = await _repo.Workers.GetWorkerById(workerId, ct);
+            if (worker == null) return Json(new { ok = false, message = "Worker not found." });
+
+            var suspending = !worker.IsSuspended;
+            if (suspending) worker.Suspend(User.Identity?.Name);
+            else worker.Reinstate(User.Identity?.Name);
+            await _repo.Workers.UpdateWorker(worker, ct);
+
+            if (suspending)
+            {
+                var bookings = (await _repo.Bookings.GetAllBookings(ct))
+                    .Where(b => !b.IsDeleted && b.WorkerId == worker.Id && ActiveStatuses.Contains(b.BookingStatus)).ToList();
+                foreach (var booking in bookings)
+                {
+                    var clientNote = Notification.Create(booking.ClientId, booking.Id, NotificationAudience.Client,
+                        "Worker suspended", $"{worker.FullName} has been suspended. Please contact support about your active booking.",
+                        "Suspended", "warning", "fa-user-slash", "View Booking", $"/Client-Booking-Details/{booking.Id}", true, User.Identity?.Name);
+                    await _repo.Notifications.CreateAsync(clientNote, ct);
+                }
+                var workerNote = Notification.Create(worker.Id, Guid.Empty, NotificationAudience.Worker,
+                    "Your account has been suspended", "Your account is suspended. Worker services and booking actions are restricted. Contact support for assistance.",
+                    "Suspended", "danger", "fa-user-slash", "Contact Support", "/Home/Contact", true, User.Identity?.Name);
+                await _repo.Notifications.CreateAsync(workerNote, ct);
+            }
+            await _repo.SaveChangesAsync(ct);
+            return Json(new { ok = true, suspended = suspending, message = suspending ? "Worker suspended." : "Worker reinstated." });
+        }
+
         [HttpGet("Payouts")]
         public async Task<IActionResult> Payouts(CancellationToken ct)
         {
             ViewData["ActivePage"] = "Payouts";
 
             var escrows = (await _repo.Escrows.GetAllEscrowsAsync(ct))
-                .Where(e => e.Status == EscrowStatus.Held)
+                .Where(e => e.Status == EscrowStatus.Held
+                    || e.TransferStatus == PayoutTransferStatus.LegacyUnverified)
                 .ToList();
 
             var items = new List<AdminPayoutDto>();
@@ -262,7 +358,7 @@ namespace Clean_Connect.Web.Controllers
                     Net = escrow.WorkerShare,
                     HasBankDetails = bankDetail != null,
                     PayoutAccount = bankDetail != null ? MaskAccount(bankDetail.AccountNumber, bankDetail.BankName) : "No bank details",
-                    PayoutStatus = "Pending"
+                    PayoutStatus = escrow.TransferStatus.ToString()
                 });
             }
 
@@ -285,7 +381,7 @@ namespace Clean_Connect.Web.Controllers
                     return Json(new { ok = false, message = "This payout is not pending. It may have already been paid." });
 
                 var result = await _payoutService.PayoutAsync(booking, admin, ct);
-                return Json(new { ok = result.Success, message = result.Message, reference = result.ProviderReference });
+                return Json(new { ok = result.Success, message = result.Message, reference = result.ProviderReference, status = result.TransferStatus });
             }
             catch (Exception ex)
             {
@@ -463,9 +559,7 @@ namespace Clean_Connect.Web.Controllers
         public async Task<IActionResult> Settings(CancellationToken ct)
         {
             ViewData["ActivePage"] = "Settings";
-
-            var commissionPercent = (int)_config.GetValue<decimal>("Commission:Rate");
-            if (commissionPercent <= 0) commissionPercent = 15;
+            var settings = await _platformSettings.GetAsync(ct);
 
             var adminUsers = new List<AdminUserDto>();
             var admins = await _userManager.GetUsersInRoleAsync("Admin");
@@ -485,12 +579,109 @@ namespace Clean_Connect.Web.Controllers
 
             var model = new AdminSettingsDto
             {
-                SupportEmail = _config["Email:Smtp:From"] ?? "support@cleanconnect.com",
-                CommissionPercent = commissionPercent,
+                PlatformName = settings.PlatformName,
+                SupportEmail = settings.SupportEmail,
+                CustomerServicePhone = settings.CustomerServicePhone,
+                BaseCurrency = settings.BaseCurrency,
+                Timezone = settings.Timezone,
+                MaintenanceMode = settings.MaintenanceMode,
+                AutoMatchCleanerTimeoutMinutes = settings.AutoMatchCleanerTimeoutMinutes,
+                MinimumAdvanceNoticeHours = settings.MinimumAdvanceNoticeHours,
+                FreeCancellationWindowHours = settings.FreeCancellationWindowHours,
+                MaxActiveJobsPerCleanerPerDay = settings.MaxActiveJobsPerCleanerPerDay,
+                CommissionPercent = settings.CommissionPercent,
+                AutoReleaseEscrowDelayHours = settings.AutoReleaseEscrowDelayHours,
+                MinimumPayoutAmount = settings.MinimumPayoutAmount,
+                EmailAlertsOnNewBooking = settings.EmailAlertsOnNewBooking,
+                SmsToCleanerOnAssignment = settings.SmsToCleanerOnAssignment,
+                EmailBookingConfirmation = settings.EmailBookingConfirmation,
+                EmailBookingCancellation = settings.EmailBookingCancellation,
+                EmailPaymentNotifications = settings.EmailPaymentNotifications,
+                SmsBookingNotifications = settings.SmsBookingNotifications,
                 AdminUsers = adminUsers
             };
 
             return View(model);
+        }
+
+        [HttpPost("Settings")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveSettings(AdminSettingsDto input, CancellationToken ct)
+        {
+            ViewData["ActivePage"] = "Settings";
+            input.Timezone = NormalizeTimeZoneId(input.Timezone);
+            if (string.IsNullOrWhiteSpace(input.PlatformName) || input.PlatformName.Trim().Length > 100)
+                ModelState.AddModelError(nameof(input.PlatformName), "Enter a platform name of 1 to 100 characters.");
+            if (!System.Net.Mail.MailAddress.TryCreate(input.SupportEmail, out _))
+                ModelState.AddModelError(nameof(input.SupportEmail), "Enter a valid support email address.");
+            if (string.IsNullOrWhiteSpace(input.CustomerServicePhone) || input.CustomerServicePhone.Length > 32)
+                ModelState.AddModelError(nameof(input.CustomerServicePhone), "Enter a customer service phone number of up to 32 characters.");
+            if (!System.Text.RegularExpressions.Regex.IsMatch(input.BaseCurrency ?? "", "^[A-Z]{3}$"))
+                ModelState.AddModelError(nameof(input.BaseCurrency), "Use a three-letter uppercase currency code, such as NGN.");
+            if (!IsValidTimeZoneId(input.Timezone))
+                ModelState.AddModelError(nameof(input.Timezone), "Enter a valid IANA or Windows timezone ID, such as Africa/Lagos.");
+            if (input.CommissionPercent is < 0 or > 50)
+                ModelState.AddModelError(nameof(input.CommissionPercent), "Commission must be between 0 and 50 percent.");
+            if (input.AutoMatchCleanerTimeoutMinutes is < 1 or > 1440)
+                ModelState.AddModelError(nameof(input.AutoMatchCleanerTimeoutMinutes), "Timeout must be between 1 and 1440 minutes.");
+            if (input.MinimumAdvanceNoticeHours is < 0 or > 8760)
+                ModelState.AddModelError(nameof(input.MinimumAdvanceNoticeHours), "Advance notice must be between 0 and 8760 hours.");
+            if (input.FreeCancellationWindowHours is < 0 or > 8760)
+                ModelState.AddModelError(nameof(input.FreeCancellationWindowHours), "Cancellation window must be between 0 and 8760 hours.");
+            if (input.MaxActiveJobsPerCleanerPerDay is < 1 or > 100)
+                ModelState.AddModelError(nameof(input.MaxActiveJobsPerCleanerPerDay), "Active jobs must be between 1 and 100.");
+            if (input.AutoReleaseEscrowDelayHours is < 0 or > 8760)
+                ModelState.AddModelError(nameof(input.AutoReleaseEscrowDelayHours), "Escrow delay must be between 0 and 8760 hours.");
+            if (input.MinimumPayoutAmount < 0)
+                ModelState.AddModelError(nameof(input.MinimumPayoutAmount), "Minimum payout cannot be negative.");
+
+            if (!ModelState.IsValid)
+            {
+                input.AdminUsers = (await _userManager.GetUsersInRoleAsync("Admin")).Select(u => new AdminUserDto
+                { Name = u.UserName ?? u.Email ?? "Admin", Email = u.Email ?? "", Role = "Admin", Status = "Active", Initials = GetInitials(u.UserName ?? u.Email) }).ToList();
+                return View("Settings", input);
+            }
+            var value = new PlatformSettings
+            {
+                PlatformName = input.PlatformName.Trim(), SupportEmail = input.SupportEmail.Trim(),
+                CustomerServicePhone = input.CustomerServicePhone.Trim(), BaseCurrency = input.BaseCurrency,
+                Timezone = input.Timezone, MaintenanceMode = input.MaintenanceMode,
+                AutoMatchCleanerTimeoutMinutes = input.AutoMatchCleanerTimeoutMinutes,
+                MinimumAdvanceNoticeHours = input.MinimumAdvanceNoticeHours,
+                FreeCancellationWindowHours = input.FreeCancellationWindowHours,
+                MaxActiveJobsPerCleanerPerDay = input.MaxActiveJobsPerCleanerPerDay,
+                CommissionPercent = input.CommissionPercent, AutoReleaseEscrowDelayHours = input.AutoReleaseEscrowDelayHours,
+                MinimumPayoutAmount = input.MinimumPayoutAmount, EmailAlertsOnNewBooking = input.EmailAlertsOnNewBooking,
+                SmsToCleanerOnAssignment = input.SmsToCleanerOnAssignment,
+                EmailBookingConfirmation = input.EmailBookingConfirmation,
+                EmailBookingCancellation = input.EmailBookingCancellation,
+                EmailPaymentNotifications = input.EmailPaymentNotifications, SmsBookingNotifications = input.SmsBookingNotifications
+            };
+            await _platformSettings.SaveAsync(value, ct);
+            TempData["SettingsSaved"] = "Platform settings saved.";
+            return RedirectToAction(nameof(Settings));
+        }
+
+        private static string NormalizeTimeZoneId(string? timeZoneId) =>
+            string.Equals(timeZoneId?.Trim(), "WAT", StringComparison.OrdinalIgnoreCase) ? "Africa/Lagos" : timeZoneId?.Trim() ?? string.Empty;
+
+        private static bool IsValidTimeZoneId(string? timeZoneId)
+        {
+            if (string.IsNullOrWhiteSpace(timeZoneId)) return false;
+            try
+            {
+                _ = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId.Trim());
+                return true;
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                return TimeZoneInfo.TryConvertIanaIdToWindowsId(timeZoneId.Trim(), out var windowsId) &&
+                       TimeZoneInfo.GetSystemTimeZones().Any(zone => zone.Id == windowsId);
+            }
+            catch (InvalidTimeZoneException)
+            {
+                return false;
+            }
         }
 
         private static bool IsValidServiceTypeInput(AdminServiceTypeInput input) =>
@@ -931,43 +1122,75 @@ namespace Clean_Connect.Web.Controllers
             return "Paystack Card";
         }
 
-        private static List<AuditActivityDto> BuildAuditActivity(List<AdminRecentBookingDto> recent, DateTime now)
+        private static List<AuditActivityDto> BuildAuditActivity(
+            List<Booking> bookings,
+            List<Payment> payments,
+            List<Ratings> ratings,
+            DateTime now)
         {
-            var variants = new[] { "emerald", "sky", "amber", "rose" };
-            var activities = new List<AuditActivityDto>();
-            var states = new[]
-            {
-                ("Booking completed", "Job finished and escrow released to cleaner."),
-                ("New booking created", "Client booked a cleaning session."),
-                ("Payment received", "Payment confirmed via Paystack."),
-                ("Review received", "Client rated their cleaning experience.")
-            };
+            var bookingById = bookings.ToDictionary(b => b.Id);
+            var activities = new List<(DateTime When, AuditActivityDto Activity)>();
 
-            for (var i = 0; i < recent.Count && i < 8; i++)
+            foreach (var booking in bookings)
             {
-                var r = recent[i];
-                var ts = states[i % states.Length];
-                activities.Add(new AuditActivityDto
-                {
-                    IconVariant = variants[i % variants.Length],
-                    Title = $"{ts.Item1} — {r.BookingId}",
-                    Description = $"{r.ClientName} • {r.ServiceType}",
-                    TimeAgo = FormatTimeAgo(r.DateOfService, now)
-                });
-            }
-
-            if (activities.Count == 0)
-            {
-                activities.Add(new AuditActivityDto
+                var bookingRef = FormatBookingId(booking.Id, booking.DateCreated);
+                var client = booking.Client?.FullName?.ToString() ?? "Client";
+                var service = booking.ServiceType?.Name ?? "Cleaning";
+                activities.Add((booking.DateCreated, new AuditActivityDto
                 {
                     IconVariant = "sky",
-                    Title = "Welcome to Clean Connect",
-                    Description = "No activity yet. Admin panel is ready.",
-                    TimeAgo = "now"
-                });
+                    Title = $"New booking created — {bookingRef}",
+                    Description = $"{client} • {service}",
+                    TimeAgo = FormatTimeAgo(booking.DateCreated, now)
+                }));
+
+                if (booking.BookingStatus == BookingStatus.Completed)
+                {
+                    var completedAt = booking.DateModified ?? booking.DateCreated;
+                    activities.Add((completedAt, new AuditActivityDto
+                    {
+                        IconVariant = "emerald",
+                        Title = $"Booking completed — {bookingRef}",
+                        Description = $"{client} • {service}",
+                        TimeAgo = FormatTimeAgo(completedAt, now)
+                    }));
+                }
             }
 
-            return activities;
+            foreach (var payment in payments.Where(p => !p.IsDeleted && p.Status == PaymentStatus.Successful))
+            {
+                if (!bookingById.TryGetValue(payment.BookingId, out var booking))
+                    continue;
+
+                var paidAt = payment.DateModified ?? payment.DateCreated;
+                activities.Add((paidAt, new AuditActivityDto
+                {
+                    IconVariant = "amber",
+                    Title = $"Payment received — {FormatBookingId(booking.Id, booking.DateCreated)}",
+                    Description = $"{booking.Client?.FullName?.ToString() ?? "Client"} • {booking.ServiceType?.Name ?? "Cleaning"} • ₦{payment.Amount:N0}",
+                    TimeAgo = FormatTimeAgo(paidAt, now)
+                }));
+            }
+
+            foreach (var rating in ratings.Where(r => !r.IsDeleted))
+            {
+                if (!bookingById.TryGetValue(rating.BookingId, out var booking))
+                    continue;
+
+                activities.Add((rating.DateCreated, new AuditActivityDto
+                {
+                    IconVariant = "rose",
+                    Title = $"Review received — {FormatBookingId(booking.Id, booking.DateCreated)}",
+                    Description = $"{booking.Client?.FullName?.ToString() ?? "Client"} • {rating.RatingValue}/5",
+                    TimeAgo = FormatTimeAgo(rating.DateCreated, now)
+                }));
+            }
+
+            return activities
+                .OrderByDescending(item => item.When)
+                .Take(8)
+                .Select(item => item.Activity)
+                .ToList();
         }
 
         private static string FormatTimeAgo(DateTime date, DateTime now)

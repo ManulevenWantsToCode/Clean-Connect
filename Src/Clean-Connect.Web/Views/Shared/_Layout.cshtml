@@ -1,10 +1,12 @@
+@inject Clean_Connect.Application.Interface.Repositories.IPlatformSettingsRepository PlatformSettingsRepository
+@{ var platformSettings = await PlatformSettingsRepository.GetAsync(Context.RequestAborted); }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>@ViewData["Title"] - Clean Connect</title>
+    <title>@ViewData["Title"] - @platformSettings.PlatformName</title>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet"
@@ -18,7 +20,13 @@
           asp-append-version="true" />
 
     <link rel="stylesheet"
+          href="~/css/cleanconnect-frontend.css"
+          asp-append-version="true" />
+
+    <link rel="stylesheet"
           href="~/lib/notyf/notyf.min.css" />
+
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 
 <body>
@@ -31,13 +39,16 @@
                 <span class="navbar-brand-icon">
                     <i class="fas fa-broom"></i>
                 </span>
-                Clean Connect
+                @platformSettings.PlatformName
             </a>
 
-            <button class="navbar-toggler"
+            <button class="navbar-toggler collapsed"
                     type="button"
                     data-bs-toggle="collapse"
-                    data-bs-target="#mainNavbar">
+                    data-bs-target="#mainNavbar"
+                    aria-controls="mainNavbar"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation">
 
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -169,65 +180,7 @@
         @RenderBody()
     </main>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-
-            <div class="row">
-
-                <div class="col-md-4 mb-3">
-                    <h5>Clean Connect</h5>
-                    <p>
-                        Connecting clients with trusted cleaning professionals.
-                    </p>
-                </div>
-
-                <div class="col-md-4 mb-3">
-                    <h5>Quick Links</h5>
-
-                    <ul class="list-unstyled">
-                        <li>
-                            <a asp-controller="Home" asp-action="Index">
-                                Home
-                            </a>
-                        </li>
-                        <li>
-                            <a asp-controller="Home" asp-action="About">
-                                About
-                            </a>
-                        </li>
-                        <li>
-                            <a asp-controller="Home" asp-action="Contact">
-                                Contact
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="col-md-4 mb-3">
-                    <h5>Contact</h5>
-
-                    <p>
-                        <i class="fas fa-envelope"></i>
-                        support@cleanconnect.com
-                    </p>
-
-                    <p>
-                        <i class="fas fa-phone"></i>
-                        +234 xxx xxx xxxx
-                    </p>
-                </div>
-
-            </div>
-
-            <hr />
-
-            <p class="text-center mb-0">
-                © @DateTime.Now.Year Clean Connect. All Rights Reserved.
-            </p>
-
-        </div>
-    </footer>
+    <partial name="_SiteFooter" />
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
 

@@ -5,7 +5,9 @@
     var prefillReferral = Model is null && ViewData["ReferralCode"] is string rc && !string.IsNullOrWhiteSpace(rc) ? rc.Trim() : null;
 }
 
-<link rel="stylesheet" href="~/css/profile-forms.css" asp-append-version="true" />
+@section Styles {
+    <link rel="stylesheet" href="~/css/profile-forms.css" asp-append-version="true" />
+}
 
 <div class="client-profile-page py-5">
     <div class="container profile-form-container">

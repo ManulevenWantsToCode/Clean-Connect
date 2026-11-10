@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Clean_Connect.Web.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Worker")]
     public class WorkerController : Controller
     {
         private readonly IMediator _mediator;
@@ -75,7 +75,7 @@ namespace Clean_Connect.Web.Controllers
             {
                 _logger.LogWarning(vex, "Worker profile creation validation failed.");
 
-                _notyf.Error(vex.Message);
+                _notyf.Error("Some profile details need attention. Please correct the highlighted fields.");
 
                 var st2 = await _repo.ServiceTypes.GetAllAsync(ct);
                 ViewBag.ServiceType = new SelectList(st2, "Id", "Name");
@@ -86,7 +86,7 @@ namespace Clean_Connect.Web.Controllers
             {
                 _logger.LogWarning(uex, "Worker profile creation unauthorized.");
 
-                _notyf.Error(uex.Message);
+                _notyf.Error("Please sign in again to continue.");
 
                 return RedirectToAction("Login", "Auth");
             }
@@ -94,7 +94,7 @@ namespace Clean_Connect.Web.Controllers
             {
                 _logger.LogError(ex, "Worker profile creation failed.");
 
-                _notyf.Error($"Something went wrong: {ex.Message}");
+                _notyf.Error("We couldn't save your worker profile. Please check the form and try again.");
 
                 var st3 = await _repo.ServiceTypes.GetAllAsync(ct);
                 ViewBag.ServiceType = new SelectList(st3, "Id", "Name");
@@ -205,7 +205,7 @@ namespace Clean_Connect.Web.Controllers
             catch (FluentValidation.ValidationException vex)
             {
                 _logger.LogWarning(vex, "Worker update validation failed.");
-                _notyf.Error(vex.Message);
+                _notyf.Error("Some profile details need attention. Please correct the highlighted fields.");
                 var st2 = await _repo.ServiceTypes.GetAllAsync(ct);
                 ViewBag.ServiceType = new SelectList(st2, "Id", "Name", command.ServiceTypeId);
                 return View(command);
@@ -218,7 +218,7 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Worker update failed.");
-                _notyf.Error($"Something went wrong: {ex.Message}");
+                _notyf.Error("We couldn't save your profile changes. Please try again.");
                 var st3 = await _repo.ServiceTypes.GetAllAsync(ct);
                 ViewBag.ServiceType = new SelectList(st3, "Id", "Name", command.ServiceTypeId);
                 return View(command);
@@ -305,9 +305,7 @@ namespace Clean_Connect.Web.Controllers
                         .Where(x => x.Value?.Errors.Count > 0)
                         .Select(x => $"{x.Key}: {string.Join(", ", x.Value!.Errors.Select(e => e.ErrorMessage))}")));
 
-                    _notyf.Error(modelErrors.Count > 0
-                        ? string.Join(" ", modelErrors)
-                        : "Please correct the highlighted errors.");
+                    _notyf.Error("Please correct the highlighted errors.");
 
                     return View(model);
                 }
@@ -336,7 +334,7 @@ namespace Clean_Connect.Web.Controllers
             {
                 _logger.LogError(ex, "Failed to save payout details.");
                 ModelState.AddModelError(string.Empty, ex.Message);
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't save your payout details. Please check them and try again.");
                 await LoadBankListAsync(ct);
                 return View(model);
             }

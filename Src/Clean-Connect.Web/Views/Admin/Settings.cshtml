@@ -10,12 +10,16 @@
         <p>Manage platform identity, booking rules, fee structure, payout policies, and operational administrators.</p>
     </div>
     <div class="admin-page-actions">
-        <button class="btn btn-admin-primary" data-save-feedback>
+        <button type="submit" form="platformSettingsForm" class="btn btn-admin-primary">
             <i class="fa-solid fa-floppy-disk me-1"></i> Save Changes
         </button>
     </div>
 </div>
 
+@if (TempData["SettingsSaved"] is string savedMessage) { <div class="alert alert-success">@savedMessage</div> }
+<form id="platformSettingsForm" method="post" action="/Admin/Settings">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" class="alert alert-danger @(ViewData.ModelState.IsValid ? "d-none" : "")" role="alert"></div>
 <div class="row g-4">
     <!-- Platform Identity -->
     <div class="col-lg-6">
@@ -32,30 +36,30 @@
             <div class="settings-card-body">
                 <div class="mb-3">
                     <label class="form-label">Platform Name</label>
-                    <input type="text" class="form-control" value="@Model.PlatformName" />
+                    <input name="PlatformName" type="text" class="form-control" value="@Model.PlatformName" maxlength="100" required />
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">Support Email</label>
-                        <input type="email" class="form-control" value="@Model.SupportEmail" />
+                        <input name="SupportEmail" type="email" class="form-control" value="@Model.SupportEmail" required />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Customer Service Phone</label>
-                        <input type="text" class="form-control" value="@Model.CustomerServicePhone" />
+                        <input name="CustomerServicePhone" type="tel" class="form-control" value="@Model.CustomerServicePhone" required />
                     </div>
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">Base Currency</label>
-                        <input type="text" class="form-control" value="@Model.BaseCurrency" readonly disabled />
+                        <input name="BaseCurrency" type="text" class="form-control" value="@Model.BaseCurrency" maxlength="3" pattern="[A-Z]{3}" required />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Default Timezone</label>
-                        <input type="text" class="form-control" value="@Model.Timezone" readonly disabled />
+                        <input name="Timezone" type="text" class="form-control" value="@Model.Timezone" required />
                     </div>
                 </div>
                 <div class="form-check form-switch settings-switch">
-                    <input class="form-check-input" type="checkbox" id="maintenanceMode" @(Model.MaintenanceMode ? "checked" : "") />
+                    <input name="MaintenanceMode" value="true" class="form-check-input" type="checkbox" id="maintenanceMode" @(Model.MaintenanceMode ? "checked" : "") />
                     <label class="form-check-label" for="maintenanceMode">
                         <span class="fw-semibold">Maintenance Mode</span>
                         <span class="d-block small text-muted">Temporarily disable new bookings while the platform is being updated.</span>
@@ -81,21 +85,21 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">Auto-Match Timeout (minutes)</label>
-                        <input type="number" class="form-control" value="@Model.AutoMatchCleanerTimeoutMinutes" min="1" />
+                        <input name="AutoMatchCleanerTimeoutMinutes" type="number" class="form-control" value="@Model.AutoMatchCleanerTimeoutMinutes" min="1" max="1440" required />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Minimum Advance Notice (hours)</label>
-                        <input type="number" class="form-control" value="@Model.MinimumAdvanceNoticeHours" min="0" />
+                        <input name="MinimumAdvanceNoticeHours" type="number" class="form-control" value="@Model.MinimumAdvanceNoticeHours" min="0" max="8760" required />
                     </div>
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">Free Cancellation Window (hours)</label>
-                        <input type="number" class="form-control" value="@Model.FreeCancellationWindowHours" min="0" />
+                        <input name="FreeCancellationWindowHours" type="number" class="form-control" value="@Model.FreeCancellationWindowHours" min="0" max="8760" required />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Max Active Jobs / Cleaner / Day</label>
-                        <input type="number" class="form-control" value="@Model.MaxActiveJobsPerCleanerPerDay" min="1" />
+                        <input name="MaxActiveJobsPerCleanerPerDay" type="number" class="form-control" value="@Model.MaxActiveJobsPerCleanerPerDay" min="1" max="100" required />
                     </div>
                 </div>
                 <div class="settings-note">
@@ -123,18 +127,18 @@
                     <div class="col-md-6">
                         <label class="form-label">Platform Commission (%)</label>
                         <div class="input-group">
-                            <input type="number" class="form-control" value="@Model.CommissionPercent" min="0" max="100" />
+                            <input name="CommissionPercent" type="number" step="0.01" class="form-control" value="@Model.CommissionPercent" min="0" max="50" required />
                             <span class="input-group-text">%</span>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Auto-Release Escrow Delay (hours)</label>
-                        <input type="number" class="form-control" value="@Model.AutoReleaseEscrowDelayHours" min="0" />
+                        <input name="AutoReleaseEscrowDelayHours" type="number" class="form-control" value="@Model.AutoReleaseEscrowDelayHours" min="0" max="8760" required />
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Payment Gateway Mode</label>
-                    <select class="form-select">
+                    <select class="form-select" disabled>
                         <option selected>@Model.PaymentGatewayMode</option>
                         <option>Paystack Test Sandbox</option>
                         <option>Bank Transfer Fallback Only</option>
@@ -158,30 +162,45 @@
             </div>
             <div class="settings-card-body">
                 <div class="form-check form-switch settings-switch">
-                    <input class="form-check-input" type="checkbox" id="newBookingEmail" @(Model.EmailAlertsOnNewBooking ? "checked" : "") />
+                    <input name="EmailAlertsOnNewBooking" value="true" class="form-check-input" type="checkbox" id="newBookingEmail" @(Model.EmailAlertsOnNewBooking ? "checked" : "") />
                     <label class="form-check-label" for="newBookingEmail">
                         <span class="fw-semibold">Email Alerts on New Booking</span>
                         <span class="d-block small text-muted">Notify assigned cleaners instantly when a booking lands.</span>
                     </label>
                 </div>
                 <div class="form-check form-switch settings-switch">
-                    <input class="form-check-input" type="checkbox" id="cleanerSms" @(Model.SmsToCleanerOnAssignment ? "checked" : "") />
+                    <input name="SmsToCleanerOnAssignment" value="true" class="form-check-input" type="checkbox" id="cleanerSms" @(Model.SmsToCleanerOnAssignment ? "checked" : "") />
                     <label class="form-check-label" for="cleanerSms">
                         <span class="fw-semibold">SMS to Cleaner on Assignment</span>
                         <span class="d-block small text-muted">Send a text message summary with the job address and time.</span>
                     </label>
                 </div>
                 <div class="form-check form-switch settings-switch">
-                    <input class="form-check-input" type="checkbox" id="disputeNotifications" @(Model.DisputeAndFlaggedReviewNotifications ? "checked" : "") />
+                    <input class="form-check-input" type="checkbox" id="disputeNotifications" checked disabled />
                     <label class="form-check-label" for="disputeNotifications">
                         <span class="fw-semibold">Dispute & Flagged Review Alerts</span>
                         <span class="d-block small text-muted">Notify the admin team when escrow disputes or flagged reviews occur.</span>
                     </label>
                 </div>
+                @foreach (var notification in new[] { ("EmailBookingConfirmation", Model.EmailBookingConfirmation, "Email booking confirmations"), ("EmailBookingCancellation", Model.EmailBookingCancellation, "Email booking cancellations"), ("EmailPaymentNotifications", Model.EmailPaymentNotifications, "Email payment notifications"), ("SmsBookingNotifications", Model.SmsBookingNotifications, "SMS booking notifications") })
+                {
+                    <div class="form-check form-switch settings-switch"><input name="@notification.Item1" value="true" class="form-check-input" type="checkbox" @(notification.Item2 ? "checked" : null) /><label class="form-check-label">@notification.Item3</label></div>
+                }
             </div>
         </div>
     </div>
 
+    <div class="col-lg-6">
+        <div class="settings-card"><div class="settings-card-body">
+            <label class="form-label" for="minimumPayout">Minimum Payout Amount (@Model.BaseCurrency)</label>
+            <input id="minimumPayout" name="MinimumPayoutAmount" type="number" step="0.01" min="0" class="form-control" value="@Model.MinimumPayoutAmount" />
+            <div class="form-text">Payout requests below this amount remain in escrow.</div>
+        </div></div>
+    </div>
+</div>
+</form>
+
+<div class="row g-4">
     <!-- Platform Admins -->
     <div class="col-12">
         <div class="settings-card">

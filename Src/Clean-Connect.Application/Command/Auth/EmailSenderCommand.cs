@@ -6,7 +6,7 @@ using System.Net.Mail;
 
 namespace Clean_Connect.Application.Command.Auth
 {
-    public record EmailSenderCommand(string ToEmail, string Body, string Subject) : IRequest<Unit>;
+    public record EmailSenderCommand(string ToEmail, string Body, string Subject, string? ReplyToEmail = null, string? ReplyToName = null) : IRequest<Unit>;
 
     public class EmailSenderHandler : IRequestHandler<EmailSenderCommand, Unit>
     {
@@ -44,6 +44,11 @@ namespace Clean_Connect.Application.Command.Auth
             };
 
             mailMessage.To.Add(request.ToEmail);
+
+            if (!string.IsNullOrWhiteSpace(request.ReplyToEmail))
+            {
+                mailMessage.ReplyTo = new MailAddress(request.ReplyToEmail, request.ReplyToName);
+            }
 
             try
             {

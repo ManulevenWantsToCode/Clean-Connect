@@ -1,0 +1,39 @@
+@model Clean_Connect.Web.Models.BookingMessagesIndexViewModel
+@{
+    ViewData["Title"] = "Messages";
+    Layout = "_DashboardLayout";
+    var isWorker = string.Equals(Model.ParticipantRole, "Worker", StringComparison.OrdinalIgnoreCase);
+}
+<div class="cc-dashboard cc-dashboard--@(isWorker ? "worker" : "client") cc-messenger-dashboard">
+    <div class="cc-dashboard-shell">
+        <aside class="cc-rail" id="ccSidebar" aria-label="@(isWorker ? "Worker" : "Client") dashboard navigation">
+            <partial name="_DashboardRailNavigation" />
+        </aside>
+        <main class="cc-main cc-messenger-main">
+            <div class="cc-messenger-page">
+                @await Html.PartialAsync("_ConversationList", Model)
+                <section class="cc-messenger-welcome" aria-label="Conversation panel">
+                    <div class="cc-messenger-welcome__content">
+                        <span class="cc-messenger-welcome__icon"><i class="fa-regular fa-comments" aria-hidden="true"></i></span>
+                        <h2>Your conversations</h2>
+                        <p>Select a booking conversation to read messages and coordinate your cleaning service.</p>
+                        @if (Model.Threads.Count == 0)
+                        {
+                            if (isWorker)
+                            {
+                                <a class="cc-messenger-welcome__link" asp-controller="Worker" asp-action="Dashboard">Go to your dashboard</a>
+                            }
+                            else
+                            {
+                                <a class="cc-messenger-welcome__link" asp-controller="Booking" asp-action="ChooseWorker">Find a cleaning professional</a>
+                            }
+                        }
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+</div>
+@section Scripts {
+    <script src="~/js/conversation-list.js" asp-append-version="true"></script>
+}

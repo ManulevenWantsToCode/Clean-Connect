@@ -8,6 +8,8 @@ namespace Clean_Connect.Application.Interface.Repositories
         Task CreateEscrow(Escrow escrow, CancellationToken cancellationToken);
         Task<Escrow?> GetByBookingId(Guid bookingId, CancellationToken cancellationToken);
         Task<Escrow?> GetByPaymentId(Guid paymentId, CancellationToken cancellationToken);
+        Task<Escrow?> GetByTransferReference(string reference, CancellationToken cancellationToken);
+        Task RefreshAsync(Escrow escrow, CancellationToken cancellationToken);
         Task<List<Escrow>> GetByWorkerId(Guid workerId, CancellationToken cancellationToken);
         Task<List<Escrow>> GetByStatus(EscrowStatus status, CancellationToken cancellationToken);
         Task<List<Escrow>> GetAllEscrowsAsync(CancellationToken cancellationToken);

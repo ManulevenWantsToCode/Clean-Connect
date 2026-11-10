@@ -1,0 +1,41 @@
+@model Clean_Connect.Web.Models.BookingChatPageViewModel
+@{
+    ViewData["Title"] = $"Chat — {Model.OtherParticipantName}";
+    Layout = "_DashboardLayout";
+    var listModel = new Clean_Connect.Web.Models.BookingMessagesIndexViewModel
+    {
+        ParticipantRole = Model.ParticipantRole,
+        Threads = Model.Threads.ToList()
+    };
+    ViewData["SelectedBookingId"] = Model.BookingId;
+}
+<div class="cc-dashboard cc-dashboard--@(string.Equals(Model.ParticipantRole, "Worker", StringComparison.OrdinalIgnoreCase) ? "worker" : "client") cc-messenger-dashboard">
+    <div class="cc-dashboard-shell">
+        <aside class="cc-rail" id="ccSidebar" aria-label="@(string.Equals(Model.ParticipantRole, "Worker", StringComparison.OrdinalIgnoreCase) ? "Worker" : "Client") dashboard navigation">
+            <partial name="_DashboardRailNavigation" />
+        </aside>
+        <main class="cc-main cc-messenger-main">
+            <div class="cc-messenger-page has-active-chat">
+                @await Html.PartialAsync("_ConversationList", listModel)
+                @await Html.PartialAsync("_ChatPanel", Model)
+            </div>
+        </main>
+    </div>
+</div>
+@section Scripts {
+    <script src="~/js/conversation-list.js" asp-append-version="true"></script>
+    <script type="module" src="~/js/booking-chat-page.js" asp-append-version="true"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var textarea = document.querySelector("[data-chat-input]");
+            var form = document.querySelector("[data-chat-form]");
+            if (!textarea || !form) return;
+            textarea.addEventListener("keydown", function (event) {
+                if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    if (!textarea.disabled && textarea.value.trim()) form.requestSubmit();
+                }
+            });
+        });
+    </script>
+}

@@ -61,7 +61,7 @@ namespace Clean_Connect.Web.Controllers
             }
 
             _logger.LogError("Failed to create service type with name: {Name}", command.Name);
-            _notyf.Error(result.ErrorMessage);
+            _notyf.Error("Unable to create service type. Please try again.");
             return View("Error", null);
         }
     }

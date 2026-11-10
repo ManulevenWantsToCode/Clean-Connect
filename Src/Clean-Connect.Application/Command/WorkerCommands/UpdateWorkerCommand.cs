@@ -146,7 +146,7 @@ namespace Clean_Connect.Application.Command.WorkerCommands
             if (!newAddress.Contains("Nigeria"))
                 newAddress = $"{request.State}, Nigeria";
 
-            worker.UpdateName(request.LastName, request.FirstName, request.ModifiedBy);
+            worker.UpdateName(request.FirstName, request.LastName, request.ModifiedBy);
             worker.UpdateLocation(request.Latitude, request.Longitude);
             worker.UpdateContact(request.Contact, request.ModifiedBy);
             worker.UpdateEmail(request.Email, request.ModifiedBy);

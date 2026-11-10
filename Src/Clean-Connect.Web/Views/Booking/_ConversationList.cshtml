@@ -1,0 +1,45 @@
+@model Clean_Connect.Web.Models.BookingMessagesIndexViewModel
+@using Clean_Connect.Web.Helpers
+@{
+    var selectedId = ViewData["SelectedBookingId"] as Guid?;
+}
+<aside class="cc-messenger-list" aria-label="Conversations">
+    <header class="cc-messenger-list__header">
+        <div class="cc-messenger-list__title-row"><div><p class="cc-messenger-eyebrow">INBOX</p><h1>Messages</h1></div><span class="cc-messenger-list__count">@Model.Threads.Count</span></div>
+        <label class="cc-messenger-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="threadSearchInput" placeholder="Search conversations" aria-label="Search conversations" autocomplete="off" /><button type="button" id="threadSearchClear" aria-label="Clear search" hidden><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></label>
+        <div class="cc-messenger-filters" role="tablist" aria-label="Filter conversations">
+            <button type="button" class="is-active" data-filter="all" role="tab" aria-selected="true">All</button>
+            <button type="button" data-filter="active" role="tab" aria-selected="false">Active</button>
+            <button type="button" data-filter="completed" role="tab" aria-selected="false">Completed</button>
+        </div>
+    </header>
+    @if (Model.Threads.Count == 0)
+    {
+        <div class="cc-messenger-list__empty"><i class="fa-regular fa-message" aria-hidden="true"></i><strong>No conversations yet</strong><span>Your booking conversations will appear here.</span></div>
+    }
+    else
+    {
+        <div class="cc-messenger-threads" id="threadList" role="list">
+            @foreach (var thread in Model.Threads)
+            {
+                var completed = thread.BookingStatus is "Completed" or "Rejected" or "Cancelled" or "Expired";
+                var category = completed ? "completed" : "active";
+                var searchCorpus = $"{thread.OtherParticipantName} {thread.ServiceName} {thread.DateOfService:MMMM dd yyyy dddd} {thread.BookingStatus} {thread.Address}".ToLowerInvariant();
+                var initial = string.IsNullOrWhiteSpace(thread.OtherParticipantName) ? "?" : thread.OtherParticipantName.Trim().Substring(0, 1).ToUpperInvariant();
+                var selected = selectedId == thread.BookingId;
+                <a asp-controller="Booking" asp-action="Chat" asp-route-bookingId="@thread.BookingId"
+                   class="cc-messenger-thread @(selected ? "is-selected" : "") @(thread.UnreadCount > 0 ? "has-unread" : "")"
+                   role="listitem" data-thread-item data-thread-booking-id="@thread.BookingId" data-thread-unread="@thread.UnreadCount" data-filter-category="@category" data-search-corpus="@searchCorpus" aria-current="@(selected ? "page" : null)">
+                    <span class="cc-messenger-avatar" aria-hidden="true">@initial</span>
+                    <span class="cc-messenger-thread__body">
+                        <span class="cc-messenger-thread__top"><strong data-thread-name>@thread.OtherParticipantName</strong><time data-thread-time datetime="@((thread.LatestMessageTime ?? thread.BookingDate).ToString("o"))">@thread.FormattedTime</time></span>
+                        <span class="cc-messenger-thread__service">@thread.ServiceName <span aria-hidden="true">·</span> @thread.DateOfService.ToString("MMM d")</span>
+                        <span class="cc-messenger-thread__preview" data-thread-preview>@(thread.LatestMessageText ?? thread.StatusPreview)</span>
+                    </span>
+                    <span class="cc-messenger-thread__unread" data-thread-unread-pill @(thread.UnreadCount == 0 ? "hidden" : "")>@(thread.UnreadCount > 99 ? "99+" : thread.UnreadCount)</span>
+                </a>
+            }
+        </div>
+        <div class="cc-messenger-list__empty cc-messenger-list__no-results" id="filterEmptyState" hidden><strong>No matching conversations</strong><span>Try a different search or filter.</span></div>
+    }
+</aside>

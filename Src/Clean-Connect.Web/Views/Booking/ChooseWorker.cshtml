@@ -3,75 +3,105 @@
 @using Clean_Connect.Web.Helpers
 
 @{
-    ViewData["Title"] = "Choose a Worker";
+    ViewData["Title"] = "Choose a Cleaner";
     Layout = "_DashboardLayout";
 }
 
 <div class="dash-page booking-workflow-page">
     <div class="container">
+        <!-- Navigation Breadcrumb -->
         <a asp-controller="Booking" asp-action="Create" class="booking-back-link mb-4">
             <i class="fa-solid fa-arrow-left"></i>
-            Back to booking
+            <span>Back to booking details</span>
         </a>
 
+        <!-- Hero Section -->
         <div class="booking-hero booking-hero--detail">
             <div>
                 <span class="booking-kicker">
                     <i class="fa-solid fa-user-check"></i>
-                    Choose a Worker
+                    Verified Cleaners
                 </span>
-                <h1>Cleaners ready for @Model.DateOfService.ToString("MMM dd, yyyy")</h1>
-                <p>Only available, verified professionals are shown, closest first. Tap a worker to view their profile before you book.</p>
+                <h1>Find available cleaners for @Model.DateOfService.ToString("MMM dd, yyyy")</h1>
+                <p>
+                    Browse verified, background-checked cleaning professionals near you. Check live ratings, hourly rates, and tap <strong>View Details</strong> to review full profiles before booking.
+                </p>
             </div>
             <div class="booking-hero__summary">
-                <span class="booking-hero__count"><i class="fa-solid fa-circle"></i> @Model.AvailableCount available</span>
-                <strong>All available &amp; ready to book</strong>
+                <span class="booking-hero__count">
+                    <span class="cc-pulse-dot"></span>
+                    @Model.AvailableCount cleaner@(Model.AvailableCount == 1 ? "" : "s") available
+                </span>
+                <strong>Active &amp; ready to book</strong>
             </div>
         </div>
 
+        <!-- Filter Form -->
         <form asp-action="WorkerResults" asp-controller="Booking" method="get" class="choose-worker-filters mb-4" id="chooseWorkerFilters">
-            <div>
-                <label class="form-label" for="cwService">Service</label>
+            <div class="filter-col">
+                <label class="form-label" for="cwService">
+                    <i class="fa-solid fa-broom me-1 text-muted"></i> Service type
+                </label>
                 <select name="serviceTypeId" id="cwService" class="form-select">
-                    <option value="">All services</option>
-                    @foreach (var s in Model.ServiceTypes)
+                    <option value="">All cleaning services</option>
+                    @if (Model.ServiceTypes != null)
                     {
-                        <option value="@s.Value" selected="@(s.Value == Model.SelectedServiceTypeId?.ToString())">@s.Text</option>
+                        foreach (var s in Model.ServiceTypes)
+                        {
+                            <option value="@s.Value" selected="@(s.Value == Model.SelectedServiceTypeId?.ToString())">@s.Text</option>
+                        }
                     }
                 </select>
             </div>
-            <div>
-                <label class="form-label" for="cwDate">Service date</label>
+
+            <div class="filter-col">
+                <label class="form-label" for="cwDate">
+                    <i class="fa-regular fa-calendar me-1 text-muted"></i> Service date
+                </label>
                 <input type="date" name="dateOfService" id="cwDate" class="form-control" value="@Model.DateOfService.ToString("yyyy-MM-dd")" />
             </div>
-            <div>
-                <label class="form-label" for="cwTime">Time</label>
+
+            <div class="filter-col">
+                <label class="form-label" for="cwTime">
+                    <i class="fa-regular fa-clock me-1 text-muted"></i> Preferred time
+                </label>
                 <select name="timeRange" id="cwTime" class="form-select">
-                    @foreach (var t in Model.TimeRanges)
+                    @if (Model.TimeRanges != null)
                     {
-                        <option value="@t.Value" selected="@(t.Value == Model.TimeRange)">@t.Text</option>
+                        foreach (var t in Model.TimeRanges)
+                        {
+                            <option value="@t.Value" selected="@(t.Value == Model.TimeRange)">@t.Text</option>
+                        }
                     }
                 </select>
             </div>
-            <div>
-                <label class="form-label" for="cwRadius">Distance</label>
+
+            <div class="filter-col">
+                <label class="form-label" for="cwRadius">
+                    <i class="fa-solid fa-location-crosshairs me-1 text-muted"></i> Search distance
+                </label>
                 <select name="radiusInMeters" id="cwRadius" class="form-select">
-                    @foreach (var r in Model.RadiusOptions)
+                    @if (Model.RadiusOptions != null)
                     {
-                        var isSelected = string.IsNullOrEmpty(r.Value)
-                            ? !Model.SelectedRadiusInMeters.HasValue
-                            : (r.Value == Model.SelectedRadiusInMeters?.ToString());
-                        <option value="@r.Value" selected="@isSelected">@r.Text</option>
+                        foreach (var r in Model.RadiusOptions)
+                        {
+                            var isSelected = string.IsNullOrEmpty(r.Value)
+                                ? !Model.SelectedRadiusInMeters.HasValue
+                                : (r.Value == Model.SelectedRadiusInMeters?.ToString());
+                            <option value="@r.Value" selected="@isSelected">@r.Text</option>
+                        }
                     }
                 </select>
             </div>
+
             <div class="choose-worker-filters__action">
-                <button type="submit" class="btn btn-success booking-action-btn rounded-pill px-4" id="showCleanersBtn">
-                    <i class="fa-solid fa-filter me-2"></i>Show cleaners
+                <button type="submit" class="btn cc-action-button cc-action-button--primary w-100" id="showCleanersBtn">
+                    <i class="fa-solid fa-filter"></i> Apply Filters
                 </button>
             </div>
         </form>
 
+        <!-- Dynamic Results Container -->
         <div id="workerResultsContainer">
             @await Html.PartialAsync("_WorkerResults", Model)
         </div>
@@ -89,7 +119,9 @@
             const radiusSelect = document.getElementById("cwRadius");
             const showBtn = document.getElementById("showCleanersBtn");
 
-            if (dateInput) dateInput.min = new Date().toISOString().split("T")[0];
+            if (dateInput) {
+                dateInput.min = new Date().toISOString().split("T")[0];
+            }
 
             let requestId = 0;
 
@@ -102,12 +134,14 @@
 
                 if (showBtn) {
                     showBtn.disabled = true;
-                    showBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading';
+                    showBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Searching...';
                 }
+
+                container.classList.add("loading-fade");
 
                 fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
                     .then(function (res) {
-                        if (!res.ok) throw new Error("failed");
+                        if (!res.ok) throw new Error("Request failed");
                         return res.text();
                     })
                     .then(function (html) {
@@ -120,9 +154,10 @@
                     })
                     .finally(function () {
                         if (id !== requestId) return;
+                        container.classList.remove("loading-fade");
                         if (showBtn) {
                             showBtn.disabled = false;
-                            showBtn.innerHTML = '<i class="fa-solid fa-filter me-2"></i>Show cleaners';
+                            showBtn.innerHTML = '<i class="fa-solid fa-filter"></i> Apply Filters';
                         }
                     });
             }
@@ -130,6 +165,10 @@
             [serviceSelect, timeSelect, radiusSelect].forEach(function (el) {
                 if (el) el.addEventListener("change", refreshResults);
             });
+
+            if (dateInput) {
+                dateInput.addEventListener("change", refreshResults);
+            }
 
             if (form) {
                 form.addEventListener("submit", function (e) {

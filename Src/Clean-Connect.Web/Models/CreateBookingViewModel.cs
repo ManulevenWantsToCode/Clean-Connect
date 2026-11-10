@@ -15,7 +15,7 @@ namespace Clean_Connect.Web.Models
         public double Latitude { get; set; }
 
         [Required]
-        [Range(2.5, 15.5)]
+        [Range(-180.0, 180.0, ErrorMessage = "Longitude must be between -180 and 180.")]
         public double Longitude { get; set; }
 
         [Range(100, 100000)]

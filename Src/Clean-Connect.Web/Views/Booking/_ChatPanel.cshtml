@@ -1,0 +1,48 @@
+@model Clean_Connect.Web.Models.BookingChatPageViewModel
+@using Clean_Connect.Web.Helpers
+@{
+    var isWorker = string.Equals(Model.ParticipantRole, "Worker", StringComparison.OrdinalIgnoreCase);
+    var statusTone = BookingStatusHelper.BookingTone(Model.BookingStatus);
+    var statusLabel = BookingStatusHelper.BookingLabel(Model.BookingStatus);
+    var avatarInitial = string.IsNullOrWhiteSpace(Model.OtherParticipantName) ? "?" : Model.OtherParticipantName.Trim().Substring(0, 1).ToUpperInvariant();
+    var detailsAction = isWorker ? "WorkerDetails" : "Details";
+    var canSendMessages = !new[] { "Completed", "Rejected", "Cancelled", "Expired" }
+        .Contains(Model.BookingStatus, StringComparer.OrdinalIgnoreCase);
+}
+<section class="booking-chat-shell" data-booking-chat-page data-can-send="@canSendMessages.ToString().ToLowerInvariant()" data-booking-id="@Model.BookingId" data-session-url="@Model.SessionUrl" aria-label="Chat with @Model.OtherParticipantName">
+    <form class="d-none" data-chat-token-form method="post">@Html.AntiForgeryToken()</form>
+    <header class="booking-chat-header">
+        <a class="cc-messenger-back" asp-controller="Booking" asp-action="Messages"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>All messages</span></a>
+        <div class="booking-chat-header__identity">
+            <div class="booking-chat-header__avatar" aria-hidden="true">@avatarInitial</div>
+            <div class="booking-chat-header__meta-wrap">
+                <h1 class="booking-chat-header__name">@Model.OtherParticipantName</h1>
+                <p class="booking-chat-header__service"><span>@Model.ServiceName</span><span class="booking-chat-header__sep" aria-hidden="true">·</span><span>@Model.DateOfService.ToString("MMM d, yyyy")</span>@if (!string.IsNullOrWhiteSpace(Model.TimeRange)){<span class="booking-chat-header__sep" aria-hidden="true">·</span><span>@Model.TimeRange</span>}</p>
+            </div>
+        </div>
+        <div class="booking-chat-header__actions">
+            <a asp-controller="Booking" asp-action="@detailsAction" asp-route-bookingId="@Model.BookingId" class="booking-chat-view-booking">View booking</a>
+            <span class="status-badge tone-@statusTone">@statusLabel</span>
+            <span class="booking-chat-connection-pill" data-chat-status>Connecting...</span>
+            <span class="booking-chat-unread" data-chat-unread hidden><span data-chat-unread-count>0</span> new</span>
+        </div>
+    </header>
+    <div class="booking-chat-state booking-chat-state--loading" data-chat-loading><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Connecting to chat...</span></div>
+    <div class="booking-chat-state booking-chat-state--error" data-chat-error hidden><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span data-chat-error-text>Chat unavailable right now.</span><button type="button" class="btn cc-action-button cc-action-button--secondary btn-sm ms-2" data-chat-retry>Retry</button></div>
+    <main class="booking-chat-transcript" data-chat-transcript aria-live="polite" aria-label="Message history">
+        <div class="booking-chat-empty" data-chat-empty hidden><i class="fa-regular fa-comment-dots booking-chat-empty__icon" aria-hidden="true"></i><strong class="booking-chat-empty__title">No messages yet</strong><span class="booking-chat-empty__text">Start the conversation with @Model.OtherParticipantName.</span></div>
+    </main>
+    <footer class="booking-chat-composer">
+        @if (canSendMessages)
+        {
+            <form data-chat-form class="booking-chat-composer__form">
+                <div class="booking-chat-composer__input-wrap"><textarea data-chat-input rows="1" maxlength="1000" placeholder="Write a message..." aria-label="Type your message" disabled></textarea></div>
+                <button type="submit" class="btn cc-action-button cc-action-button--primary booking-chat-send-btn" data-chat-send disabled><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span>Send</span></button>
+            </form>
+        }
+        else
+        {
+            <div class="booking-chat-readonly" role="status">This booking is @statusLabel.ToLowerInvariant(). Messaging is closed, but you can still view the conversation.</div>
+        }
+    </footer>
+</section>

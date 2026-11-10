@@ -87,9 +87,7 @@ namespace Clean_Connect.Web.Controllers
                         model.Email,
                         result?.ErrorMessage);
 
-                    _notyf.Error(
-                        result?.ErrorMessage ??
-                        "Invalid email or password.");
+                    _notyf.Error("Invalid email or password.");
 
                     ModelState.AddModelError(
                         string.Empty,
@@ -489,7 +487,7 @@ namespace Clean_Connect.Web.Controllers
 
             try
             {
-                var command = new ForgotPasswordCommand(model.Email);
+                var command = new ForgotPasswordCommand(model.Email, GetPasswordResetBaseUrl());
                 _logger.LogInformation("Processing forgot password request for {Email}", model.Email);
 
                 await _mediator.Send(command);
@@ -523,6 +521,22 @@ namespace Clean_Connect.Web.Controllers
                 Token = token
             };
             return View(model);
+        }
+
+        private string? GetPasswordResetBaseUrl()
+        {
+            var configuredBaseUrl = _configuration["App:ClientUrl"];
+            if (!Uri.TryCreate(configuredBaseUrl, UriKind.Absolute, out var configuredUri) ||
+                !configuredUri.IsLoopback ||
+                !string.Equals(Request.Host.Host, configuredUri.Host, StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(Request.Scheme))
+            {
+                return configuredBaseUrl;
+            }
+
+            // Local launch profiles can share a port while using different schemes.
+            // Build loopback links from the request that submitted the reset form.
+            return $"{Request.Scheme}://{Request.Host}";
         }
 
 

@@ -1,9 +1,11 @@
 using AspNetCoreHero.ToastNotification.Abstractions;
+using Clean_Connect.Application.Command.BookingChatCommand;
 using Clean_Connect.Application.Command.BookingCommand;
 using Clean_Connect.Application.Command.ClientCommands;
 using Clean_Connect.Application.Command.PaymentCommand;
 using Clean_Connect.Application.Command.WorkerCommands;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.Query.BookingChatQuery;
 using Clean_Connect.Application.Query.ClientQuery;
 using Clean_Connect.Application.Query.WorkersQuery;
 using Clean_Connect.Domain.Entities;
@@ -26,6 +28,7 @@ namespace Clean_Connect.Web.Controllers
         private readonly IRealtimeNotificationService _notifications;
         private readonly IWorkerPresenceService _presence;
         private readonly ILogger<BookingController> _logger;
+        private bool _currentWorkerSuspended;
 
         public BookingController(
             IMediator mediator,
@@ -79,6 +82,17 @@ namespace Clean_Connect.Web.Controllers
                 return RedirectToAction("CreateClientProfile", "Client");
             }
 
+            // [Required] on a non-nullable Guid never fails when the field is missing from
+            // the posted form (it binds to Guid.Empty), so validate the empties explicitly.
+            if (model.WorkerId == Guid.Empty)
+            {
+                ModelState.AddModelError(nameof(model.WorkerId), "Please select a cleaning professional.");
+            }
+            if (model.ServiceTypeId == Guid.Empty)
+            {
+                ModelState.AddModelError(nameof(model.ServiceTypeId), "Please choose a cleaning service.");
+            }
+
             if (!ModelState.IsValid)
             {
                 await PopulateBookingOptionsAsync(ct);
@@ -93,6 +107,15 @@ namespace Clean_Connect.Web.Controllers
                 {
                     ModelState.AddModelError(nameof(model.WorkerId), "Selected worker was not found.");
                     await PopulateBookingOptionsAsync(ct);
+                    _notyf.Error("Selected worker was not found.");
+                    return View(model);
+                }
+
+                if (worker.ServiceTypeId != Guid.Empty && worker.ServiceTypeId != model.ServiceTypeId)
+                {
+                    ModelState.AddModelError(nameof(model.ServiceTypeId), "The selected cleaning service does not match this cleaner.");
+                    await PopulateBookingOptionsAsync(ct);
+                    _notyf.Error("The selected cleaning service does not match this cleaner.");
                     return View(model);
                 }
 
@@ -128,10 +151,21 @@ namespace Clean_Connect.Web.Controllers
                 _notyf.Success("Booking request sent to the worker.");
                 return RedirectToAction("Dashboard", "Client");
             }
+            catch (FluentValidation.ValidationException vex)
+            {
+                _logger.LogError(vex, "Booking validation failed for worker {WorkerId}.", model.WorkerId);
+                foreach (var failure in vex.Errors)
+                {
+                    ModelState.AddModelError(failure.PropertyName, failure.ErrorMessage);
+                }
+                _notyf.Error("Please correct the highlighted booking details.");
+                await PopulateBookingOptionsAsync(ct);
+                return View(model);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Booking creation failed.");
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't create your booking. Please try again.");
                 await PopulateBookingOptionsAsync(ct);
                 return View(model);
             }
@@ -237,6 +271,7 @@ namespace Clean_Connect.Web.Controllers
             var worker = await GetCurrentWorkerAsync(ct);
             if (worker == null)
             {
+                if (_currentWorkerSuspended) return RedirectToAction("Dashboard", "Worker");
                 _notyf.Information("Please complete your worker profile before responding to bookings.");
                 return RedirectToAction("CreateWorkerProfile", "Worker");
             }
@@ -251,6 +286,7 @@ namespace Clean_Connect.Web.Controllers
             var worker = await GetCurrentWorkerAsync(ct);
             if (worker == null)
             {
+                if (_currentWorkerSuspended) return RedirectToAction("Dashboard", "Worker");
                 _notyf.Information("Please complete your worker profile before viewing a booking.");
                 return RedirectToAction("CreateWorkerProfile", "Worker");
             }
@@ -279,7 +315,8 @@ namespace Clean_Connect.Web.Controllers
                 Amount = booking.Amount,
                 Address = booking.Address,
                 PaymentStatus = booking.PaymentStatus.ToString(),
-                BookingStatus = booking.BookingStatus.ToString()
+                BookingStatus = booking.BookingStatus.ToString(),
+                RejectionReason = booking.RejectionReason
             };
 
             return View(dto);
@@ -333,10 +370,250 @@ namespace Clean_Connect.Web.Controllers
                 Address = booking.Address,
                 PaymentStatus = booking.PaymentStatus.ToString(),
                 BookingStatus = booking.BookingStatus.ToString(),
+                RejectionReason = booking.RejectionReason,
                 HasRating = await _repo.Ratings.ExistAsync(bookingId, ct)
             };
 
             return View(dto);
+        }
+
+        [HttpGet("Messages")]
+        public async Task<IActionResult> Messages(CancellationToken ct)
+        {
+            var client = await GetCurrentClientAsync(ct);
+            if (client != null)
+            {
+                var bookings = await _mediator.Send(new GetAllClientBookingsQuery(client.Id), ct);
+                var bookingIds = bookings.Select(x => x.Id).ToList();
+                var chats = await _repo.BookingChats.GetByBookingIdsAsync(bookingIds, ct);
+
+                var model = new BookingMessagesIndexViewModel
+                {
+                    ParticipantRole = "Client",
+                    Threads = bookings
+                        .Select(x =>
+                        {
+                            chats.TryGetValue(x.Id, out var chat);
+                            return new BookingMessageThreadItem
+                            {
+                                BookingId = x.Id,
+                                ServiceName = x.ServiceName,
+                                OtherParticipantName = x.WorkersName,
+                                BookingStatus = x.BookingStatus,
+                                PaymentStatus = x.PaymentStatus,
+                                DateOfService = x.DateOfService,
+                                BookingDate = x.BookingDate,
+                                TimeRange = x.TimeRange ?? string.Empty,
+                                Address = x.Address ?? string.Empty,
+                                Amount = x.Amount,
+                                RejectionReason = x.RejectionReason,
+                                UnreadCount = chat?.ClientUnreadCount ?? 0,
+                                LatestMessageText = chat?.LastMessageText,
+                                LatestMessageTime = chat?.LastMessageSentAt
+                            };
+                        })
+                        .OrderByDescending(x => x.LatestMessageTime ?? x.BookingDate)
+                        .ToList()
+                };
+
+                var latestThread = model.Threads
+                    .OrderByDescending(x => x.LatestMessageTime ?? x.BookingDate)
+                    .FirstOrDefault();
+                if (latestThread != null)
+                {
+                    return RedirectToAction(nameof(Chat), new { bookingId = latestThread.BookingId, markRead = false });
+                }
+
+                return View(model);
+            }
+
+            var worker = await GetCurrentWorkerAsync(ct);
+            if (worker != null)
+            {
+                var bookings = await _mediator.Send(new GetAllWorkerBookingsQuery(worker.Id), ct);
+                var bookingIds = bookings.Select(x => x.Id).ToList();
+                var chats = await _repo.BookingChats.GetByBookingIdsAsync(bookingIds, ct);
+
+                var model = new BookingMessagesIndexViewModel
+                {
+                    ParticipantRole = "Worker",
+                    Threads = bookings
+                        .Select(x =>
+                        {
+                            chats.TryGetValue(x.Id, out var chat);
+                            return new BookingMessageThreadItem
+                            {
+                                BookingId = x.Id,
+                                ServiceName = x.ServiceName,
+                                OtherParticipantName = x.ClientName,
+                                BookingStatus = x.BookingStatus,
+                                PaymentStatus = x.PaymentStatus,
+                                DateOfService = x.DateOfService,
+                                BookingDate = x.BookingDate,
+                                TimeRange = x.TimeRange ?? string.Empty,
+                                Address = x.Address ?? string.Empty,
+                                Amount = x.Amount,
+                                RejectionReason = x.RejectionReason,
+                                UnreadCount = chat?.WorkerUnreadCount ?? 0,
+                                LatestMessageText = chat?.LastMessageText,
+                                LatestMessageTime = chat?.LastMessageSentAt
+                            };
+                        })
+                        .OrderByDescending(x => x.LatestMessageTime ?? x.BookingDate)
+                        .ToList()
+                };
+
+                var latestThread = model.Threads
+                    .OrderByDescending(x => x.LatestMessageTime ?? x.BookingDate)
+                    .FirstOrDefault();
+                if (latestThread != null)
+                {
+                    return RedirectToAction(nameof(Chat), new { bookingId = latestThread.BookingId, markRead = false });
+                }
+
+                return View(model);
+            }
+
+            _notyf.Information("Please complete your profile before viewing messages.");
+            return RedirectToAction("Index", "Home");
+        }
+
+#if DEBUG
+        [AllowAnonymous]
+        [HttpGet("Messages/Preview")]
+        public IActionResult MessagesPreview()
+        {
+            var model = new BookingMessagesIndexViewModel
+            {
+                ParticipantRole = "Client",
+                Threads = new List<BookingMessageThreadItem>
+                {
+                    new()
+                    {
+                        BookingId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                        ServiceName = "Deep Cleaning",
+                        OtherParticipantName = "Sarah Jenkins",
+                        BookingStatus = "MarkAsPaid",
+                        PaymentStatus = "Successful",
+                        DateOfService = DateTime.UtcNow.AddDays(2),
+                        BookingDate = DateTime.UtcNow.AddHours(-2),
+                        TimeRange = "Morning (09:00 - 12:00)",
+                        Address = "14 Admiralty Way, Lekki Phase 1"
+                    },
+                    new()
+                    {
+                        BookingId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                        ServiceName = "Residential Cleaning",
+                        OtherParticipantName = "David Adeleke",
+                        BookingStatus = "InProgress",
+                        PaymentStatus = "Successful",
+                        DateOfService = DateTime.UtcNow,
+                        BookingDate = DateTime.UtcNow.AddHours(-5),
+                        TimeRange = "Afternoon (13:00 - 16:00)",
+                        Address = "8 Glover Road, Ikoyi"
+                    },
+                    new()
+                    {
+                        BookingId = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                        ServiceName = "Carpet Cleaning",
+                        OtherParticipantName = "Amina Bello",
+                        BookingStatus = "Completed",
+                        PaymentStatus = "Successful",
+                        DateOfService = DateTime.UtcNow.AddDays(-3),
+                        BookingDate = DateTime.UtcNow.AddDays(-4),
+                        TimeRange = "Morning (10:00 - 13:00)",
+                        Address = "22 Victoria Island, Lagos"
+                    }
+                }
+            };
+
+            return View("Messages", model);
+        }
+
+        [AllowAnonymous]
+        [HttpGet("Booking/Preview/Chat")]
+        public IActionResult ChatPreview()
+        {
+            var model = new BookingChatPageViewModel
+            {
+                BookingId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                ServiceName = "Deep Cleaning",
+                OtherParticipantName = "Sarah Jenkins",
+                ParticipantRole = "Client",
+                ConversationId = "preview-conv-123",
+                BookingStatus = "MarkAsPaid",
+                PaymentStatus = "Successful",
+                DateOfService = DateTime.UtcNow.AddDays(2),
+                TimeRange = "Morning (09:00 - 12:00)",
+                Address = "14 Admiralty Way, Lekki Phase 1",
+                SessionUrl = "/Booking/Preview/chat/session"
+            };
+
+            return View("Chat", model);
+        }
+#endif
+
+        [HttpGet("Booking/{bookingId:guid}/Messages")]
+        public async Task<IActionResult> Chat(Guid bookingId, bool markRead = true, CancellationToken ct = default)
+        {
+            try
+            {
+                var chat = await _mediator.Send(new GetBookingChatDetailsQuery(bookingId), ct);
+                var booking = await _repo.Bookings.GetBookingById(bookingId, ct)
+                    ?? throw new KeyNotFoundException($"Booking with ID {bookingId} not found.");
+
+                try
+                {
+                    if (markRead)
+                    {
+                        await _mediator.Send(new MarkConversationReadCommand(bookingId), ct);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to mark conversation read on opening for booking {BookingId}", bookingId);
+                }
+
+                var dto = new Clean_Connect.Application.DTO.BookingDto
+                {
+                    Id = booking.Id,
+                    ServiceName = booking.ServiceType?.Name ?? "Cleaning service",
+                    ClientName = booking.Client?.FullName?.ToString() ?? "Client",
+                    WorkersName = booking.Worker?.FullName?.ToString() ?? "Worker",
+                    BookingDate = booking.DateOfBooking,
+                    DateOfService = booking.DateOfService,
+                    TimeRange = booking.TimeRange.ToString(),
+                    Amount = booking.Amount,
+                    Address = booking.Address,
+                    PaymentStatus = booking.PaymentStatus.ToString(),
+                    BookingStatus = booking.BookingStatus.ToString()
+                };
+
+                var sessionUrl = Url.Action(nameof(ChatSession), "Booking", new { bookingId }) ?? string.Empty;
+                var chatPage = BookingChatPageViewModel.From(dto, chat, sessionUrl) with
+                {
+                    Threads = await GetMessageThreadsAsync(chat.ParticipantRole, ct)
+                };
+                return View("Chat", chatPage);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Booking chat page access denied for booking {BookingId}.", bookingId);
+                _notyf.Error("Only the booking client and assigned worker can access this chat.");
+                return RedirectToAction(nameof(Messages));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Booking chat page not found for booking {BookingId}.", bookingId);
+                _notyf.Error("Booking chat was not found.");
+                return RedirectToAction(nameof(Messages));
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Booking chat page is not available for booking {BookingId}.", bookingId);
+                _notyf.Error("Chat is not available right now.");
+                return RedirectToAction(nameof(Messages));
+            }
         }
 
         [HttpPost("Client-Bookings/{bookingId:guid}/rate")]
@@ -378,7 +655,7 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to rate booking {BookingId}", bookingId);
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't submit your review. Please try again.");
             }
 
             return RedirectToAction(nameof(Details), new { bookingId });
@@ -426,8 +703,104 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Payment initialization failed for booking {BookingId}", bookingId);
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't start your payment. Please check your booking and try again.");
                 return RedirectToAction(nameof(ClientResponses));
+            }
+        }
+
+        [HttpPost("Booking/{bookingId:guid}/chat/session")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChatSession(Guid bookingId, CancellationToken ct)
+        {
+            try
+            {
+                var chat = await _mediator.Send(new GetBookingChatDetailsQuery(bookingId), ct);
+                return Json(chat);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Booking chat session could not be found for booking {BookingId}.", bookingId);
+                return NotFound(new { message = "Booking chat was not found." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Booking chat session access denied for booking {BookingId}.", bookingId);
+                return Forbid();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Booking chat session is not available for booking {BookingId}.", bookingId);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Chat is not available right now." });
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Agora Chat request failed for booking {BookingId}.", bookingId);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Chat is not available right now." });
+            }
+        }
+
+        [HttpGet("Messages/UnreadCount")]
+        [HttpGet("Booking/Messages/UnreadCount")]
+        public async Task<IActionResult> UnreadMessageCount(CancellationToken ct)
+        {
+            var count = await _mediator.Send(new GetUnreadMessageCountQuery(), ct);
+            return Json(new { count });
+        }
+
+        public record NotifyMessageSentRequest(string MessageText, string? MessageId = null);
+
+        [HttpPost("Booking/{bookingId:guid}/messages/notify")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> NotifyMessageSent(Guid bookingId, [FromForm] NotifyMessageSentRequest request, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(request?.MessageText))
+            {
+                return BadRequest(new { message = "MessageText cannot be empty." });
+            }
+
+            try
+            {
+                var result = await _mediator.Send(new RecordMessageSentCommand(bookingId, request.MessageText, request.MessageId), ct);
+                return Json(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Unauthorized attempt to notify message for booking {BookingId}", bookingId);
+                return Forbid();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Booking not found for notification {BookingId}", bookingId);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to record message notification for booking {BookingId}", bookingId);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Failed to record message notification." });
+            }
+        }
+
+        [HttpPost("Booking/{bookingId:guid}/messages/read")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkMessagesRead(Guid bookingId, CancellationToken ct)
+        {
+            try
+            {
+                var remaining = await _mediator.Send(new MarkConversationReadCommand(bookingId), ct);
+                return Json(new { success = true, count = remaining });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to mark messages read for booking {BookingId}", bookingId);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Failed to mark messages read." });
             }
         }
 
@@ -440,9 +813,9 @@ namespace Clean_Connect.Web.Controllers
 
         [HttpPost("Worker-Bookings/{bookingId:guid}/reject")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Reject(Guid bookingId, CancellationToken ct)
+        public async Task<IActionResult> Reject(Guid bookingId, string? rejectionReason, CancellationToken ct)
         {
-            return await RespondToBookingAsync(bookingId, accepted: false, ct);
+            return await RespondToBookingAsync(bookingId, accepted: false, ct, rejectionReason);
         }
 
         [HttpPost("Worker-Bookings/{bookingId:guid}/start-job")]
@@ -452,6 +825,7 @@ namespace Clean_Connect.Web.Controllers
             var worker = await GetCurrentWorkerAsync(ct);
             if (worker == null)
             {
+                if (_currentWorkerSuspended) return RedirectToAction("Dashboard", "Worker");
                 _notyf.Information("Please complete your worker profile before starting a job.");
                 return RedirectToAction("CreateWorkerProfile", "Worker");
             }
@@ -471,6 +845,12 @@ namespace Clean_Connect.Web.Controllers
                     return RedirectToAction(nameof(WorkerDetails), new { bookingId });
                 }
 
+                if (booking.DateOfService.Date != DateTime.UtcNow.Date)
+                {
+                    _notyf.Error("You can only request to start this job on its scheduled service date. Please try again on that day.");
+                    return RedirectToAction(nameof(WorkerDetails), new { bookingId });
+                }
+
                 await _mediator.Send(new RequestJobStartCommand(worker.Id, bookingId), ct);
                 _notyf.Success("Start request sent. The client will confirm the job is in progress.");
 
@@ -484,7 +864,7 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to request job start for booking {BookingId}", bookingId);
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't send the job start request. Please try again.");
             }
 
             return RedirectToAction(nameof(WorkerDetails), new { bookingId });
@@ -497,6 +877,7 @@ namespace Clean_Connect.Web.Controllers
             var worker = await GetCurrentWorkerAsync(ct);
             if (worker == null)
             {
+                if (_currentWorkerSuspended) return RedirectToAction("Dashboard", "Worker");
                 _notyf.Information("Please complete your worker profile before completing a job.");
                 return RedirectToAction("CreateWorkerProfile", "Worker");
             }
@@ -529,7 +910,7 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to complete job for booking {BookingId}", bookingId);
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't mark the job as complete. Please try again.");
             }
 
             return RedirectToAction(nameof(WorkerDetails), new { bookingId });
@@ -574,7 +955,7 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to confirm completion for booking {BookingId}", bookingId);
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't confirm the completed job. Please try again.");
             }
 
             return RedirectToAction(nameof(Details), new { bookingId });
@@ -619,17 +1000,18 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to confirm job start for booking {BookingId}", bookingId);
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't confirm that the job has started. Please try again.");
             }
 
             return RedirectToAction(nameof(Details), new { bookingId });
         }
 
-        private async Task<IActionResult> RespondToBookingAsync(Guid bookingId, bool accepted, CancellationToken ct)
+        private async Task<IActionResult> RespondToBookingAsync(Guid bookingId, bool accepted, CancellationToken ct, string? rejectionReason = null)
         {
             var worker = await GetCurrentWorkerAsync(ct);
             if (worker == null)
             {
+                if (_currentWorkerSuspended) return RedirectToAction("Dashboard", "Worker");
                 _notyf.Information("Please complete your worker profile before responding to bookings.");
                 return RedirectToAction("CreateWorkerProfile", "Worker");
             }
@@ -662,12 +1044,12 @@ namespace Clean_Connect.Web.Controllers
                 }
                 else
                 {
-                    await _mediator.Send(new RejectBookingCommand(bookingId, worker.Id), ct);
+                    await _mediator.Send(new RejectBookingCommand(bookingId, worker.Id, rejectionReason), ct);
                     _notyf.Success("Booking rejected. The client has been notified.");
                     await _notifications.NotifyUserAsync(
                         booking.Client?.Email?.Value,
                         "Booking declined",
-                        $"{worker.FullName} declined your booking request.",
+                        $"{worker.FullName} declined your booking request: {rejectionReason}",
                         "warning",
                         Url.Action("Details", "Booking", new { bookingId = booking.Id }));
                 }
@@ -677,7 +1059,7 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Worker booking response failed for {BookingId}", bookingId);
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't update your booking response. Please try again.");
                 return RedirectToAction(nameof(Responses));
             }
         }
@@ -712,13 +1094,88 @@ namespace Clean_Connect.Web.Controllers
         private async Task<Client?> GetCurrentClientAsync(CancellationToken ct)
         {
             var email = User.Identity?.Name;
-            return string.IsNullOrWhiteSpace(email) ? null : await _repo.Clients.GetByEmail(email, ct);
+            if (string.IsNullOrWhiteSpace(email)) return null;
+            var client = await _repo.Clients.GetByEmail(email, ct);
+            if (client?.IsSuspended == true)
+            {
+                _notyf.Error("Your account is suspended. Booking and service access is restricted. Contact support for assistance.");
+                return null;
+            }
+            return client;
         }
 
         private async Task<Worker?> GetCurrentWorkerAsync(CancellationToken ct)
         {
             var email = User.Identity?.Name;
-            return string.IsNullOrWhiteSpace(email) ? null : await _repo.Workers.GetByEmail(email, ct);
+            if (string.IsNullOrWhiteSpace(email)) return null;
+            var worker = await _repo.Workers.GetByEmail(email, ct);
+            if (worker?.IsSuspended == true)
+            {
+                _currentWorkerSuspended = true;
+                _notyf.Error("Your account is suspended. Worker services and booking actions are restricted. Contact support for assistance.");
+                return null;
+            }
+            return worker;
+        }
+
+        private async Task<IReadOnlyList<BookingMessageThreadItem>> GetMessageThreadsAsync(string participantRole, CancellationToken ct)
+        {
+            if (string.Equals(participantRole, "Worker", StringComparison.OrdinalIgnoreCase))
+            {
+                var worker = await GetCurrentWorkerAsync(ct);
+                if (worker == null) return Array.Empty<BookingMessageThreadItem>();
+
+                var bookings = await _mediator.Send(new GetAllWorkerBookingsQuery(worker.Id), ct);
+                var chats = await _repo.BookingChats.GetByBookingIdsAsync(bookings.Select(x => x.Id).ToList(), ct);
+                return bookings.Select(booking =>
+                {
+                    chats.TryGetValue(booking.Id, out var chat);
+                    return new BookingMessageThreadItem
+                    {
+                        BookingId = booking.Id,
+                        ServiceName = booking.ServiceName,
+                        OtherParticipantName = booking.ClientName,
+                        BookingStatus = booking.BookingStatus,
+                        PaymentStatus = booking.PaymentStatus,
+                        DateOfService = booking.DateOfService,
+                        BookingDate = booking.BookingDate,
+                        TimeRange = booking.TimeRange ?? string.Empty,
+                        Address = booking.Address ?? string.Empty,
+                        Amount = booking.Amount,
+                        RejectionReason = booking.RejectionReason,
+                        UnreadCount = chat?.WorkerUnreadCount ?? 0,
+                        LatestMessageText = chat?.LastMessageText,
+                        LatestMessageTime = chat?.LastMessageSentAt
+                    };
+                }).OrderByDescending(x => x.LatestMessageTime ?? x.BookingDate).ToList();
+            }
+
+            var client = await GetCurrentClientAsync(ct);
+            if (client == null) return Array.Empty<BookingMessageThreadItem>();
+
+            var clientBookings = await _mediator.Send(new GetAllClientBookingsQuery(client.Id), ct);
+            var clientChats = await _repo.BookingChats.GetByBookingIdsAsync(clientBookings.Select(x => x.Id).ToList(), ct);
+            return clientBookings.Select(booking =>
+            {
+                clientChats.TryGetValue(booking.Id, out var chat);
+                return new BookingMessageThreadItem
+                {
+                    BookingId = booking.Id,
+                    ServiceName = booking.ServiceName,
+                    OtherParticipantName = booking.WorkersName,
+                    BookingStatus = booking.BookingStatus,
+                    PaymentStatus = booking.PaymentStatus,
+                    DateOfService = booking.DateOfService,
+                    BookingDate = booking.BookingDate,
+                    TimeRange = booking.TimeRange ?? string.Empty,
+                    Address = booking.Address ?? string.Empty,
+                    Amount = booking.Amount,
+                    RejectionReason = booking.RejectionReason,
+                    UnreadCount = chat?.ClientUnreadCount ?? 0,
+                    LatestMessageText = chat?.LastMessageText,
+                    LatestMessageTime = chat?.LastMessageSentAt
+                };
+            }).OrderByDescending(x => x.LatestMessageTime ?? x.BookingDate).ToList();
         }
     }
 }

@@ -82,7 +82,7 @@ namespace Clean_Connect.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Payment confirmation failed for reference {Reference}", paymentReference);
-                _notyf.Error(ex.Message);
+                _notyf.Error("We couldn't confirm your payment right now. Please try again.");
 
                 var model = new PaymentConfirmationViewModel
                 {

@@ -141,13 +141,8 @@ namespace Clean_Connect.Api.Controllers
         public async Task<IActionResult> PaystackWebhook(CancellationToken cancellationToken)
         {
             using var reader = new StreamReader(Request.Body);
-            logger.LogInformation("Received Paystack webhook with headers: {Headers}", Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString()));
-
             var payload = await reader.ReadToEndAsync(cancellationToken);
-            logger.LogInformation("Webhook payload: {Payload}", payload);
-
             var signature = Request.Headers["x-paystack-signature"].ToString();
-            logger.LogInformation("Received Paystack webhook with signature: {Signature}", signature);
             if (string.IsNullOrEmpty(signature))
             {
                 logger.LogWarning("Missing signature header in Paystack webhook");

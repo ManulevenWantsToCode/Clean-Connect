@@ -1,10 +1,12 @@
+@inject Clean_Connect.Application.Interface.Repositories.IPlatformSettingsRepository PlatformSettingsRepository
+@{ var platformSettings = await PlatformSettingsRepository.GetAsync(Context.RequestAborted); }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>@ViewData["Title"] - Clean Connect Admin</title>
+    <title>@ViewData["Title"] - @platformSettings.PlatformName Admin</title>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -12,9 +14,38 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/lib/notyf/notyf.min.css" />
+
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 
 <body>
+
+    @{
+        var adminEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+            ?? User.Identity?.Name
+            ?? string.Empty;
+        var adminDisplayName = string.Join(" ", new[]
+        {
+            User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value,
+            User.FindFirst(System.Security.Claims.ClaimTypes.Surname)?.Value
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+        if (string.IsNullOrWhiteSpace(adminDisplayName))
+        {
+            adminDisplayName = adminEmail.Contains('@') ? adminEmail[..adminEmail.IndexOf('@')] : adminEmail;
+        }
+
+        if (string.IsNullOrWhiteSpace(adminDisplayName))
+        {
+            adminDisplayName = "Administrator";
+        }
+
+        var adminRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+            ?? User.FindFirst("role")?.Value
+            ?? "Administrator";
+        var adminInitial = adminDisplayName.Trim()[0].ToString().ToUpperInvariant();
+        var adminAccountLabel = string.IsNullOrWhiteSpace(adminEmail) ? adminDisplayName : adminEmail;
+    }
 
     <div class="admin-wrapper">
 
@@ -30,7 +61,7 @@
                         <i class="fa-solid fa-broom"></i>
                     </span>
                     <div class="sidebar-brand-text">
-                        <span class="brand-name">Clean Connect</span>
+                        <span class="brand-name">@platformSettings.PlatformName</span>
                         <span class="brand-badge">Admin Portal</span>
                     </div>
                 </a>
@@ -58,7 +89,10 @@
                         <a asp-controller="Admin" asp-action="Workers">
                             <i class="fa-solid fa-users-gear"></i>
                             <span>Workers</span>
-                            <span class="badge rounded-pill bg-warning text-dark ms-auto sidebar-pill">3 pending</span>
+                            @if (ViewData["SidebarWorkerCount"] is int workerCount && workerCount > 0)
+                            {
+                                <span class="badge rounded-pill bg-warning text-dark ms-auto sidebar-pill" title="Registered workers">@workerCount total</span>
+                            }
                         </a>
                     </li>
 
@@ -73,7 +107,10 @@
                         <a asp-controller="Admin" asp-action="Bookings">
                             <i class="fa-solid fa-calendar-check"></i>
                             <span>Bookings</span>
-                            <span class="badge rounded-pill bg-success text-white ms-auto sidebar-pill">14 new</span>
+                            @if (ViewData["SidebarNewBookings"] is int newBookings && newBookings > 0)
+                            {
+                                <span class="badge rounded-pill bg-success text-white ms-auto sidebar-pill">@newBookings new</span>
+                            }
                         </a>
                     </li>
 
@@ -95,7 +132,10 @@
                         <a asp-controller="Admin" asp-action="Reviews">
                             <i class="fa-solid fa-star-half-stroke"></i>
                             <span>Reviews</span>
-                            <span class="badge rounded-pill bg-danger text-white ms-auto sidebar-pill">2 flagged</span>
+                            @if (ViewData["SidebarFlaggedReviews"] is int flaggedReviews && flaggedReviews > 0)
+                            {
+                                <span class="badge rounded-pill bg-danger text-white ms-auto sidebar-pill">@flaggedReviews flagged</span>
+                            }
                         </a>
                     </li>
 
@@ -122,12 +162,12 @@
             <div class="sidebar-footer">
                 <div class="sidebar-admin-profile">
                     <div class="profile-avatar">
-                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Admin" />
+                        <span class="profile-avatar-initials" aria-hidden="true">@adminInitial</span>
                         <span class="status-online"></span>
                     </div>
                     <div class="profile-meta">
-                        <span class="profile-name">Alexander S.</span>
-                        <span class="profile-role">Super Administrator</span>
+                        <span class="profile-name">@adminDisplayName</span>
+                        <span class="profile-role">@adminRole</span>
                     </div>
                 </div>
                 <form method="post" asp-controller="Auth" asp-action="Logout" class="mt-2">
@@ -164,7 +204,7 @@
                     <!-- Global Search -->
                     <div class="topbar-search d-none d-md-flex">
                         <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                        <input type="text" id="globalAdminSearch" class="form-control topbar-search-input" placeholder="Search bookings, users, services..." />
+                        <input type="text" id="globalAdminSearch" class="form-control topbar-search-input" placeholder="Search..." aria-label="Search bookings, users, and services" />
                         <span class="search-shortcut">Ctrl K</span>
                     </div>
 
@@ -199,18 +239,18 @@
                     <div class="dropdown">
                         <button class="btn btn-admin-profile" type="button" id="adminUserDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <div class="admin-avatar-small">
-                                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80" alt="Avatar" />
+                                <span class="admin-avatar-initials" aria-hidden="true">@adminInitial</span>
                             </div>
                             <div class="admin-user-info d-none d-lg-block text-start">
-                                <div class="admin-user-name">Alexander S.</div>
-                                <div class="admin-user-badge">Super Admin</div>
+                                <div class="admin-user-name">@adminDisplayName</div>
+                                <div class="admin-user-badge">@adminRole</div>
                             </div>
                             <i class="fa-solid fa-angle-down ms-1 text-muted small d-none d-lg-inline"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end admin-user-dropdown shadow-lg border-0" aria-labelledby="adminUserDropdown">
                             <li class="dropdown-header">
                                 <div class="fw-bold text-dark dark-text-light">Signed in as</div>
-                                <div class="small text-muted">admin@cleanconnect.com</div>
+                                <div class="small text-muted">@adminAccountLabel</div>
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>

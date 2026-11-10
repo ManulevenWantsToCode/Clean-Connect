@@ -1,76 +1,142 @@
 @model Clean_Connect.Web.Models.ChooseWorkerViewModel
 @using Clean_Connect.Web.Helpers
 
-@if (Model.Workers.Count == 0)
+@if (Model.Workers == null || Model.Workers.Count == 0)
 {
     <div class="booking-empty">
-        <i class="fa-solid fa-user-slash"></i>
-        <h2>No workers free on this day</h2>
-        <p>All workers for @Model.DateOfService.ToString("MMM dd, yyyy") are already booked. Try another date, time, or widen your search radius.</p>
-        <a asp-action="ChooseWorker" asp-controller="Booking" asp-route-dateOfService="@DateTime.Today.AddDays(2).ToString("yyyy-MM-dd")" class="btn btn-success booking-action-btn rounded-pill px-4 mt-3">
-            <i class="fa-solid fa-calendar-plus me-2"></i>Try another day
-        </a>
+        <div class="booking-empty__icon">
+            <i class="fa-solid fa-user-slash"></i>
+        </div>
+        <h2>No cleaners available for this criteria</h2>
+        <p>
+            All cleaners for <strong>@Model.DateOfService.ToString("MMM dd, yyyy")</strong> (@Model.TimeRange) are either booked or outside your selected distance radius. Try expanding your search distance or selecting another date.
+        </p>
+        <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
+            <a asp-action="ChooseWorker" asp-controller="Booking" asp-route-dateOfService="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" class="btn cc-action-button cc-action-button--primary">
+                <i class="fa-solid fa-calendar-day"></i> Try Tomorrow
+            </a>
+            <a asp-action="ChooseWorker" asp-controller="Booking" asp-route-dateOfService="@DateTime.Today.AddDays(2).ToString("yyyy-MM-dd")" class="btn cc-action-button cc-action-button--secondary">
+                <i class="fa-solid fa-calendar-plus"></i> Try Next Available Day
+            </a>
+        </div>
     </div>
 }
 else
 {
-    var onlineCount = Model.Workers.Count(x => x.IsOnline);
+    var orderedWorkers = Model.Workers
+        .OrderBy(w => !w.IsOnline)
+        .ThenBy(w => w.DistanceInKm ?? double.MaxValue)
+        .ThenByDescending(w => w.Rating)
+        .ThenBy(w => w.Name)
+        .ToList();
+    var onlineCount = orderedWorkers.Count(x => x.IsOnline);
 
     <div class="cw-results-head">
         <div class="cw-results-head__title-wrap">
-            <h2 class="cw-results-head__title">Available cleaners</h2>
+            <h2 class="cw-results-head__title">Available Professionals</h2>
             <p class="cw-results-head__sub">
-                <i class="fa-solid fa-circle-check"></i>
-                @Model.AvailableCount professional@(Model.AvailableCount == 1 ? "" : "s") free on @Model.DateOfService.ToString("MMM dd, yyyy") — online first
+                <i class="fa-solid fa-circle-check text-success"></i>
+                Found @orderedWorkers.Count verified cleaner@(orderedWorkers.Count == 1 ? "" : "s") free on <strong>@Model.DateOfService.ToString("MMM dd, yyyy")</strong> &bull; Showing active professionals first
             </p>
         </div>
-        @if (onlineCount > 0)
-        {
-            <span class="availability-badge availability-badge--lg"><i class="fa-solid fa-circle"></i> @onlineCount online now</span>
-        }
-        else
-        {
-            <span class="availability-badge availability-badge--lg availability-badge--idle"><i class="fa-solid fa-circle"></i> All available</span>
-        }
+        <div>
+            @if (onlineCount > 0)
+            {
+                <span class="availability-badge availability-badge--active availability-badge--lg">
+                    <span class="cc-pulse-dot"></span>
+                    <strong>@onlineCount online now</strong>
+                </span>
+            }
+            else
+            {
+                <span class="availability-badge availability-badge--idle availability-badge--lg">
+                    <i class="fa-solid fa-calendar-check text-success"></i>
+                    <strong>All available to book</strong>
+                </span>
+            }
+        </div>
     </div>
 
     <div class="choose-worker-grid">
-        @foreach (var w in Model.Workers)
+        @foreach (var w in orderedWorkers)
         {
             var fullNameParts = w.Name.Split(' ').Where(x => x.Length > 0).ToList();
             var initials = string.Concat(fullNameParts.Select(x => x[0]).Take(2)).ToUpper();
             var firstName = fullNameParts.Count > 0 ? fullNameParts[0] : "them";
             var modalId = "workerModal_" + w.Id.ToString("N");
-            var distanceText = w.DistanceInKm.HasValue ? $"~{w.DistanceInKm.Value.ToString("0.#")} km away" : (string.IsNullOrWhiteSpace(w.State) ? "Your area" : w.State);
+            var distanceText = w.DistanceInKm.HasValue ? $"~{w.DistanceInKm.Value.ToString("0.#")} km away" : (string.IsNullOrWhiteSpace(w.State) ? "Lagos area" : w.State);
 
-            <article class="choose-worker-card">
+            <article class="choose-worker-card @(w.IsOnline ? "choose-worker-card--online" : "")">
                 <div class="choose-worker-card__head">
-                    <div class="choose-worker-card__avatar" aria-hidden="true">@initials</div>
-                    <span class="availability-badge @(w.IsOnline ? "" : "availability-badge--idle")"><i class="fa-solid fa-circle"></i> @(w.IsOnline ? "Online now" : "Available")</span>
+                    <div class="choose-worker-card__avatar-wrap">
+                        <div class="choose-worker-card__avatar" aria-hidden="true">@initials</div>
+                        @if (w.IsOnline)
+                        {
+                            <span class="worker-online-indicator" title="Online and active now"></span>
+                        }
+                    </div>
+                    <div class="choose-worker-card__status">
+                        @if (w.IsOnline)
+                        {
+                            <span class="availability-badge availability-badge--active">
+                                <span class="cc-pulse-dot"></span> Active now
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="availability-badge availability-badge--idle">
+                                <i class="fa-regular fa-calendar-check"></i> Available
+                            </span>
+                        }
+                    </div>
                 </div>
 
                 <div class="choose-worker-card__body">
-                    <h2 class="choose-worker-card__name">@w.Name</h2>
-                    <span class="service-chip"><i class="fa-solid fa-briefcase"></i> @w.ServiceName</span>
+                    <div class="choose-worker-card__name-row">
+                        <h3 class="choose-worker-card__name">@w.Name</h3>
+                        <span class="verified-pro-badge" title="Verified Clean Connect Professional">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </span>
+                    </div>
+
+                    <div class="choose-worker-card__service-chip">
+                        <span class="service-chip">
+                            <i class="fa-solid fa-broom"></i> @w.ServiceName
+                        </span>
+                    </div>
 
                     <div class="rating-line">
-                        <span class="rating-line__stars" title="Rating">
-                            <i class="fa-solid fa-star"></i><strong>@w.Rating.ToString("0.0")</strong>
+                        <span class="rating-line__stars" title="Rating: @w.Rating.ToString("0.0") out of 5">
+                            <i class="fa-solid fa-star text-warning"></i>
+                            <strong>@w.Rating.ToString("0.0")</strong>
                         </span>
-                        <span class="rating-line__count">@w.TotalRating review@(w.TotalRating == 1 ? "" : "s")</span>
-                        <span class="rating-line__price">&#8358;@w.HourlyRate.ToString("N0")/hr</span>
+                        <span class="rating-line__count">(@w.TotalRating review@(w.TotalRating == 1 ? "" : "s"))</span>
                     </div>
 
                     <div class="choose-worker-card__meta">
-                        <span title="Distance from your location"><i class="fa-solid fa-location-dot"></i> @distanceText</span>
-                        <span title="Location"><i class="fa-solid fa-map-pin"></i> @(string.IsNullOrWhiteSpace(w.State) ? "Not listed" : w.State)</span>
-                        <span title="Age"><i class="fa-solid fa-cake-candles"></i> @w.Age yrs</span>
+                        <span class="meta-tag" title="Approximate distance from your address">
+                            <i class="fa-solid fa-location-dot text-teal"></i> @distanceText
+                        </span>
+                        <span class="meta-tag" title="Service location">
+                            <i class="fa-solid fa-map-pin text-muted"></i> @(string.IsNullOrWhiteSpace(w.State) ? "Lagos" : w.State)
+                        </span>
+                    </div>
+
+                    <div class="choose-worker-card__rate">
+                        <div>
+                            <span class="rate-title">Hourly Rate</span>
+                            <span class="rate-sub">Transparent rate</span>
+                        </div>
+                        <div class="rate-price">
+                            <strong>&#8358;@w.HourlyRate.ToString("N0")</strong>
+                            <small>/ hour</small>
+                        </div>
                     </div>
                 </div>
 
                 <div class="choose-worker-card__actions">
-                    <button type="button" class="worker-card-btn worker-card-btn--outline rounded-pill" data-bs-toggle="modal" data-bs-target="#@modalId">
-                        <i class="fa-solid fa-address-card"></i> View profile
+                    <button type="button" class="btn cc-action-button cc-action-button--secondary worker-card-btn" data-bs-toggle="modal" data-bs-target="#@modalId">
+                        <i class="fa-regular fa-id-badge"></i> View Details
                     </button>
                     <a asp-controller="Booking" asp-action="Create"
                        asp-route-workerId="@w.Id"
@@ -80,62 +146,122 @@ else
                        asp-route-latitude="@ViewBag.OriginLatitude"
                        asp-route-longitude="@ViewBag.OriginLongitude"
                        asp-route-radius="@ViewBag.OriginRadius"
-                       class="btn btn-success booking-action-btn rounded-pill worker-card-btn worker-card-btn--primary">
-                        <i class="fa-solid fa-arrow-right me-2"></i>Book @firstName
+                       class="btn cc-action-button cc-action-button--primary worker-card-btn">
+                        <i class="fa-solid fa-calendar-plus"></i> Book @firstName
                     </a>
                 </div>
             </article>
 
+            <!-- Worker Details Modal / Profile Sheet -->
             <div class="modal fade worker-profile-modal" id="@modalId" tabindex="-1" aria-labelledby="@(modalId)_label" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="worker-profile-modal__hero">
                             <button type="button" class="btn-close worker-profile-modal__close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            <div class="worker-profile-modal__avatar" aria-hidden="true">@initials</div>
-                            <h2 id="@(modalId)_label">@w.Name</h2>
-                            <p><i class="fa-solid fa-briefcase"></i> @w.ServiceName</p>
-                            <span class="availability-badge availability-badge--on-dark @(w.IsOnline ? "" : "availability-badge--idle")"><i class="fa-solid fa-circle"></i> @(w.IsOnline ? "Online now" : "Available now")</span>
+                            <div class="worker-profile-modal__avatar-wrap">
+                                <div class="worker-profile-modal__avatar" aria-hidden="true">@initials</div>
+                                @if (w.IsOnline)
+                                {
+                                    <span class="worker-online-indicator worker-online-indicator--lg" title="Active now"></span>
+                                }
+                            </div>
+                            <div class="worker-profile-modal__hero-info">
+                                <div class="d-flex align-items-center justify-content-center gap-2">
+                                    <h2 id="@(modalId)_label" class="mb-0">@w.Name</h2>
+                                    <i class="fa-solid fa-circle-check text-success fs-5" title="Verified Professional"></i>
+                                </div>
+                                <p class="worker-profile-modal__service">
+                                    <i class="fa-solid fa-broom me-1"></i> @w.ServiceName Specialist
+                                </p>
+                                <span class="availability-badge @(w.IsOnline ? "availability-badge--active" : "availability-badge--idle") availability-badge--on-dark">
+                                    @if (w.IsOnline)
+                                    {
+                                        <span class="cc-pulse-dot"></span> <span>Active now &bull; Ready to accept</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fa-solid fa-calendar-check me-1"></i> <span>Available for @Model.DateOfService.ToString("MMM dd")</span>
+                                    }
+                                </span>
+                            </div>
                         </div>
 
-                        <div class="worker-profile-modal__body">
+                        <div class="modal-body worker-profile-modal__body">
+                            <!-- 4 Key Metric Cards -->
                             <div class="worker-profile-modal__stats">
                                 <div class="worker-profile-modal__stat">
-                                    <span class="stat-label"><i class="fa-solid fa-star"></i> Rating</span>
+                                    <span class="stat-label"><i class="fa-solid fa-star text-warning"></i> Customer Rating</span>
                                     <strong>@w.Rating.ToString("0.0")</strong>
-                                    <small>@w.TotalRating review@(w.TotalRating == 1 ? "" : "s")</small>
+                                    <small>@w.TotalRating verified review@(w.TotalRating == 1 ? "" : "s")</small>
                                 </div>
                                 <div class="worker-profile-modal__stat">
-                                    <span class="stat-label"><i class="fa-solid fa-map-pin"></i> Location</span>
-                                    <strong>@(string.IsNullOrWhiteSpace(w.State) ? "Not listed" : w.State)</strong>
+                                    <span class="stat-label"><i class="fa-solid fa-coins text-success"></i> Hourly Rate</span>
+                                    <strong>&#8358;@w.HourlyRate.ToString("N0")<small>/hr</small></strong>
+                                    <small>Standard hourly price</small>
+                                </div>
+                                <div class="worker-profile-modal__stat">
+                                    <span class="stat-label"><i class="fa-solid fa-location-dot text-teal"></i> Location</span>
+                                    <strong>@(string.IsNullOrWhiteSpace(w.State) ? "Lagos" : w.State)</strong>
                                     <small>@distanceText</small>
                                 </div>
                                 <div class="worker-profile-modal__stat">
-                                    <span class="stat-label"><i class="fa-solid fa-cake-candles"></i> Age</span>
-                                    <strong>@w.Age</strong>
-                                    <small>years old</small>
-                                </div>
-                                <div class="worker-profile-modal__stat">
-                                    <span class="stat-label"><i class="fa-solid fa-wallet"></i> Hourly rate</span>
-                                    <strong>&#8358;@w.HourlyRate.ToString("N0")/hr</strong>
-                                    <small>@w.ServiceName</small>
+                                    <span class="stat-label"><i class="fa-solid fa-user-shield text-primary"></i> Verification</span>
+                                    <strong>Verified Pro</strong>
+                                    <small>@w.Age years old</small>
                                 </div>
                             </div>
 
-                            <p class="worker-profile-modal__note">
-                                <i class="fa-solid @(w.IsOnline ? "fa-wifi" : "fa-shield-halved")"></i>
-                                @if (w.IsOnline)
-                                {
-                                    <text>@firstName is online right now and available on @Model.DateOfService.ToString("MMM dd, yyyy") (@Model.TimeRange). Proceed to pick a date, time and address to send your booking request.</text>
-                                }
-                                else
-                                {
-                                    <text>@firstName is available on @Model.DateOfService.ToString("MMM dd, yyyy") (@Model.TimeRange) but is currently offline — they'll see your request when they come online. Proceed to pick a date, time and address to send your booking request.</text>
-                                }
-                            </p>
+                            <!-- Trust Highlights -->
+                            <div class="worker-profile-modal__trust-list">
+                                <div class="worker-trust-item">
+                                    <i class="fa-solid fa-id-card-clip text-success"></i>
+                                    <div>
+                                        <strong>Identity Verified</strong>
+                                        <small>National identity and background documentation verified by Clean Connect.</small>
+                                    </div>
+                                </div>
+                                <div class="worker-trust-item">
+                                    <i class="fa-solid fa-shield-halved text-success"></i>
+                                    <div>
+                                        <strong>Escrow Protected Payment</strong>
+                                        <small>Your booking amount remains safe in escrow until @firstName finishes the job.</small>
+                                    </div>
+                                </div>
+                                <div class="worker-trust-item">
+                                    <i class="fa-solid fa-bolt text-warning"></i>
+                                    <div>
+                                        <strong>Fast Response Guarantee</strong>
+                                        <small>Booking requests are delivered to @firstName's device in realtime for immediate confirmation.</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Availability Note -->
+                            <div class="worker-profile-modal__note">
+                                <i class="fa-solid @(w.IsOnline ? "fa-circle-check text-success" : "fa-calendar-days text-teal")"></i>
+                                <div>
+                                    @if (w.IsOnline)
+                                    {
+                                        <strong>@firstName is online right now</strong>
+                                        <p class="mb-0 small">
+                                            Available for service on @Model.DateOfService.ToString("dddd, MMM dd, yyyy") (@Model.TimeRange). Click Book below to set your exact hours and send your request.
+                                        </p>
+                                    }
+                                    else
+                                    {
+                                        <strong>Available on @Model.DateOfService.ToString("MMM dd")</strong>
+                                        <p class="mb-0 small">
+                                            @firstName is ready to take bookings for your requested time slot (@Model.TimeRange). They will receive an instant push notification when you send your request.
+                                        </p>
+                                    }
+                                </div>
+                            </div>
                         </div>
 
                         <div class="worker-profile-modal__footer">
-                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4 worker-profile-modal__cancel" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn cc-action-button cc-action-button--secondary worker-profile-modal__cancel" data-bs-dismiss="modal">
+                                Close
+                            </button>
                             <a asp-controller="Booking" asp-action="Create"
                                asp-route-workerId="@w.Id"
                                asp-route-serviceTypeId="@w.ServiceTypeId"
@@ -144,8 +270,8 @@ else
                                asp-route-latitude="@ViewBag.OriginLatitude"
                                asp-route-longitude="@ViewBag.OriginLongitude"
                                asp-route-radius="@ViewBag.OriginRadius"
-                               class="btn btn-success booking-action-btn rounded-pill px-4">
-                                <i class="fa-solid fa-arrow-right me-2"></i>Continue with @firstName
+                               class="btn cc-action-button cc-action-button--primary cc-action-button--large">
+                                <i class="fa-solid fa-calendar-check me-1"></i> Book @firstName Now
                             </a>
                         </div>
                     </div>

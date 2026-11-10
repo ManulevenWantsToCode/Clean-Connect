@@ -1,117 +1,599 @@
 @model Clean_Connect.Web.Models.NotificationPageViewModel
 
 @{
-    ViewData["Title"] = "Notifications";
+    ViewData["Title"] = "Notifications & Updates";
     Layout = "_DashboardLayout";
+
+    var isWorker = string.Equals(Model.Audience, "Worker", StringComparison.OrdinalIgnoreCase);
+    var isClient = string.Equals(Model.Audience, "Client", StringComparison.OrdinalIgnoreCase);
+    var shellClass = isWorker ? "cc-dashboard--worker" : isClient ? "cc-dashboard--client" : "cc-dashboard--generic";
+
+    var total = Model.Items?.Count ?? 0;
+    var unread = Model.Items?.Count(x => !x.IsRead) ?? 0;
+    var attention = Model.NeedsAttentionCount;
+    var read = Math.Max(0, total - unread);
 }
 
-<div class="dash-page notifications-page">
-    <div class="container">
-        @Html.AntiForgeryToken()
-        <div class="notifications-hero">
-            <div>
-                <span class="booking-kicker">
-                    <i class="fa-solid fa-bell"></i>
-                    @Model.Audience Notifications
-                </span>
-                <h1>Notifications</h1>
-                <p>Booking updates, worker responses, payment steps, and job progress live here.</p>
-            </div>
-            <div class="notifications-tools">
-                @if (Model.Items.Count > 0)
-                {
-                    <form method="post" asp-action="MarkAllAsRead" asp-controller="Notifications" class="d-inline">
-                        <button type="submit" class="notifications-tools__clear" id="markAllReadBtn">
-                            <i class="fa-solid fa-circle-check me-1"></i>Mark all as read
-                        </button>
-                    </form>
-                }
-            </div>
-        </div>
+@functions {
+    string FormatTimeAgo(DateTime dt)
+    {
+        var span = DateTime.UtcNow - dt.ToUniversalTime();
+        if (span.TotalMinutes < 1) return "Just now";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours}h ago";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
+        return dt.ToString("MMM dd, yyyy");
+    }
+}
 
-        @if (Model.Items == null || Model.Items.Count == 0)
+<div class="cc-dashboard @shellClass @(!isClient && !isWorker ? "cc-dashboard--no-rail" : "")">
+    <div class="cc-dashboard-shell">
+
+        @if (isClient || isWorker)
         {
-            <div class="booking-empty">
-                <i class="fa-solid fa-bell-slash"></i>
-                <h2>No notifications yet</h2>
-                <p>When booking activity happens, updates will appear here automatically.</p>
-                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-success rounded-pill px-4 mt-3">
-                    <i class="fa-solid fa-arrow-left me-2"></i>Back to Dashboard
-                </a>
-            </div>
+            <aside class="cc-rail" id="ccSidebar" aria-label="@(isWorker ? "Worker" : "Client") dashboard navigation">
+                <partial name="_DashboardRailNavigation" />
+            </aside>
         }
-        else
-        {
-            <div class="notifications-layout">
-                <aside class="notifications-side">
-                    <div class="notifications-side__card">
-                        <div class="notifications-side__icon">
-                            <i class="fa-solid fa-bell"></i>
-                        </div>
-                        <div class="notifications-side__info">
-                            <span>Total Updates</span>
-                            <strong>@Model.Items.Count</strong>
-                        </div>
-                    </div>
-                    @if (Model.NeedsAttentionCount > 0)
+
+        <main class="cc-main">
+            <div class="notifications-page">
+                @Html.AntiForgeryToken()
+
+                <!-- Top Breadcrumb Navigation -->
+                <div class="notifications-nav-bar mb-3">
+                    @if (isWorker)
                     {
-                        <div class="notifications-side__card needs-attention">
-                            <div class="notifications-side__icon attention">
-                                <i class="fa-solid fa-circle-exclamation"></i>
-                            </div>
-                            <div class="notifications-side__info">
-                                <span>Action Needed</span>
-                                <strong>@Model.NeedsAttentionCount</strong>
-                            </div>
-                        </div>
+                        <a asp-controller="Worker" asp-action="Dashboard" class="notifications-back-link">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Back to Worker Dashboard</span>
+                        </a>
                     }
-                </aside>
-
-                <section class="notifications-list">
-                    @foreach (var item in Model.Items)
+                    else if (isClient)
                     {
-                        <article class="notification-row @(item.NeedsAttention ? "needs-attention" : "") @(item.IsRead ? "is-read" : "is-unread")"
-                                 data-notification-id="@item.NotificationId"
-                                 data-action-url="@item.ActionUrl"
-                                 tabindex="0"
-                                 role="@(string.IsNullOrWhiteSpace(item.ActionUrl) ? "button" : "link")"
-                                 aria-label="@(string.IsNullOrWhiteSpace(item.ActionUrl) ? "Mark as read: " + item.Title : "Open: " + item.Title)">
-                            
-                            @if (!item.IsRead)
-                            {
-                                <span class="notification-row__unread-indicator" title="Unread"></span>
-                            }
+                        <a asp-controller="Client" asp-action="Dashboard" class="notifications-back-link">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Back to Client Dashboard</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-controller="Home" asp-action="Index" class="notifications-back-link">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Back to Home</span>
+                        </a>
+                    }
+                </div>
 
-                            <div class="notification-row__icon @item.Tone">
-                                <i class="fa-solid @item.Icon"></i>
+                <!-- Notifications Hero Banner -->
+                <div class="notifications-hero">
+                    <div class="notifications-hero__content">
+                        <div class="notifications-kicker">
+                            <span class="notifications-kicker__pulse"></span>
+                            <i class="fa-solid fa-bell"></i>
+                            <span>@Model.Audience Activity Center</span>
+                        </div>
+                        <h1 class="notifications-hero__title">Notifications &amp; Updates</h1>
+                        <p class="notifications-hero__desc">
+                            Stay on top of your bookings, cleaner responses, escrow milestones, and job progress in real-time.
+                        </p>
+                    </div>
+
+                    <div class="notifications-hero__tools" id="notificationsHeroTools">
+                        @if (unread > 0)
+                        {
+                            <form method="post" asp-action="MarkAllAsRead" asp-controller="Notifications" class="d-inline" id="markAllReadForm">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="notifications-btn-mark-all" id="markAllReadBtn" title="Mark all unread notifications as read">
+                                    <i class="fa-solid fa-check-double me-1"></i>
+                                    <span>Mark all as read</span>
+                                </button>
+                            </form>
+                        }
+                        else if (total > 0)
+                        {
+                            <div class="notifications-caught-up-pill">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span>All caught up</span>
                             </div>
+                        }
+                    </div>
+                </div>
 
-                            <div class="notification-row__body">
-                                <div class="notification-row__top">
-                                    <h2>@item.Title</h2>
-                                    @if (item.NeedsAttention)
+                @if (total == 0)
+                {
+                    <div class="notifications-empty-state">
+                        <div class="notifications-empty-state__icon">
+                            <i class="fa-solid fa-bell-slash"></i>
+                        </div>
+                        <h2>No notifications yet</h2>
+                        <p>When booking requests, worker confirmations, or payment steps occur, real-time alerts will appear right here.</p>
+                        @if (isWorker)
+                        {
+                            <a asp-controller="Worker" asp-action="Dashboard" class="btn cc-action-button cc-action-button--primary mt-3">
+                                <i class="fa-solid fa-house me-2"></i>Return to Dashboard
+                            </a>
+                        }
+                        else if (isClient)
+                        {
+                            <a asp-controller="Client" asp-action="Dashboard" class="btn cc-action-button cc-action-button--primary mt-3">
+                                <i class="fa-solid fa-house me-2"></i>Return to Dashboard
+                            </a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <!-- Summary Metric Cards (Interactive live filters) -->
+                    <div class="notifications-stats-grid mb-4">
+                        <div class="notifications-stat-card is-active" data-stat-filter="all" role="button" tabindex="0" title="View all updates">
+                            <div class="notifications-stat-card__icon neutral">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </div>
+                            <div class="notifications-stat-card__content">
+                                <span class="notifications-stat-card__label">Total Updates</span>
+                                <strong class="notifications-stat-card__value">@total</strong>
+                            </div>
+                            <span class="notifications-stat-card__arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                        </div>
+
+                        <div class="notifications-stat-card @(unread > 0 ? "has-unread" : "")" data-stat-filter="unread" role="button" tabindex="0" title="View unread updates">
+                            <div class="notifications-stat-card__icon info">
+                                <i class="fa-solid fa-envelope-open-text"></i>
+                            </div>
+                            <div class="notifications-stat-card__content">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="notifications-stat-card__label">Unread</span>
+                                    @if (unread > 0)
                                     {
-                                        <span class="notification-priority">Action needed</span>
+                                        <span class="notifications-live-pulse" title="Unread notifications"></span>
                                     }
                                 </div>
-                                <p>@item.Message</p>
-                                <div class="notification-row__meta">
-                                    <span class="booking-status-badge @item.Status.ToLowerInvariant()">@item.Status</span>
-                                    <span><i class="fa-regular fa-calendar me-1"></i>@item.CreatedAt.ToString("MMM dd, yyyy")</span>
-                                </div>
+                                <strong class="notifications-stat-card__value" id="statUnreadCount">@unread</strong>
+                            </div>
+                            <span class="notifications-stat-card__arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                        </div>
+
+                        <div class="notifications-stat-card @(attention > 0 ? "has-attention" : "")" data-stat-filter="attention" role="button" tabindex="0" title="View action required">
+                            <div class="notifications-stat-card__icon warning">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <div class="notifications-stat-card__content">
+                                <span class="notifications-stat-card__label">Action Needed</span>
+                                <strong class="notifications-stat-card__value" id="statAttentionCount">@attention</strong>
+                            </div>
+                            <span class="notifications-stat-card__arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                        </div>
+
+                        <div class="notifications-stat-card" data-stat-filter="read" role="button" tabindex="0" title="View completed/read">
+                            <div class="notifications-stat-card__icon success">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </div>
+                            <div class="notifications-stat-card__content">
+                                <span class="notifications-stat-card__label">Archived / Read</span>
+                                <strong class="notifications-stat-card__value" id="statReadCount">@read</strong>
+                            </div>
+                            <span class="notifications-stat-card__arrow"><i class="fa-solid fa-chevron-right"></i></span>
+                        </div>
+                    </div>
+
+                    <!-- Feed Card with Search & Filters -->
+                    <div class="notifications-feed-card">
+                        <div class="notifications-feed-toolbar">
+                            <div class="notifications-search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="notificationsSearch" placeholder="Search notifications by keyword, service, status..." autocomplete="off" />
+                                <button type="button" id="clearSearchBtn" class="notifications-search__clear" style="display: none;" title="Clear search">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
                             </div>
 
-                            @if (!string.IsNullOrWhiteSpace(item.ActionUrl))
+                            <div class="notifications-chips" id="notificationsChips">
+                                <button type="button" class="chip is-active" data-filter="all">
+                                    All <span class="chip-count" id="chipTotalCount">@total</span>
+                                </button>
+                                <button type="button" class="chip" data-filter="unread">
+                                    Unread <span class="chip-count" id="chipUnreadCount">@unread</span>
+                                </button>
+                                @if (attention > 0)
+                                {
+                                    <button type="button" class="chip chip--warning" data-filter="attention" id="chipAttentionBtn">
+                                        Action Needed <span class="chip-count" id="chipAttentionCount">@attention</span>
+                                    </button>
+                                }
+                                <button type="button" class="chip" data-filter="read">
+                                    Read <span class="chip-count" id="chipReadCount">@read</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Notification Feed List -->
+                        <div class="notifications-feed-list" id="notificationsFeedList">
+                            @foreach (var item in Model.Items ?? Enumerable.Empty<Clean_Connect.Web.Models.NotificationItemViewModel>())
                             {
-                                <span class="notification-row__action-hint">
-                                    @item.ActionText
-                                    <i class="fa-solid fa-arrow-right"></i>
-                                </span>
+                                var statusGroup = item.NeedsAttention ? "attention" : item.IsRead ? "read" : "unread";
+                                var searchIndex = $"{item.Title ?? string.Empty} {item.Message ?? string.Empty} {item.Status ?? string.Empty} {item.ActionText ?? string.Empty}".ToLowerInvariant();
+
+                                <article class="notification-row @(item.NeedsAttention ? "needs-attention" : "") @(item.IsRead ? "is-read" : "is-unread")"
+                                         data-notification-id="@item.NotificationId"
+                                         data-action-url="@item.ActionUrl"
+                                         data-status="@statusGroup"
+                                         data-search="@searchIndex"
+                                         tabindex="0"
+                                         role="@(string.IsNullOrWhiteSpace(item.ActionUrl) ? "button" : "link")"
+                                         aria-label="@(string.IsNullOrWhiteSpace(item.ActionUrl) ? "Mark as read: " + item.Title : "Open: " + item.Title)">
+
+                                    <!-- Indicator Edge -->
+                                    <div class="notification-row__edge" aria-hidden="true"></div>
+
+                                    <!-- Icon Container -->
+                                    <div class="notification-row__icon-wrap">
+                                        <div class="notification-row__icon @item.Tone">
+                                            <i class="fa-solid @item.Icon"></i>
+                                        </div>
+                                    </div>
+
+                                    <!-- Body Content -->
+                                    <div class="notification-row__body">
+                                        <div class="notification-row__header">
+                                            <div class="notification-row__title-group">
+                                                <h2 class="notification-row__title">@item.Title</h2>
+                                                @if (item.NeedsAttention)
+                                                {
+                                                    <span class="notification-pill-badge badge-attention">
+                                                        <i class="fa-solid fa-triangle-exclamation"></i> Action required
+                                                    </span>
+                                                }
+                                                @if (!item.IsRead)
+                                                {
+                                                    <span class="notification-pill-badge badge-unread">New</span>
+                                                }
+                                            </div>
+
+                                            <div class="notification-row__timestamp" title="@item.CreatedAt.ToString("f")">
+                                                <i class="fa-regular fa-clock"></i>
+                                                <span>@FormatTimeAgo(item.CreatedAt)</span>
+                                            </div>
+                                        </div>
+
+                                        <p class="notification-row__message">@item.Message</p>
+
+                                        <div class="notification-row__footer">
+                                            <div class="notification-row__meta">
+                                                <span class="notification-status-badge tone-@item.Tone">
+                                                    <span class="status-badge-dot"></span>
+                                                    @item.Status
+                                                </span>
+                                                <span class="notification-date-badge">
+                                                    <i class="fa-regular fa-calendar me-1"></i>@item.CreatedAt.ToString("MMM dd, yyyy")
+                                                </span>
+                                            </div>
+
+                                            @if (!string.IsNullOrWhiteSpace(item.ActionUrl))
+                                            {
+                                                <div class="notification-row__action">
+                                                    <span class="notification-action-btn">
+                                                        <span>@item.ActionText</span>
+                                                        <i class="fa-solid fa-arrow-right"></i>
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </article>
                             }
-                        </article>
-                    }
-                </section>
+                        </div>
+
+                        <!-- Filter Empty State -->
+                        <div id="notificationsFilterEmpty" class="notifications-filter-empty" style="display: none;">
+                            <div class="notifications-filter-empty__icon">
+                                <i class="fa-solid fa-filter-circle-xmark"></i>
+                            </div>
+                            <h3>No matching notifications</h3>
+                            <p>No notifications match your current filter or search criteria.</p>
+                            <button type="button" id="resetFilterBtn" class="btn cc-action-button cc-action-button--secondary mt-2">
+                                <i class="fa-solid fa-arrow-rotate-left me-1"></i>Reset filters
+                            </button>
+                        </div>
+                    </div>
+                }
             </div>
-        }
+        </main>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            var searchInput = document.getElementById("notificationsSearch");
+            var clearSearchBtn = document.getElementById("clearSearchBtn");
+            var chips = document.querySelectorAll("#notificationsChips .chip");
+            var statCards = document.querySelectorAll(".notifications-stat-card");
+            var rows = document.querySelectorAll(".notification-row");
+            var emptyState = document.getElementById("notificationsFilterEmpty");
+            var resetFilterBtn = document.getElementById("resetFilterBtn");
+            var currentFilter = "all";
+
+            function applyFilters() {
+                var query = (searchInput ? searchInput.value : "").trim().toLowerCase();
+                var visibleCount = 0;
+
+                if (clearSearchBtn) {
+                    clearSearchBtn.style.display = query.length > 0 ? "block" : "none";
+                }
+
+                rows.forEach(function (row) {
+                    var isUnread = row.classList.contains("is-unread");
+                    var isAttention = row.classList.contains("needs-attention");
+                    var isRead = row.classList.contains("is-read");
+
+                    var matchesCategory = false;
+                    if (currentFilter === "all") matchesCategory = true;
+                    else if (currentFilter === "unread") matchesCategory = isUnread;
+                    else if (currentFilter === "attention") matchesCategory = isAttention;
+                    else if (currentFilter === "read") matchesCategory = isRead;
+
+                    var searchText = (row.dataset.search || "").toLowerCase();
+                    var matchesQuery = !query || searchText.indexOf(query) !== -1;
+
+                    if (matchesCategory && matchesQuery) {
+                        row.style.display = "";
+                        visibleCount++;
+                    } else {
+                        row.style.display = "none";
+                    }
+                });
+
+                if (emptyState) {
+                    emptyState.style.display = (visibleCount === 0 && rows.length > 0) ? "block" : "none";
+                }
+            }
+
+            // Filter Chips Click
+            chips.forEach(function (chip) {
+                chip.addEventListener("click", function () {
+                    chips.forEach(function (c) { c.classList.remove("is-active"); });
+                    chip.classList.add("is-active");
+                    currentFilter = chip.dataset.filter;
+
+                    // Sync stat card active state
+                    statCards.forEach(function (sc) {
+                        sc.classList.toggle("is-active", sc.dataset.statFilter === currentFilter);
+                    });
+
+                    applyFilters();
+                });
+            });
+
+            // Stat Cards Click
+            statCards.forEach(function (card) {
+                card.addEventListener("click", function () {
+                    var filter = card.dataset.statFilter;
+                    if (!filter) return;
+
+                    var matchingChip = document.querySelector('#notificationsChips .chip[data-filter="' + filter + '"]');
+                    if (matchingChip) {
+                        matchingChip.click();
+                    } else {
+                        statCards.forEach(function (sc) { sc.classList.remove("is-active"); });
+                        card.classList.add("is-active");
+                        currentFilter = filter;
+                        applyFilters();
+                    }
+                });
+
+                card.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        card.click();
+                    }
+                });
+            });
+
+            // Search Input
+            if (searchInput) {
+                searchInput.addEventListener("input", applyFilters);
+            }
+
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener("click", function () {
+                    if (searchInput) {
+                        searchInput.value = "";
+                        searchInput.focus();
+                    }
+                    applyFilters();
+                });
+            }
+
+            if (resetFilterBtn) {
+                resetFilterBtn.addEventListener("click", function () {
+                    if (searchInput) searchInput.value = "";
+                    var allChip = document.querySelector('#notificationsChips .chip[data-filter="all"]');
+                    if (allChip) allChip.click();
+                });
+            }
+
+            function markNotificationAsRead(id) {
+                var body = new URLSearchParams();
+                if (token) body.append("__RequestVerificationToken", token);
+                return fetch("/Notifications/MarkAsRead?id=" + encodeURIComponent(id), {
+                    method: "POST",
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    body: body
+                });
+            }
+
+            function handleNotificationClick(row) {
+                var url = row.dataset.actionUrl;
+                var id = row.dataset.notificationId;
+                var isUnread = row.classList.contains("is-unread");
+                var hadAttention = row.classList.contains("needs-attention");
+
+                if (!isUnread || !id) {
+                    if (url) window.location.href = url;
+                    return;
+                }
+
+                // Instantly update UI
+                row.classList.remove("is-unread", "needs-attention");
+                row.classList.add("is-read");
+                row.dataset.status = "read";
+
+                var newBadge = row.querySelector(".badge-unread");
+                if (newBadge) newBadge.remove();
+
+                var attBadge = row.querySelector(".badge-attention");
+                if (attBadge) attBadge.remove();
+
+                // Update Counters
+                var statUnread = document.getElementById("statUnreadCount");
+                var chipUnread = document.getElementById("chipUnreadCount");
+                var statRead = document.getElementById("statReadCount");
+                var chipRead = document.getElementById("chipReadCount");
+                var statAttention = document.getElementById("statAttentionCount");
+                var chipAttention = document.getElementById("chipAttentionCount");
+
+                if (statUnread) {
+                    var curUnread = Math.max(0, parseInt(statUnread.textContent || "0", 10) - 1);
+                    statUnread.textContent = curUnread;
+                    if (chipUnread) chipUnread.textContent = curUnread;
+
+                    if (curUnread === 0) {
+                        var statUnreadCard = document.querySelector('.notifications-stat-card[data-stat-filter="unread"]');
+                        if (statUnreadCard) {
+                            statUnreadCard.classList.remove("has-unread");
+                            var liveDot = statUnreadCard.querySelector(".notifications-live-pulse");
+                            if (liveDot) liveDot.remove();
+                        }
+                        var heroTools = document.getElementById("notificationsHeroTools");
+                        if (heroTools) {
+                            heroTools.innerHTML = '<div class="notifications-caught-up-pill"><i class="fa-solid fa-circle-check"></i><span>All caught up</span></div>';
+                        }
+                    }
+                }
+
+                if (statRead) {
+                    var curRead = parseInt(statRead.textContent || "0", 10) + 1;
+                    statRead.textContent = curRead;
+                    if (chipRead) chipRead.textContent = curRead;
+                }
+
+                if (hadAttention && statAttention) {
+                    var curAtt = Math.max(0, parseInt(statAttention.textContent || "0", 10) - 1);
+                    statAttention.textContent = curAtt;
+                    if (chipAttention) chipAttention.textContent = curAtt;
+                    if (curAtt === 0) {
+                        var statAttCard = document.querySelector('.notifications-stat-card[data-stat-filter="attention"]');
+                        if (statAttCard) statAttCard.classList.remove("has-attention");
+                        var chipAttBtn = document.getElementById("chipAttentionBtn");
+                        if (chipAttBtn) chipAttBtn.style.display = "none";
+                    }
+                }
+
+                if (typeof updateNotificationBadge === "function") {
+                    updateNotificationBadge();
+                }
+
+                // Send request
+                markNotificationAsRead(id)
+                    .catch(function (err) {
+                        console.debug("Failed to mark read on server", err);
+                    })
+                    .finally(function () {
+                        if (url) window.location.href = url;
+                    });
+            }
+
+            // Bind row click & keyboard
+            rows.forEach(function (row) {
+                row.addEventListener("click", function (e) {
+                    handleNotificationClick(row);
+                });
+                row.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleNotificationClick(row);
+                    }
+                });
+            });
+
+            // Mark All As Read Form
+            var markAllForm = document.getElementById("markAllReadForm");
+            if (markAllForm) {
+                markAllForm.addEventListener("submit", function (e) {
+                    e.preventDefault();
+                    var btn = document.getElementById("markAllReadBtn");
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i><span>Updating...</span>';
+                    }
+
+                    var body = new URLSearchParams(new FormData(markAllForm));
+                    fetch(markAllForm.action, {
+                        method: "POST",
+                        body: body,
+                        headers: { "X-Requested-With": "XMLHttpRequest" }
+                    }).then(function (res) {
+                        if (!res.ok) throw new Error("Mark all read failed");
+
+                        rows.forEach(function (row) {
+                            row.classList.remove("needs-attention", "is-unread");
+                            row.classList.add("is-read");
+                            row.dataset.status = "read";
+                            var unreadPill = row.querySelector(".badge-unread");
+                            if (unreadPill) unreadPill.remove();
+                            var attPill = row.querySelector(".badge-attention");
+                            if (attPill) attPill.remove();
+                        });
+
+                        var totalRows = rows.length;
+                        var statUnread = document.getElementById("statUnreadCount");
+                        var chipUnread = document.getElementById("chipUnreadCount");
+                        var statRead = document.getElementById("statReadCount");
+                        var chipRead = document.getElementById("chipReadCount");
+                        var statAttention = document.getElementById("statAttentionCount");
+                        var chipAttention = document.getElementById("chipAttentionCount");
+
+                        if (statUnread) statUnread.textContent = "0";
+                        if (chipUnread) chipUnread.textContent = "0";
+                        if (statRead) statRead.textContent = totalRows;
+                        if (chipRead) chipRead.textContent = totalRows;
+                        if (statAttention) statAttention.textContent = "0";
+                        if (chipAttention) chipAttention.textContent = "0";
+
+                        var statUnreadCard = document.querySelector('.notifications-stat-card[data-stat-filter="unread"]');
+                        if (statUnreadCard) {
+                            statUnreadCard.classList.remove("has-unread");
+                            var liveDot = statUnreadCard.querySelector(".notifications-live-pulse");
+                            if (liveDot) liveDot.remove();
+                        }
+
+                        var statAttCard = document.querySelector('.notifications-stat-card[data-stat-filter="attention"]');
+                        if (statAttCard) statAttCard.classList.remove("has-attention");
+
+                        var chipAttBtn = document.getElementById("chipAttentionBtn");
+                        if (chipAttBtn) chipAttBtn.style.display = "none";
+
+                        var heroTools = document.getElementById("notificationsHeroTools");
+                        if (heroTools) {
+                            heroTools.innerHTML = '<div class="notifications-caught-up-pill"><i class="fa-solid fa-circle-check"></i><span>All caught up</span></div>';
+                        }
+
+                        if (typeof updateNotificationBadge === "function") {
+                            updateNotificationBadge();
+                        }
+
+                        applyFilters();
+                    }).catch(function (err) {
+                        console.error("Mark all read failed", err);
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fa-solid fa-check-double me-1"></i><span>Mark all as read</span>';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+}

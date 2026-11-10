@@ -19,12 +19,14 @@ namespace Clean_Connect.Infrastructure.Context
         public DbSet<ServiceType> ServiceTypes { get; set; }    
 
         public DbSet<Booking> Bookings { get; set; }
+        public DbSet<BookingChat> BookingChats { get; set; }
         public DbSet<Ratings> Ratings { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<WorkerBankDetail> WorkerBankDetails { get; set; }
         public DbSet<Escrow> Escrows { get; set; }
         public DbSet<Coupon> Coupons { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<PlatformSettings> PlatformSettings { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

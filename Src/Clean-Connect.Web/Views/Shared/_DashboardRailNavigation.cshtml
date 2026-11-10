@@ -1,0 +1,51 @@
+@{
+    var isWorker = User.IsInRole("Worker");
+    var roleName = isWorker ? "Worker" : "Client";
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    bool IsActive(string targetController, string targetAction) =>
+        string.Equals(controller, targetController, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(action, targetAction, StringComparison.OrdinalIgnoreCase);
+}
+<div class="cc-rail__header">
+    <button type="button"
+            class="cc-rail__toggle"
+            id="ccSidebarToggle"
+            aria-label="Collapse sidebar"
+            aria-controls="ccSidebar"
+            aria-expanded="true"
+            title="Collapse sidebar">
+        <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
+        <span>Collapse sidebar</span>
+    </button>
+</div>
+<button class="cc-rail__close" aria-label="Close navigation"><i class="fa-solid fa-xmark"></i></button>
+<nav class="cc-rail__nav" aria-label="@roleName dashboard navigation">
+    @if (isWorker)
+    {
+        <a class="cc-rail__link @(IsActive("Worker", "Dashboard") ? "is-active" : "")" asp-controller="Worker" asp-action="Dashboard" aria-label="Overview" title="Overview"><i class="fa-solid fa-table-cells-large"></i><span>Overview</span></a>
+        <a class="cc-rail__link @(IsActive("Booking", "Responses") ? "is-active" : "")" asp-controller="Booking" asp-action="Responses" aria-label="Requests" title="Requests"><i class="fa-solid fa-inbox"></i><span>Requests</span></a>
+        <a class="cc-rail__link @(IsActive("Booking", "Messages") || IsActive("Booking", "Chat") ? "is-active" : "")" asp-controller="Booking" asp-action="Messages" aria-label="Messages" title="Messages"><i class="fa-solid fa-comments"></i><span>Messages</span><span class="cc-rail__badge" id="messagesUnreadBadge" data-messages-badge data-count="0" hidden>0</span></a>
+        <a class="cc-rail__link @(IsActive("Worker", "PayoutDetails") ? "is-active" : "")" href="/Payout-Details" aria-label="Payout details" title="Payout details"><i class="fa-solid fa-bank"></i><span>Payout details</span></a>
+        <a class="cc-rail__link @(IsActive("Notifications", "Index") ? "is-active" : "")" asp-controller="Notifications" asp-action="Index" aria-label="Updates" title="Updates"><i class="fa-solid fa-bell"></i><span>Updates</span></a>
+        <a class="cc-rail__link" href="/Update-Worker-Details" aria-label="Profile" title="Profile"><i class="fa-solid fa-user-gear"></i><span>Profile</span></a>
+    }
+    else
+    {
+        <a class="cc-rail__link @(IsActive("Client", "Dashboard") ? "is-active" : "")" asp-controller="Client" asp-action="Dashboard" aria-label="Overview" title="Overview"><i class="fa-solid fa-table-cells-large"></i><span>Overview</span></a>
+        <a class="cc-rail__link @(IsActive("Booking", "ChooseWorker") ? "is-active" : "")" asp-controller="Booking" asp-action="ChooseWorker" aria-label="Book a Cleaning" title="Book a Cleaning"><i class="fa-solid fa-calendar-plus"></i><span>Book a Cleaning</span></a>
+        <a class="cc-rail__link @(IsActive("Booking", "ClientResponses") ? "is-active" : "")" asp-controller="Booking" asp-action="ClientResponses" aria-label="My Bookings" title="My Bookings"><i class="fa-solid fa-clipboard-check"></i><span>My Bookings</span></a>
+        <a class="cc-rail__link @(IsActive("Booking", "Messages") || IsActive("Booking", "Chat") ? "is-active" : "")" asp-controller="Booking" asp-action="Messages" aria-label="Messages" title="Messages"><i class="fa-solid fa-comments"></i><span>Messages</span><span class="cc-rail__badge" id="messagesUnreadBadge" data-messages-badge data-count="0" hidden>0</span></a>
+        <a class="cc-rail__link @(IsActive("Money", "Index") ? "is-active" : "")" asp-controller="Money" asp-action="Index" aria-label="Payments" title="Payments"><i class="fa-solid fa-credit-card"></i><span>Payments</span></a>
+        <a class="cc-rail__link @(IsActive("Notifications", "Index") ? "is-active" : "")" asp-controller="Notifications" asp-action="Index" aria-label="Updates" title="Updates"><i class="fa-solid fa-bell"></i><span>Updates</span></a>
+        <a class="cc-rail__link" href="/Update-Client-Details" aria-label="Profile" title="Profile"><i class="fa-solid fa-id-card"></i><span>Profile</span></a>
+    }
+</nav>
+<div class="cc-rail__footer">
+    <form method="post" asp-controller="Auth" asp-action="Logout">
+        @Html.AntiForgeryToken()
+        <button class="cc-rail__link cc-rail__logout" type="submit" aria-label="Logout" title="Logout">
+            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Logout</span>
+        </button>
+    </form>
+</div>

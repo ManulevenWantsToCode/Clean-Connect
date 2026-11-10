@@ -19,6 +19,8 @@ namespace Clean_Connect.Application.DTO
         public decimal Amount { get; set; }
         public Authorization Authorization { get; set; }
         public string Status { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("transfer_code")]
+        public string? TransferCode { get; set; }
         public PaystackCustomerDto Customer { get; set; }
     }
 
