@@ -1,5 +1,6 @@
 using Clean_Connect.Application.Command.BookingCommand;
 using MediatR;
+using Clean_Connect.Infrastructure.Operational;
 
 namespace Clean_Connect.Web.Services
 {
@@ -26,6 +27,7 @@ namespace Clean_Connect.Web.Services
 
             do
             {
+                using var correlationScope = BackgroundCorrelationScope.Begin(_logger, nameof(BookingExpirationService));
                 try
                 {
                     using var scope = _scopeFactory.CreateScope();

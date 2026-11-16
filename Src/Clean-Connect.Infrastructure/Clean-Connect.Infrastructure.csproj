@@ -35,4 +35,8 @@
 	  <ProjectReference Include="..\Clean-Connect.Domain\Clean-Connect.Domain.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
 </Project>

@@ -26,7 +26,7 @@ namespace Clean_Connect.Application.Command.Services
             _logger = logger;
         }
 
-        public async Task<PaystackInitResponse> InitializePayment(decimal amount, string email, string reference, string? callbackUrl = null)
+        public async Task<PaystackInitResponse> InitializePayment(decimal amount, string email, string reference, string? callbackUrl = null, string? currency = null)
         {
             
             _logger.LogInformation("Initializing Paystack payment.");
@@ -34,9 +34,11 @@ namespace Clean_Connect.Application.Command.Services
             var requestData = new Dictionary<string, object>
             {
                 ["email"] = email,
-                ["amount"] = (int)(amount * 100), // Paystack expects amount in kobo
+                ["amount"] = ToMinorUnits(amount), // Paystack expects amount in the currency's minor unit
                 ["reference"] = reference
             };
+
+            requestData["currency"] = string.IsNullOrWhiteSpace(currency) ? "NGN" : currency.Trim().ToUpperInvariant();
 
             if (!string.IsNullOrWhiteSpace(callbackUrl))
             {
@@ -45,7 +47,7 @@ namespace Clean_Connect.Application.Command.Services
             
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
-            var response = await _httpClient.PostAsJsonAsync($"{_paystackBase}/transaction/initialize", requestData);
+            using var response = await _httpClient.PostAsJsonAsync($"{_paystackBase}/transaction/initialize", requestData);
 
             _logger.LogInformation("Received response from Paystack initialization: {StatusCode}", response.StatusCode);
 
@@ -63,6 +65,8 @@ namespace Clean_Connect.Application.Command.Services
                     Reference = paystackResponse.Data.Reference
                 };
             }
+            if ((int)response.StatusCode is >= 400 and < 500 && response.StatusCode != System.Net.HttpStatusCode.Conflict)
+                throw new PaystackInitializationRejectedException();
             _logger.LogError("Paystack payment initialization failed with status {StatusCode}.", (int)response.StatusCode);
             throw new HttpRequestException("Paystack payment initialization failed.");
         }
@@ -73,9 +77,11 @@ namespace Clean_Connect.Application.Command.Services
             _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
-            var response = await _httpClient.GetAsync(
+            using var response = await _httpClient.GetAsync(
                 $"{_paystackBase}/transaction/verify/{Uri.EscapeDataString(reference)}"
             );
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                throw new PaystackTransactionNotFoundException();
             _logger.LogInformation("Paystack transaction verification returned status {StatusCode}.", (int)response.StatusCode);
             response.EnsureSuccessStatusCode();
 
@@ -249,22 +255,42 @@ namespace Clean_Connect.Application.Command.Services
             return checked((int)minorUnits);
         }
 
-        public async Task<bool> RefundTransactionAsync(string transactionReference, decimal amount, CancellationToken cancellationToken)
+        public async Task<bool> RefundTransactionAsync(string transactionReference, decimal amount, CancellationToken cancellationToken, string? refundReference = null, string? currency = null)
         {
             _logger.LogInformation("Initiating Paystack refund.");
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _paystackSecretKey);
 
-            var amountKobo = (int)(amount * 100m);
+            if (string.IsNullOrWhiteSpace(refundReference) || refundReference.Length is < 8 or > 64
+                || refundReference.Any(ch => !(char.IsAsciiLetterOrDigit(ch) || ch is '_' or '-')))
+                throw new ArgumentException("A valid persisted Paystack refund reference is required.", nameof(refundReference));
+            var minorUnits = amount * 100m;
+            if (amount <= 0 || minorUnits != decimal.Truncate(minorUnits))
+                throw new ArgumentException("Refund amount must be positive and have at most two decimal places.", nameof(amount));
+            var amountKobo = checked((int)minorUnits);
             var requestData = new
             {
                 transaction = transactionReference,
-                amount = amountKobo
+                amount = amountKobo,
+                reference = refundReference,
+                currency = string.IsNullOrWhiteSpace(currency) ? "NGN" : currency.Trim().ToUpperInvariant()
             };
 
             var response = await _httpClient.PostAsJsonAsync($"{_paystackBase}/refund", requestData, cancellationToken);
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            // A duplicate Paystack refund reference is not treated as success until the
+            // existing refund is fetched and checked against this attempt.
+            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                var existing = await GetRefundByReferenceAsync(refundReference, cancellationToken);
+                return existing is not null
+                    && string.Equals(existing.Reference, refundReference, StringComparison.OrdinalIgnoreCase)
+                    && existing.Amount == amountKobo
+                    && string.Equals(existing.Currency, currency ?? "NGN", StringComparison.OrdinalIgnoreCase)
+                    && existing.Status is "pending" or "processing" or "processed";
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -282,6 +308,20 @@ namespace Clean_Connect.Application.Command.Services
 
             _logger.LogInformation("Paystack refund request completed with status {Status}.", paystackResponse.Data?.Status);
             return true;
+        }
+
+        private async Task<PaystackRefundData?> GetRefundByReferenceAsync(string refundReference, CancellationToken cancellationToken)
+        {
+            using var response = await _httpClient.GetAsync(
+                $"{_paystackBase}/refund?reference={Uri.EscapeDataString(refundReference)}", cancellationToken);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Paystack refund lookup failed ({(int)response.StatusCode}).");
+            var result = await response.Content.ReadFromJsonAsync<PaystackRefundListResponse>(cancellationToken: cancellationToken);
+            return result?.Status == true
+                ? result.Data?.FirstOrDefault(item => string.Equals(item.Reference, refundReference, StringComparison.OrdinalIgnoreCase))
+                : null;
         }
 
         public async Task<List<PaystackBankResponse>> ListBanksAsync(string currency, CancellationToken cancellationToken)

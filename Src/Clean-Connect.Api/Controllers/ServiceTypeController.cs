@@ -4,6 +4,8 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
+using Clean_Connect.Infrastructure.Operational;
 
 namespace Clean_Connect.Api.Controllers
 {
@@ -42,6 +44,7 @@ namespace Clean_Connect.Api.Controllers
 
         [HttpGet("Get-all-service-types")]
         [AllowAnonymous]
+        [EnableRateLimiting(RateLimitConfiguration.PublicRead)]
 
         public async Task<ActionResult> GetAllServiceTypes(CancellationToken cancellationToken)
         {
@@ -55,6 +58,7 @@ namespace Clean_Connect.Api.Controllers
 
         [HttpGet("Get-service-type-by-id/{id}")]
         [AllowAnonymous]
+        [EnableRateLimiting(RateLimitConfiguration.PublicRead)]
         public async Task<ActionResult> GetServiceTypeById(Guid id, CancellationToken cancellationToken)
         {
             logger.LogInformation("Get service type by ID operation started");

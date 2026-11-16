@@ -1,11 +1,15 @@
 using Clean_Connect.Application.Command.CouponCommand;
 using Clean_Connect.Application.Query.CouponQuery;
 using MediatR;
+using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.DTO.Pagination;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.RateLimiting;
+using Clean_Connect.Infrastructure.Operational;
 
 namespace Clean_Connect.Api.Controllers
 {
@@ -14,10 +18,12 @@ namespace Clean_Connect.Api.Controllers
     public class CouponController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly IPagedReadRepository _pagedReads;
 
-        public CouponController(IMediator mediator)
+        public CouponController(IMediator mediator, IPagedReadRepository pagedReads)
         {
             _mediator = mediator;
+            _pagedReads = pagedReads;
         }
 
         [HttpPost]
@@ -50,15 +56,15 @@ namespace Clean_Connect.Api.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAllCoupons(CancellationToken cancellationToken)
+        public async Task<IActionResult> GetAllCoupons([FromQuery] CouponPageRequest page, CancellationToken cancellationToken)
         {
-            var query = new GetAllCouponsQuery();
-            var result = await _mediator.Send(query, cancellationToken);
+            var result = await _pagedReads.GetCouponsAsync(page, cancellationToken);
             return Ok(result);
         }
 
         [HttpGet("{code}")]
         [AllowAnonymous]
+        [EnableRateLimiting(RateLimitConfiguration.PublicRead)]
         public async Task<IActionResult> GetCouponByCode(string code, CancellationToken cancellationToken)
         {
             var query = new GetCouponByCodeQuery(code);
@@ -72,6 +78,7 @@ namespace Clean_Connect.Api.Controllers
 
         [HttpGet("validate/{code}")]
         [AllowAnonymous]
+        [EnableRateLimiting(RateLimitConfiguration.PublicRead)]
         public async Task<IActionResult> ValidateCoupon(string code, CancellationToken cancellationToken)
         {
             var query = new ValidateCouponQuery(code);

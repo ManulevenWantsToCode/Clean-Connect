@@ -1,6 +1,7 @@
 using Clean_Connect.Application.Command.Services;
 using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Domain.Enums;
+using Clean_Connect.Infrastructure.Operational;
 
 namespace Clean_Connect.Web.Services
 {
@@ -13,6 +14,7 @@ namespace Clean_Connect.Web.Services
             using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
             while (!stoppingToken.IsCancellationRequested)
             {
+                using var correlationScope = BackgroundCorrelationScope.Begin(logger, nameof(PayoutRecoveryService));
                 try
                 {
                     await ReconcileAsync(stoppingToken);
@@ -23,7 +25,7 @@ namespace Clean_Connect.Web.Services
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Payout recovery sweep failed.");
+                    logger.LogError("Payout recovery sweep failed with exception type {ExceptionType}.", ex.GetType().Name);
                 }
 
                 try

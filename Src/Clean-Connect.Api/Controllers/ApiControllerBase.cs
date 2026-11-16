@@ -1,5 +1,6 @@
 using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Domain.Entities;
+using Clean_Connect.Application.DTO.Pagination;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -15,6 +16,12 @@ public abstract class ApiControllerBase(IUnitOfWork unitOfWork) : ControllerBase
 
     protected string? CurrentUserEmail =>
         User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue(ClaimTypes.Name);
+
+    protected static bool HasValidDateRange(BookingPageRequest request) =>
+        !request.FromDate.HasValue || !request.ToDate.HasValue || request.FromDate <= request.ToDate;
+
+    protected static bool HasValidDateRange(PaymentPageRequest request) =>
+        !request.FromDate.HasValue || !request.ToDate.HasValue || request.FromDate <= request.ToDate;
 
     protected async Task<Client?> GetCurrentClientAsync(CancellationToken cancellationToken)
     {

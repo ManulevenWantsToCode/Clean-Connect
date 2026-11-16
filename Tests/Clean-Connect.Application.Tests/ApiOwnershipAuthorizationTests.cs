@@ -76,6 +76,12 @@ public sealed class ApiOwnershipAuthorizationTests
         AssertRole<BookingController>(nameof(BookingController.CreateBooking), "Client");
         AssertRole<PaymentController>(nameof(PaymentController.Initialize), "Client");
         AssertRole<PaymentController>(nameof(PaymentController.RequestPayout), "Worker");
+        AssertRole<PaymentController>(nameof(PaymentController.GetQuarantinedWebhooks), "Admin");
+        AssertRole<PaymentController>(nameof(PaymentController.RequeueQuarantinedWebhook), "Admin");
+        AssertRole<BookingController>(nameof(BookingController.GetAdminBookings), "Admin");
+        AssertRole<ClientController>(nameof(ClientController.GetClientBookingsById), "Client,Admin");
+        AssertRole<WorkerController>(nameof(WorkerController.GetWorkerBookingsById), "Worker");
+        AssertRole<WorkerController>(nameof(WorkerController.GetAllWorkers), "Admin");
     }
 
     [Fact]

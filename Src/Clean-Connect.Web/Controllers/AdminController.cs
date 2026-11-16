@@ -20,6 +20,7 @@ namespace Clean_Connect.Web.Controllers
         private readonly IConfiguration _config;
         private readonly IRealtimeNotificationService _notifications;
         private readonly PayoutService _payoutService;
+        private readonly RefundService _refundService;
         private readonly IPlatformSettingsRepository _platformSettings;
 
         private static readonly BookingStatus[] ActiveStatuses =
@@ -32,7 +33,7 @@ namespace Clean_Connect.Web.Controllers
             BookingStatus.AwaitingClientConfirmation
         };
 
-        public AdminController(IUnitOfWork repo, ILogger<AdminController> logger, UserManager<ApplicationUser> userManager, IConfiguration config, IRealtimeNotificationService notifications, PayoutService payoutService, IPlatformSettingsRepository platformSettings)
+        public AdminController(IUnitOfWork repo, ILogger<AdminController> logger, UserManager<ApplicationUser> userManager, IConfiguration config, IRealtimeNotificationService notifications, PayoutService payoutService, RefundService refundService, IPlatformSettingsRepository platformSettings)
         {
             _repo = repo;
             _logger = logger;
@@ -40,6 +41,7 @@ namespace Clean_Connect.Web.Controllers
             _config = config;
             _notifications = notifications;
             _payoutService = payoutService;
+            _refundService = refundService;
             _platformSettings = platformSettings;
         }
 
@@ -1066,14 +1068,8 @@ namespace Clean_Connect.Web.Controllers
                         break;
 
                     case "Refund":
-                        booking.RefundPayment();
-                        var refundEscrow = await _repo.Escrows.GetByBookingId(bookingId, ct);
-                        if (refundEscrow != null && refundEscrow.Status == EscrowStatus.Held)
-                        {
-                            refundEscrow.MarkAsRefunded(admin);
-                            await _repo.Escrows.UpdateEscrow(refundEscrow, ct);
-                        }
-                        break;
+                        var refund = await _refundService.RequestRefundAsync(booking, ct);
+                        return Json(new { ok = refund.Accepted, status = refund.Status, message = refund.Message });
 
                     default:
                         return Json(new { ok = false, message = "Unknown status action." });

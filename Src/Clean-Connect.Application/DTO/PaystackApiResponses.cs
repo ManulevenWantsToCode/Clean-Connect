@@ -8,8 +8,8 @@ namespace Clean_Connect.Application.DTO
         PaystackInitializeData? Data);
 
     public sealed record PaystackInitializeData(
-        [property: JsonPropertyName("authorization_url")] string AuthorizationUrl,
-        string Reference);
+        [property: JsonPropertyName("authorization_url")] string? AuthorizationUrl,
+        string? Reference);
 
     public sealed record PaystackTransferRecipientResponse(
         bool Status,
@@ -27,7 +27,15 @@ namespace Clean_Connect.Application.DTO
         PaystackRefundData? Data);
 
     public sealed record PaystackRefundData(
+        [property: JsonPropertyName("reference")] string? Reference,
+        [property: JsonPropertyName("amount")] int Amount,
+        [property: JsonPropertyName("currency")] string? Currency,
         [property: JsonPropertyName("status")] string? Status);
+
+    public sealed record PaystackRefundListResponse(
+        bool Status,
+        string? Message,
+        List<PaystackRefundData>? Data);
 
     public sealed record PaystackBankResponse(
         [property: JsonPropertyName("name")] string Name,

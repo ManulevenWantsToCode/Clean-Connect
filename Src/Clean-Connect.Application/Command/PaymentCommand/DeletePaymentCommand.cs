@@ -40,7 +40,7 @@ namespace Clean_Connect.Application.Command.PaymentCommand
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error deleting payment with ID {PaymentId}", request.PaymentId);
+                logger.LogError("Error deleting payment {PaymentId}; exception type {ExceptionType}.", request.PaymentId, ex.GetType().Name);
                 throw;
             }
         }

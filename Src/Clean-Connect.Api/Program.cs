@@ -10,6 +10,7 @@ using Clean_Connect.Infrastructure.Configuration;
 using Clean_Connect.Infrastructure.Context;
 using Clean_Connect.Persistence.Repositories;
 using Clean_Connect.Api.Security;
+using Clean_Connect.Infrastructure.Operational;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -28,6 +29,7 @@ RequiredConfiguration.ValidateProduction(builder.Configuration, builder.Environm
 // --------------------
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
+    .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
@@ -49,6 +51,12 @@ builder.Services.AddNpgsql<ApplicationDbContext>(
     builder.Configuration.GetConnectionString("DefaultConnection"),
     b => b.UseNetTopologySuite()
           .MigrationsAssembly("Clean-Connect.Persistence"));
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+builder.Services.AddConfiguredRateLimits(builder.Configuration);
+builder.Services.AddTrustedForwardedHeaders(builder.Configuration);
+builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+builder.Services.AddHttpContextAccessor();
 // --------------------
 // Identity Core for API
 // --------------------
@@ -170,12 +178,18 @@ builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IBookingChatRepository, BookingChatRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.Configure<PaystackWebhookRecoveryOptions>(builder.Configuration.GetSection(PaystackWebhookRecoveryOptions.SectionName));
+builder.Services.AddScoped<ITransactionManager, TransactionManager>();
+builder.Services.AddScoped<IPaystackWebhookInboxRepository, PaystackWebhookInboxRepository>();
+builder.Services.AddHostedService<Clean_Connect.Api.Services.PaystackWebhookRecoveryService>();
 builder.Services.AddScoped<IWorkerBankDetailRepository, WorkerBankDetailRepository>();
 builder.Services.AddScoped<IEscrowRepository, EscrowRepository>();
 builder.Services.AddScoped<ICouponRepository, CouponRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IPlatformSettingsRepository, PlatformSettingsRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IPagedReadRepository, PagedReadRepository>();
+builder.Services.AddScoped<IAuditTrailWriter, AuditTrailWriter>();
 
 // --------------------
 // FluentValidation
@@ -194,6 +208,10 @@ var app = builder.Build();
 // --------------------
 // Middleware
 // --------------------
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseExceptionHandler();
+app.UseForwardedHeaders();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -201,11 +219,24 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseRouting();
 
 // ? MUST come BEFORE UseAuthorization
 app.UseCors(FrontendCorsPolicy.Name);
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
+
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = HealthResponseWriter.WriteAsync
+}).AllowAnonymous();
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = HealthResponseWriter.WriteAsync
+}).AllowAnonymous();
 
 // --------------------
 // Map controllers
@@ -217,7 +248,7 @@ app.MapGet("/", context =>
 {
     context.Response.Redirect("/swagger");
     return Task.CompletedTask;
-});
+}).AllowAnonymous();
 
 using (var scope = app.Services.CreateScope())
 {

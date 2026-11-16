@@ -156,6 +156,7 @@
                                 </a>
                                 <form class="booking-payment-actions__form" asp-action="Pay" asp-controller="Booking" asp-route-bookingId="@Model.Id" method="post">
                                     @Html.AntiForgeryToken()
+                                    <input type="hidden" name="idempotencyKey" value="@Guid.NewGuid().ToString("N")" />
                                     <button type="submit" class="btn cc-action-button cc-action-button--primary cc-action-button--large booking-payment-actions__button">
                                         <i class="fa-solid fa-lock me-1"></i> Proceed to Payment (&#8358;@Model.Amount.ToString("N0"))
                                     </button>

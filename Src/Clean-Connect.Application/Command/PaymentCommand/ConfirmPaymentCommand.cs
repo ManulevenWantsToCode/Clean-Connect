@@ -3,6 +3,7 @@ using Clean_Connect.Application.DTO;
 using Clean_Connect.Application.Interface.Repositories;
 using Clean_Connect.Application.Interface.Services;
 using Clean_Connect.Domain.Enums;
+using Clean_Connect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -16,6 +17,7 @@ namespace Clean_Connect.Application.Command.PaymentCommand
         private readonly IPaystackService paystackService;
         private readonly EscrowService escrowService;
         private readonly INotificationService notificationService;
+        private readonly ITransactionManager transactionManager;
         private readonly ILogger<ConfirmPaymentCommandHandler> logger;
 
         public ConfirmPaymentCommandHandler(
@@ -23,12 +25,14 @@ namespace Clean_Connect.Application.Command.PaymentCommand
             IPaystackService paystackService,
             EscrowService escrowService,
             INotificationService notificationService,
+            ITransactionManager transactionManager,
             ILogger<ConfirmPaymentCommandHandler> logger)
         {
             this.unitOfWork = unitOfWork;
             this.paystackService = paystackService;
             this.escrowService = escrowService;
             this.notificationService = notificationService;
+            this.transactionManager = transactionManager;
             this.logger = logger;
         }
 
@@ -56,66 +60,76 @@ namespace Clean_Connect.Application.Command.PaymentCommand
             }
 
             var verification = await paystackService.VerifyTransaction(request.Reference);
-            var amountPaid = verification.Data?.Amount / 100m ?? 0m;
+            if (!verification.Status)
+                throw new HttpRequestException("Payment status could not be verified with the provider.");
+            var verificationData = verification.Data
+                ?? throw new HttpRequestException("Payment status could not be verified with the provider.");
 
-            if (!verification.Status || verification.Data?.Status != "success")
+            PaymentVerification.EnsureMatches(payment, verificationData);
+
+            if (!string.Equals(verificationData.Status, "success", StringComparison.OrdinalIgnoreCase))
             {
-                payment.MarkAsFailed(
-                    verification.Data?.GatewayResponse ?? verification.Message,
-                    verification.Data?.Id?.ToString());
-                await unitOfWork.Payments.UpdatePayment(payment, cancellationToken);
-                await unitOfWork.SaveChangesAsync(cancellationToken);
-
-                logger.LogWarning("Paystack payment verification failed.");
+                var terminalFailure = string.Equals(verificationData.Status, "failed", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(verificationData.Status, "abandoned", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(verificationData.Status, "reversed", StringComparison.OrdinalIgnoreCase);
+                var currentStatus = payment.Status;
+                if (terminalFailure)
+                {
+                    await transactionManager.ExecuteAsync(async ct =>
+                    {
+                        var current = await unitOfWork.Payments.GetFreshByReferenceAsync(request.Reference, ct);
+                        if (current?.Status == PaymentStatus.Pending)
+                        {
+                            current.MarkAsFailed(verificationData.GatewayResponse ?? verification.Message, verificationData.Id?.ToString());
+                            await unitOfWork.Payments.UpdatePayment(current, ct);
+                        }
+                        currentStatus = current?.Status ?? currentStatus;
+                    }, cancellationToken);
+                }
+                logger.LogInformation("Paystack verification returned a non-success payment state.");
                 return new PaymentConfirmationResult(
                     payment.BookingId,
                     payment.Id,
                     payment.Amount,
                     payment.PaymentReference,
                     payment.TransactionId,
-                    "failed",
-                    verification.Data?.GatewayResponse ?? verification.Message);
+                    currentStatus == PaymentStatus.Successful ? "success" : currentStatus == PaymentStatus.Failed ? "failed" : "pending",
+                    currentStatus == PaymentStatus.Failed ? verificationData.GatewayResponse ?? verification.Message : null);
             }
 
-            if (amountPaid != payment.Amount)
+            var transactionId = verificationData.Id?.ToString() ?? request.Reference;
+            Booking? confirmedBooking = null;
+            Payment? confirmedPayment = null;
+            await transactionManager.ExecuteAsync(async ct =>
             {
-                logger.LogError(
-                    "Verified payment amount did not match the recorded amount for payment {PaymentId}.",
-                    payment.Id);
-                throw new InvalidOperationException("The amount paid does not match the booking amount.");
-            }
+                confirmedPayment = await unitOfWork.Payments.GetFreshByReferenceAsync(request.Reference, ct);
+                if (confirmedPayment is null)
+                    throw new InvalidOperationException("Payment no longer exists.");
+                if (confirmedPayment.Status == PaymentStatus.Successful)
+                    return;
+                if (confirmedPayment.Status != PaymentStatus.Pending)
+                    throw new InvalidOperationException("Payment is no longer eligible for confirmation.");
 
-            var booking = await unitOfWork.Bookings.GetBookingById(payment.BookingId, cancellationToken);
-            if (booking == null)
-            {
-                logger.LogError("Booking was not found for payment {PaymentId}.", payment.Id);
-                throw new InvalidOperationException("The booking for this payment was not found.");
-            }
+                confirmedBooking = await unitOfWork.Bookings.GetBookingById(confirmedPayment.BookingId, ct);
+                if (confirmedBooking == null || confirmedBooking.Amount != confirmedPayment.Amount)
+                    throw new InvalidOperationException("The booking does not match the payment.");
 
-            if (booking.Amount != payment.Amount)
-            {
-                logger.LogError("Booking amount did not match payment {PaymentId}.", payment.Id);
-                throw new InvalidOperationException("The booking amount does not match the payment amount.");
-            }
+                confirmedPayment.MarkAsPaid(verificationData.Authorization?.AuthorizationCode ?? string.Empty, transactionId);
+                confirmedBooking.MarkAsPaid();
+                await escrowService.HoldPaymentInEscrowAsync(confirmedBooking, confirmedPayment, ct);
+                await unitOfWork.Payments.UpdatePayment(confirmedPayment, ct);
+                await unitOfWork.Bookings.UpdateBooking(confirmedBooking, ct);
+                await unitOfWork.SaveChangesAsync(ct);
+                await notificationService.PaymentConfirmedAsync(confirmedBooking, ct);
+            }, cancellationToken);
 
-            var transactionId = verification.Data?.Id?.ToString() ?? request.Reference;
-            payment.MarkAsPaid(verification.Data?.Authorization?.AuthorizationCode ?? string.Empty, transactionId);
-            booking.MarkAsPaid();
-
-            await escrowService.HoldPaymentInEscrowAsync(booking, payment, cancellationToken);
-
-            await unitOfWork.Payments.UpdatePayment(payment, cancellationToken);
-            await unitOfWork.Bookings.UpdateBooking(booking, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            await notificationService.PaymentConfirmedAsync(booking, cancellationToken);
-
-            logger.LogInformation("Payment {PaymentId} confirmed successfully.", payment.Id);
+            logger.LogInformation("Payment confirmation completed for booking {BookingId}.", payment.BookingId);
 
             return new PaymentConfirmationResult(
-                payment.BookingId,
-                payment.Id,
-                payment.Amount,
-                payment.PaymentReference,
+                confirmedPayment?.BookingId ?? payment.BookingId,
+                confirmedPayment?.Id ?? payment.Id,
+                confirmedPayment?.Amount ?? payment.Amount,
+                confirmedPayment?.PaymentReference ?? payment.PaymentReference,
                 transactionId,
                 "success",
                 null);

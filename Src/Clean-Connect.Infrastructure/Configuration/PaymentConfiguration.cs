@@ -49,6 +49,17 @@
                 builder.Property(p => p.FailureReason)
                     .HasMaxLength(500);
 
+                builder.Property(p => p.IdempotencyKey).HasMaxLength(128);
+                builder.Property(p => p.RequestHash).HasMaxLength(64);
+                builder.Property(p => p.AuthorizationUrl).HasMaxLength(2048);
+                builder.Property(p => p.Currency).HasMaxLength(3).IsRequired().HasDefaultValue("NGN");
+                builder.Property(p => p.InitializationStatus).HasConversion<string>().HasMaxLength(32).IsRequired().HasDefaultValue(global::Clean_Connect.Domain.Enums.PaymentInitializationStatus.Pending);
+                builder.Property(p => p.InitializationErrorCategory).HasMaxLength(64);
+                builder.Property(p => p.RefundStatus).HasMaxLength(30).IsRequired().HasDefaultValue("NotStarted");
+                builder.Property(p => p.RefundReference).HasMaxLength(64);
+                builder.Property(p => p.RefundAmount).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+                builder.Property(p => p.RefundedAmount).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+
                 // Indexes (VERY IMPORTANT 🔥)
                 builder.HasIndex(p => p.PaymentReference)
                     .IsUnique();
@@ -59,6 +70,18 @@
                     .HasFilter("\"Status\" = 'Successful'")
                     .IsUnique();
                 builder.HasIndex(p => p.BookingId);
+
+                builder.HasIndex(p => new { p.BookingId, p.IdempotencyKey })
+                    .IsUnique()
+                    .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+
+                builder.HasIndex(p => p.BookingId)
+                    .IsUnique()
+                    .HasFilter("\"Status\" = 'Pending'");
+
+                builder.HasIndex(p => p.RefundReference)
+                    .IsUnique()
+                    .HasFilter("\"RefundReference\" IS NOT NULL");
 
                 builder.HasIndex(p => p.Status);
 

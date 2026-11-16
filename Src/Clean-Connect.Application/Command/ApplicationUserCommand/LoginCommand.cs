@@ -5,8 +5,8 @@ using Clean_Connect.Domain.Entities;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Clean_Connect.Application.Interface.Services;
 
 namespace Clean_Connect.Application.Command.ApplicationUserCommand
 {
@@ -38,7 +38,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
         SignInManager<ApplicationUser> signInManager,
         IUnitOfWork repo,
         ILogger<RegisterUserCommandHandler> logger,
-        IConfiguration configuration) : IRequestHandler<LoginCommand, LoginResponse>
+        IAuditTrailWriter auditTrail) : IRequestHandler<LoginCommand, LoginResponse>
     {
         public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
@@ -47,6 +47,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
 
             if (appUser == null)
             {
+                await auditTrail.RecordLoginAsync(null, false, cancellationToken);
             logger.LogWarning("Login failed because the account was not found.");
 
                 return new LoginResponse
@@ -59,6 +60,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
             // Check if account is already locked
             if (await user.IsLockedOutAsync(appUser))
             {
+                await auditTrail.RecordLoginAsync(appUser.Id, false, cancellationToken);
             logger.LogWarning("Login attempt rejected for a locked account.");
 
                 return new LoginResponse
@@ -76,6 +78,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
             {
                 // Increment failed login count
                 await user.AccessFailedAsync(appUser);
+                await auditTrail.RecordLoginAsync(appUser.Id, false, cancellationToken);
 
                 // Check if this failed attempt locked the account
                 if (await user.IsLockedOutAsync(appUser))
@@ -106,6 +109,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
             // Now check email confirmation
             if (!appUser.EmailConfirmed)
             {
+                await auditTrail.RecordLoginAsync(appUser.Id, false, cancellationToken);
             logger.LogInformation("Login blocked because the account email is not confirmed.");
 
                 return new LoginResponse
@@ -127,6 +131,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 if (workerProfile == null)
                 {
                     // Sign in (creates authentication cookie) so the user can complete the profile form.
+                    await auditTrail.RecordLoginAsync(appUser.Id, true, cancellationToken);
                     await signInManager.SignInAsync(appUser, request.RememberMe);
 
                     return new LoginResponse
@@ -144,6 +149,7 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                 var updateResult = await user.UpdateAsync(appUser);
                 if (!updateResult.Succeeded)
                 {
+                    await auditTrail.RecordLoginAsync(appUser.Id, false, cancellationToken);
                     foreach (var error in updateResult.Errors)
                     {
                         logger.LogError(
@@ -165,7 +171,9 @@ namespace Clean_Connect.Application.Command.ApplicationUserCommand
                     "Repaired worker profile completion flag during login.");
             }
 
-            // Sign in (creates authentication cookie)
+            await auditTrail.RecordLoginAsync(appUser.Id, true, cancellationToken);
+
+            // Issue the session only after the login security event is durable.
             await signInManager.SignInAsync(appUser, request.RememberMe);
 
             if (roles.Contains("Client") && !appUser.IsClientProfileCompleted)

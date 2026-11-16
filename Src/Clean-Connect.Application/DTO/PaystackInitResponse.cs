@@ -9,7 +9,7 @@ namespace Clean_Connect.Application.DTO
     public class PaystackInitResponse
     {
         public bool Status { get; set; }
-        public string AuthorizationUrl { get; set; } 
-        public String Reference { get; set; } 
+        public string? AuthorizationUrl { get; set; }
+        public string? Reference { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 using Clean_Connect.Application.Command.BookingCommand;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.DTO.Pagination;
 using MediatR;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -14,12 +15,22 @@ namespace Clean_Connect.Api.Controllers
     {
         private readonly ILogger<BookingController> logger;
         private readonly IMediator mediator;
+        private readonly IPagedReadRepository pagedReads;
 
-        public BookingController(ILogger<BookingController> logger, IMediator mediator, IUnitOfWork unitOfWork)
+        public BookingController(ILogger<BookingController> logger, IMediator mediator, IUnitOfWork unitOfWork, IPagedReadRepository pagedReads)
             : base(unitOfWork)
         {
             this.logger = logger;
             this.mediator = mediator;
+            this.pagedReads = pagedReads;
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin")]
+        public async Task<IActionResult> GetAdminBookings([FromQuery] BookingPageRequest page, CancellationToken cancellationToken)
+        {
+            if (!HasValidDateRange(page)) return BadRequest(new { message = "FromDate must be earlier than or equal to ToDate." });
+            return Ok(await pagedReads.GetAdminBookingsAsync(page, cancellationToken));
         }
 
         [Authorize(Roles = "Client")]
@@ -43,15 +54,15 @@ namespace Clean_Connect.Api.Controllers
             }
             catch (BookingConflictException)
             {
-                return Conflict(new { message = "The worker is already booked for part of this time." });
+                return Problem(title: "Booking conflict", detail: "The worker is already booked for part of this time.", statusCode: StatusCodes.Status409Conflict);
             }
             catch (IdempotencyConflictException)
             {
-                return Conflict(new { message = "This Idempotency-Key was already used for a different request." });
+                return Problem(title: "Idempotency conflict", detail: "This Idempotency-Key was already used for a different request.", statusCode: StatusCodes.Status409Conflict);
             }
             catch (ValidationException)
             {
-                return BadRequest(new { message = "The booking request is invalid or does not meet current booking requirements." });
+                return Problem(title: "Validation failed", detail: "The booking request is invalid or does not meet current booking requirements.", statusCode: StatusCodes.Status400BadRequest);
             }
             logger.LogInformation("Booking creation completed");
             return result.Created ? StatusCode(201, result.BookingId) : Ok(result.BookingId);

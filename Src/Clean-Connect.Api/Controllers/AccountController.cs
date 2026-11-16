@@ -3,6 +3,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Clean_Connect.Infrastructure.Operational;
 using Clean_Connect.Api.Security;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -25,6 +27,7 @@ namespace Clean_Connect.Api.Controllers
         }
         [HttpPost("register")]
         [AllowAnonymous]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
         public async Task <ActionResult> Register([FromBody] RegisterUserCommand registerModel)
         {
           
@@ -34,6 +37,7 @@ namespace Clean_Connect.Api.Controllers
 
         [HttpGet("confirm-email")]
         [AllowAnonymous]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
         public async Task <ActionResult> ConfirmEmail([FromQuery] ConfirmEmailCommand confirmEmailModel)
         {
             var response = await _mediator.Send(confirmEmailModel);
@@ -42,6 +46,7 @@ namespace Clean_Connect.Api.Controllers
 
         [HttpPost("Login")]
         [AllowAnonymous]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
         public async Task <ActionResult> Login([FromBody] LoginCommand loginModel)
         {
             

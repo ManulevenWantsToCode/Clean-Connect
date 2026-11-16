@@ -10,6 +10,7 @@ using Clean_Connect.Web.Hubs;
 using Clean_Connect.Web.Services;
 using Clean_Connect.Infrastructure.Context;
 using Clean_Connect.Persistence.Repositories;
+using Clean_Connect.Infrastructure.Operational;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -29,6 +30,7 @@ RequiredConfiguration.ValidateProduction(builder.Configuration, builder.Environm
 // --------------------
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
+    .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
@@ -105,6 +107,9 @@ if (!string.IsNullOrWhiteSpace(googleSection["ClientId"]) && !string.IsNullOrWhi
 // Authorization
 // --------------------
 builder.Services.AddAuthorization();
+builder.Services.AddConfiguredRateLimits(builder.Configuration);
+builder.Services.AddTrustedForwardedHeaders(builder.Configuration);
+builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 // Add services to the container.
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add<Clean_Connect.Web.Services.AdminSidebarCountsFilter>());
@@ -158,12 +163,17 @@ builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IBookingChatRepository, BookingChatRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.Configure<PaystackWebhookRecoveryOptions>(builder.Configuration.GetSection(PaystackWebhookRecoveryOptions.SectionName));
 builder.Services.AddScoped<IWorkerBankDetailRepository, WorkerBankDetailRepository>();
 builder.Services.AddScoped<IEscrowRepository, EscrowRepository>();
 builder.Services.AddScoped<ICouponRepository, CouponRepository>();
+builder.Services.AddScoped<IPaystackWebhookInboxRepository, PaystackWebhookInboxRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IPlatformSettingsRepository, PlatformSettingsRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IPagedReadRepository, PagedReadRepository>();
+builder.Services.AddScoped<IAuditTrailWriter, AuditTrailWriter>();
+builder.Services.AddScoped<ITransactionManager, TransactionManager>();
 
 
 // --------------------
@@ -191,7 +201,9 @@ builder.Services.AddNotyf(config =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler("/Home/Error");
+app.UseForwardedHeaders();
 app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
 
 if (!app.Environment.IsDevelopment())
@@ -204,9 +216,20 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = HealthResponseWriter.WriteAsync
+}).AllowAnonymous();
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = HealthResponseWriter.WriteAsync
+}).AllowAnonymous();
 
 app.UseStaticFiles();
 app.MapStaticAssets();

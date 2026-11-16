@@ -288,14 +288,19 @@ namespace Clean_Connect.Application.Tests
 
         private sealed class NotUsedPaymentRepository : IPaymentRepository
         {
+            public Task<(Payment Payment, bool Created)> CreatePaymentIdempotentlyAsync(Payment payment, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task CreatePayment(Payment payment, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task DeletePayment(Guid paymentId, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task<bool> ExistsByReferenceAsync(string reference, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task<List<Payment>> GetAllPayments(CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task<Payment?> GetByReferenceAsync(string paymentReference, CancellationToken cancellationToken) => throw new NotSupportedException();
+            public Task<Payment?> GetFreshByReferenceAsync(string paymentReference, CancellationToken cancellationToken) => throw new NotSupportedException();
+            public Task<Payment?> GetByBookingAndIdempotencyKeyAsync(Guid bookingId, string idempotencyKey, CancellationToken cancellationToken) => throw new NotSupportedException();
+            public Task<Payment?> GetPendingByBookingAsync(Guid bookingId, CancellationToken cancellationToken) => throw new NotSupportedException();
+            public Task<Payment?> GetByRefundReferenceAsync(string refundReference, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task<List<Payment>> GetByStatusAsync(PaymentStatus status, CancellationToken cancellationToken) => throw new NotSupportedException();
-            public Task<Payment> GetPaymentById(Guid paymentId, CancellationToken cancellationToken) => throw new NotSupportedException();
-            public Task<List<Payment?>> GetPaymentsByBookingId(Guid bookingId, CancellationToken cancellationToken) => throw new NotSupportedException();
+            public Task<Payment?> GetPaymentById(Guid paymentId, CancellationToken cancellationToken) => throw new NotSupportedException();
+            public Task<List<Payment>> GetPaymentsByBookingId(Guid bookingId, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task UpdatePayment(Payment payment, CancellationToken cancellationToken) => throw new NotSupportedException();
         }
 

@@ -3,9 +3,12 @@ using Clean_Connect.Application.DTO;
 using Clean_Connect.Application.Query.WorkersQuery;
 using Clean_Connect.Domain.Entities;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.DTO.Pagination;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Clean_Connect.Infrastructure.Operational;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Clean_Connect.Api.Controllers
@@ -17,11 +20,13 @@ namespace Clean_Connect.Api.Controllers
 
         private readonly IMediator _mediator;
         private readonly ILogger<WorkerController> _logger;
-        public WorkerController(IMediator mediator, ILogger<WorkerController> logger, IUnitOfWork unitOfWork)
+        private readonly IPagedReadRepository _pagedReads;
+        public WorkerController(IMediator mediator, ILogger<WorkerController> logger, IUnitOfWork unitOfWork, IPagedReadRepository pagedReads)
             : base(unitOfWork)
         {
             _logger = logger;
             _mediator = mediator;
+            _pagedReads = pagedReads;
         }
 
 
@@ -116,17 +121,16 @@ namespace Clean_Connect.Api.Controllers
         [HttpGet("all-worker")]
         [Authorize(Roles = "Admin")]
 
-        public async Task<ActionResult> GetAllWorkers(CancellationToken cancellationToken)
+        public async Task<ActionResult> GetAllWorkers([FromQuery] WorkerPageRequest page, CancellationToken cancellationToken)
         {
-            //_logger.LogInformation($"GetAllWorkers: {query}");
-
-            var allWorker = await _mediator.Send(new GetAllWorkersQuery(), cancellationToken);
+            var allWorker = await _pagedReads.GetWorkersAsync(page, cancellationToken);
             _logger.LogInformation("All worker fetched succesfully");
             return Ok(allWorker);
         }
 
         [HttpGet("get-worker-by-id")]
         [Authorize(Roles = "Client,Admin")]
+        [EnableRateLimiting(RateLimitConfiguration.PublicRead)]
         public async Task<ActionResult> GetWorkersById(Guid id, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Getting worker by id");
@@ -167,15 +171,16 @@ namespace Clean_Connect.Api.Controllers
         }
         [HttpGet("get-worker-booking-by-id")]
         [Authorize(Roles = "Worker")]
-        public async Task<ActionResult> GetWorkerBookingsById(Guid id, CancellationToken cancellationToken)
+        public async Task<ActionResult> GetWorkerBookingsById(Guid id, [FromQuery] BookingPageRequest page, CancellationToken cancellationToken)
         {
+            if (!HasValidDateRange(page)) return BadRequest(new { message = "FromDate must be earlier than or equal to ToDate." });
             var workerProfile = await GetCurrentWorkerAsync(cancellationToken);
             if (workerProfile is null || workerProfile.Id != id)
                 return Forbid();
 
             _logger.LogInformation("Getting worker booking by id");
 
-            var worker = await _mediator.Send(new GetAllWorkerBookingsQuery(id), cancellationToken);
+            var worker = await _pagedReads.GetWorkerBookingsAsync(id, page, cancellationToken);
 
             _logger.LogInformation("Worker booking fetched succesfully");
             return Ok(worker);
@@ -183,9 +188,14 @@ namespace Clean_Connect.Api.Controllers
 
         [HttpPost("nearby")]
         [Authorize(Roles = "Client")]
-        public async Task<ActionResult<List<NearbyWorkerDto>>> GetNearbyWorkers([FromBody] GetNearByWorkersQuery query, CancellationToken cancellationToken)
+        [EnableRateLimiting(RateLimitConfiguration.PublicRead)]
+        public async Task<ActionResult> GetNearbyWorkers([FromBody] GetNearByWorkersQuery query, [FromQuery] PaginationRequest page, CancellationToken cancellationToken)
         {
-            var result = await _mediator.Send(query, cancellationToken);
+            if (query.Latitude is < -90 or > 90 || query.Longitude is < -180 or > 180
+                || query.RadiusInMeters <= 0 || query.RadiusInMeters > 100_000 || query.ServiceType == Guid.Empty)
+                return BadRequest(new { message = "Location, service type, and radius are invalid." });
+            var result = await _pagedReads.GetNearbyWorkersAsync(
+                query.Latitude, query.Longitude, query.RadiusInMeters, query.ServiceType, page, cancellationToken);
             return Ok(result);
         }
 

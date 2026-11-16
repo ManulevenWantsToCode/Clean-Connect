@@ -1,15 +1,28 @@
-@model List<Clean_Connect.Application.DTO.BookingDto>
+@model Clean_Connect.Application.DTO.Pagination.PagedResponse<Clean_Connect.Application.DTO.BookingDto>
 @using Clean_Connect.Web.Helpers
 
 @{
     ViewData["Title"] = "Worker Booking Requests";
     Layout = "_DashboardLayout";
 
-    var total = Model?.Count ?? 0;
-    var pending = Model?.Count(b => b.BookingStatus == "Pending") ?? 0;
-    var accepted = Model?.Count(b => b.BookingStatus is "AcceptedAwaitingPayment" or "MarkAsPaid" or "AwaitingClientStartConfirmation" or "InProgress" or "AwaitingClientConfirmation") ?? 0;
-    var completed = Model?.Count(b => b.BookingStatus == "Completed") ?? 0;
-    var declined = Model?.Count(b => b.BookingStatus is "Rejected" or "Cancelled" or "Expired") ?? 0;
+    var rows = Model.Items;
+    var total = Model.TotalCount;
+    var pending = rows.Count(b => b.BookingStatus == "Pending");
+    var accepted = rows.Count(b => b.BookingStatus is "AcceptedAwaitingPayment" or "MarkAsPaid" or "AwaitingClientStartConfirmation" or "InProgress" or "AwaitingClientConfirmation");
+    var completed = rows.Count(b => b.BookingStatus == "Completed");
+    var declined = rows.Count(b => b.BookingStatus is "Rejected" or "Cancelled" or "Expired");
+    var currentStatus = Context.Request.Query["Status"].ToString();
+    var currentSort = string.IsNullOrWhiteSpace(Context.Request.Query["SortBy"]) ? "serviceDate" : Context.Request.Query["SortBy"].ToString();
+    var currentDirection = string.IsNullOrWhiteSpace(Context.Request.Query["SortDirection"]) ? "desc" : Context.Request.Query["SortDirection"].ToString();
+    var currentFromDate = Context.Request.Query["FromDate"].ToString();
+    var currentToDate = Context.Request.Query["ToDate"].ToString();
+    var currentSearchTerm = Context.Request.Query["SearchTerm"].ToString();
+    var previousRoute = Context.Request.Query.ToDictionary(x => x.Key, x => x.Value.ToString());
+    previousRoute["page"] = (Model.Page - 1).ToString();
+    previousRoute["pageSize"] = Model.PageSize.ToString();
+    var nextRoute = Context.Request.Query.ToDictionary(x => x.Key, x => x.Value.ToString());
+    nextRoute["page"] = (Model.Page + 1).ToString();
+    nextRoute["pageSize"] = Model.PageSize.ToString();
 }
 
 <div class="dash-page booking-workflow-page">
@@ -29,6 +42,28 @@
             </a>
         </div>
 
+        <form method="get" asp-action="Responses" class="row g-2 align-items-end mb-3">
+            <input type="hidden" name="PageSize" value="@Model.PageSize" />
+            <input type="hidden" name="SortBy" value="@currentSort" />
+            <input type="hidden" name="SortDirection" value="@currentDirection" />
+            <div class="col-sm-5 col-lg-3"><label class="form-label" for="bookingSearchFilter">Search</label><input class="form-control" id="bookingSearchFilter" type="search" maxlength="100" name="SearchTerm" value="@currentSearchTerm" placeholder="Client or service" /></div>
+            <div class="col-sm-4 col-lg-3">
+                <label class="form-label" for="bookingStatusFilter">Status</label>
+                <select class="form-select" id="bookingStatusFilter" name="Status">
+                    <option value="">All statuses</option>
+                    @foreach (var status in Enum.GetNames<Clean_Connect.Domain.Enums.BookingStatus>())
+                    {
+                        if (currentStatus == status) { <option value="@status" selected>@status</option> }
+                        else { <option value="@status">@status</option> }
+                    }
+                </select>
+            </div>
+            <div class="col-sm-3 col-lg-2"><label class="form-label" for="fromDateFilter">From</label><input class="form-control" id="fromDateFilter" type="date" name="FromDate" value="@currentFromDate" /></div>
+            <div class="col-sm-3 col-lg-2"><label class="form-label" for="toDateFilter">To</label><input class="form-control" id="toDateFilter" type="date" name="ToDate" value="@currentToDate" /></div>
+            <div class="col-auto"><button class="btn btn-success" type="submit">Apply filters</button></div>
+            <div class="col-auto"><a class="btn btn-outline-secondary" asp-action="Responses">Reset</a></div>
+        </form>
+
         @if (total == 0)
         {
             <div class="booking-empty">
@@ -46,19 +81,19 @@
                 </div>
                 <div class="bookings-stat">
                     <span class="bookings-stat__icon warning"><i class="fa-solid fa-hourglass-half"></i></span>
-                    <div><strong>@pending</strong><small>Pending</small></div>
+                    <div><strong>@pending</strong><small>Pending on page</small></div>
                 </div>
                 <div class="bookings-stat">
                     <span class="bookings-stat__icon success"><i class="fa-solid fa-gears"></i></span>
-                    <div><strong>@accepted</strong><small>Active</small></div>
+                    <div><strong>@accepted</strong><small>Active on page</small></div>
                 </div>
                 <div class="bookings-stat">
                     <span class="bookings-stat__icon info"><i class="fa-solid fa-circle-check"></i></span>
-                    <div><strong>@completed</strong><small>Completed</small></div>
+                    <div><strong>@completed</strong><small>Completed on page</small></div>
                 </div>
                 <div class="bookings-stat">
                     <span class="bookings-stat__icon danger"><i class="fa-solid fa-circle-xmark"></i></span>
-                    <div><strong>@declined</strong><small>Declined</small></div>
+                    <div><strong>@declined</strong><small>Declined on page</small></div>
                 </div>
             </div>
 
@@ -91,7 +126,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var b in Model)
+                            @foreach (var b in Model.Items)
                             {
                                 var tone = BookingStatusHelper.BookingTone(b.BookingStatus);
                                 var ptone = BookingStatusHelper.PaymentTone(b.PaymentStatus);
@@ -129,6 +164,15 @@
                             }
                         </tbody>
                     </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center gap-3 p-3 border-top">
+                    <small class="text-muted">Showing page @Model.Page of @(Math.Max(1, Model.TotalPages)) (@Model.TotalCount bookings)</small>
+                    <nav aria-label="Booking pages" class="d-flex gap-2">
+                        @if (Model.HasPreviousPage) { <a class="btn btn-sm btn-outline-secondary" asp-action="Responses" asp-all-route-data="previousRoute">Previous</a> }
+                        else { <span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true">Previous</span> }
+                        @if (Model.HasNextPage) { <a class="btn btn-sm btn-outline-secondary" asp-action="Responses" asp-all-route-data="nextRoute">Next</a> }
+                        else { <span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true">Next</span> }
+                    </nav>
                 </div>
             </div>
         }

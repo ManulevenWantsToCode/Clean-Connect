@@ -7,9 +7,12 @@ using System.Threading.Tasks;
 
 namespace Clean_Connect.Application.Interface.Services
 {
+    public sealed class PaystackTransactionNotFoundException() : Exception("Paystack has no transaction for this reference.");
+    public sealed class PaystackInitializationRejectedException() : Exception("Paystack rejected the initialization request.");
+
     public interface IPaystackService
     {
-        Task<PaystackInitResponse> InitializePayment(decimal amount, string email, string reference, string? callbackUrl = null);
+        Task<PaystackInitResponse> InitializePayment(decimal amount, string email, string reference, string? callbackUrl = null, string? currency = null);
 
         Task<PaystackVerifyResponse> VerifyTransaction(string reference);
 
@@ -21,7 +24,7 @@ namespace Clean_Connect.Application.Interface.Services
         Task<TransferInitiationResponse?> VerifyTransferAsync(string reference, CancellationToken cancellationToken);
         Task<TransferInitiationResponse?> FetchTransferAsync(string transferCode, CancellationToken cancellationToken);
 
-        Task<bool> RefundTransactionAsync(string transactionReference, decimal amount, CancellationToken cancellationToken);
+        Task<bool> RefundTransactionAsync(string transactionReference, decimal amount, CancellationToken cancellationToken, string? refundReference = null, string? currency = null);
 
         Task<List<PaystackBankResponse>> ListBanksAsync(string currency, CancellationToken cancellationToken);
     }

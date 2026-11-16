@@ -117,6 +117,10 @@ namespace Clean_Connect.Web.Controllers
                     model.Title = "Sign in required";
                     model.Message = "Please sign in to view this page.";
                     break;
+                case 429:
+                    model.Title = "Too many requests";
+                    model.Message = "Please wait a moment before trying again.";
+                    break;
                 default:
                     model.Title = "Something went wrong";
                     model.Message = "An unexpected error occurred while processing your request. Please try again.";

@@ -134,7 +134,7 @@ namespace Clean_Connect.Application.Command.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to reconcile legacy payout for escrow {EscrowId}.", escrow.Id);
+                _logger.LogError("Failed to reconcile legacy payout for escrow {EscrowId}; exception type {ExceptionType}.", escrow.Id, ex.GetType().Name);
                 return new PayoutResult(false, "Legacy payout status could not be verified. No new transfer was created.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
             }
         }
@@ -194,6 +194,11 @@ namespace Clean_Connect.Application.Command.Services
                     transferResult = await _paystackService.InitiateTransferAsync(recipientCode, escrow.WorkerShare, reason, reference, cancellationToken);
                 }
 
+                var expectedMinorUnits = decimal.Round(escrow.WorkerShare * 100m, 0, MidpointRounding.AwayFromZero);
+                if (transferResult.Amount != expectedMinorUnits
+                    || !string.Equals(transferResult.Reference, reference, StringComparison.Ordinal))
+                    throw new InvalidOperationException("Paystack transfer verification did not match the persisted payout attempt.");
+
                 await _repo.Escrows.RefreshAsync(escrow, cancellationToken);
                 if (escrow.Status != EscrowStatus.PaidOut)
                 {
@@ -221,7 +226,7 @@ namespace Clean_Connect.Application.Command.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Direct transfer payout failed for booking: {BookingId}. Payout deferred for retry.", booking.Id);
+                _logger.LogError("Direct transfer payout failed for booking {BookingId}; exception type {ExceptionType}. Payout deferred for retry.", booking.Id, ex.GetType().Name);
                 try
                 {
                     await _repo.Escrows.RefreshAsync(escrow, cancellationToken);
@@ -236,7 +241,7 @@ namespace Clean_Connect.Application.Command.Services
                 }
                 catch (Exception persistenceException)
                 {
-                    _logger.LogError(persistenceException, "Could not persist the unknown payout state for booking {BookingId}.", booking.Id);
+                    _logger.LogError("Could not persist the unknown payout state for booking {BookingId}; exception type {ExceptionType}.", booking.Id, persistenceException.GetType().Name);
                 }
                 return new PayoutResult(false, "Paystack did not return a conclusive result. The payout is saved for reconciliation and will reuse its transfer reference.", escrow.PaystackTransferCode, escrow.TransferStatus.ToString());
             }

@@ -5,6 +5,7 @@ using Clean_Connect.Application.Command.ClientCommands;
 using Clean_Connect.Application.Command.PaymentCommand;
 using Clean_Connect.Application.Command.WorkerCommands;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.DTO.Pagination;
 using Clean_Connect.Application.Query.BookingChatQuery;
 using Clean_Connect.Application.Query.ClientQuery;
 using Clean_Connect.Application.Query.WorkersQuery;
@@ -15,6 +16,8 @@ using Clean_Connect.Web.Services;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Clean_Connect.Infrastructure.Operational;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Clean_Connect.Web.Controllers
@@ -24,6 +27,7 @@ namespace Clean_Connect.Web.Controllers
     {
         private readonly IMediator _mediator;
         private readonly IUnitOfWork _repo;
+        private readonly IPagedReadRepository _pagedReads;
         private readonly INotyfService _notyf;
         private readonly IRealtimeNotificationService _notifications;
         private readonly IWorkerPresenceService _presence;
@@ -33,6 +37,7 @@ namespace Clean_Connect.Web.Controllers
         public BookingController(
             IMediator mediator,
             IUnitOfWork repo,
+            IPagedReadRepository pagedReads,
             INotyfService notyf,
             IRealtimeNotificationService notifications,
             IWorkerPresenceService presence,
@@ -40,6 +45,7 @@ namespace Clean_Connect.Web.Controllers
         {
             _mediator = mediator;
             _repo = repo;
+            _pagedReads = pagedReads;
             _notyf = notyf;
             _notifications = notifications;
             _presence = presence;
@@ -285,8 +291,10 @@ namespace Clean_Connect.Web.Controllers
         }
 
         [HttpGet("Worker-Bookings")]
-        public async Task<IActionResult> Responses(CancellationToken ct)
+        public async Task<IActionResult> Responses([FromQuery] BookingPageRequest pagination, CancellationToken ct)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!HasValidDateRange(pagination)) return BadRequest("FromDate must be earlier than or equal to ToDate.");
             var worker = await GetCurrentWorkerAsync(ct);
             if (worker == null)
             {
@@ -295,8 +303,8 @@ namespace Clean_Connect.Web.Controllers
                 return RedirectToAction("CreateWorkerProfile", "Worker");
             }
 
-            var bookings = await _mediator.Send(new GetAllWorkerBookingsQuery(worker.Id), ct);
-            return View(bookings.OrderByDescending(x => x.BookingDate).ToList());
+            var bookings = await _pagedReads.GetWorkerBookingsAsync(worker.Id, pagination, ct);
+            return View(bookings);
         }
 
         [HttpGet("Worker-Booking-Details/{bookingId:guid}")]
@@ -342,8 +350,10 @@ namespace Clean_Connect.Web.Controllers
         }
 
         [HttpGet("Client-Bookings")]
-        public async Task<IActionResult> ClientResponses(CancellationToken ct)
+        public async Task<IActionResult> ClientResponses([FromQuery] BookingPageRequest pagination, CancellationToken ct)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!HasValidDateRange(pagination)) return BadRequest("FromDate must be earlier than or equal to ToDate.");
             var client = await GetCurrentClientAsync(ct);
             if (client == null)
             {
@@ -351,8 +361,8 @@ namespace Clean_Connect.Web.Controllers
                 return RedirectToAction("CreateClientProfile", "Client");
             }
 
-            var bookings = await _mediator.Send(new GetAllClientBookingsQuery(client.Id), ct);
-            return View(bookings.OrderByDescending(x => x.BookingDate).ToList());
+            var bookings = await _pagedReads.GetClientBookingsAsync(client.Id, pagination, ct);
+            return View(bookings);
         }
 
         [HttpGet("Client-Booking-Details/{bookingId:guid}")]
@@ -682,7 +692,8 @@ namespace Clean_Connect.Web.Controllers
 
         [HttpPost("Client-Bookings/{bookingId:guid}/pay")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Pay(Guid bookingId, CancellationToken ct)
+        [EnableRateLimiting(RateLimitConfiguration.Sensitive)]
+        public async Task<IActionResult> Pay(Guid bookingId, string? idempotencyKey, CancellationToken ct)
         {
             var client = await GetCurrentClientAsync(ct);
             if (client == null)
@@ -714,7 +725,8 @@ namespace Clean_Connect.Web.Controllers
                     client.Email.Value,
                     "Paystack",
                     User.Identity?.Name,
-                    callbackUrl), ct);
+                    callbackUrl,
+                    idempotencyKey), ct);
 
                 _notyf.Success("Payment checkout is ready.");
                 return Redirect(payment.CheckoutUrl);
@@ -1132,6 +1144,9 @@ namespace Clean_Connect.Web.Controllers
             }
             return client;
         }
+
+        private static bool HasValidDateRange(BookingPageRequest request) =>
+            !request.FromDate.HasValue || !request.ToDate.HasValue || request.FromDate <= request.ToDate;
 
         private async Task<Worker?> GetCurrentWorkerAsync(CancellationToken ct)
         {

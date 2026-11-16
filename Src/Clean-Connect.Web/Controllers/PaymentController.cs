@@ -6,6 +6,8 @@ using Clean_Connect.Web.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Clean_Connect.Infrastructure.Operational;
 
 namespace Clean_Connect.Web.Controllers
 {
@@ -30,6 +32,7 @@ namespace Clean_Connect.Web.Controllers
         }
 
         [HttpGet("Payment/Callback")]
+        [EnableRateLimiting(RateLimitConfiguration.Sensitive)]
         public async Task<IActionResult> Callback(string trxref, string reference, CancellationToken ct)
         {
             var client = await GetCurrentClientAsync(ct);

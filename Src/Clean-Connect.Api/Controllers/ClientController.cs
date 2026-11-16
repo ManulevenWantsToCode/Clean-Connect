@@ -2,6 +2,7 @@
 using Clean_Connect.Application.Command.WorkerCommands;
 using Clean_Connect.Application.Query.ClientQuery;
 using Clean_Connect.Application.Interface.Repositories;
+using Clean_Connect.Application.DTO.Pagination;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,11 +15,13 @@ namespace Clean_Connect.Api.Controllers
     {
         private readonly ILogger<ClientController> logger;
         private readonly IMediator mediator;
-        public ClientController(ILogger<ClientController> _logger, IMediator _mediator, IUnitOfWork unitOfWork)
+        private readonly IPagedReadRepository pagedReads;
+        public ClientController(ILogger<ClientController> _logger, IMediator _mediator, IUnitOfWork unitOfWork, IPagedReadRepository pagedReads)
             : base(unitOfWork)
         {
             logger = _logger;
             mediator = _mediator;
+            this.pagedReads = pagedReads;
         }
 
         [HttpPost("register-client")]
@@ -53,8 +56,9 @@ namespace Clean_Connect.Api.Controllers
         [HttpGet("get-client-bookings-by-id")]
         [Authorize(Roles = "Client,Admin")]
 
-        public async Task<ActionResult> GetClientBookingsById(Guid id, CancellationToken cancellationToken)
+        public async Task<ActionResult> GetClientBookingsById(Guid id, [FromQuery] BookingPageRequest page, CancellationToken cancellationToken)
         {
+            if (!HasValidDateRange(page)) return BadRequest(new { message = "FromDate must be earlier than or equal to ToDate." });
             if (!IsAdministrator)
             {
                 var clientProfile = await GetCurrentClientAsync(cancellationToken);
@@ -63,19 +67,18 @@ namespace Clean_Connect.Api.Controllers
             }
 
             logger.LogInformation("Fetching client bookings by ID");
-            var client = new GetAllClientBookingsQuery(id);
-            var result = await mediator.Send(client, cancellationToken);
+            var result = await pagedReads.GetClientBookingsAsync(id, page, cancellationToken);
             logger.LogInformation("Client bookings fetched successfully");
             return Ok(result);
         }
 
         [HttpGet("all-clients")]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult> GetAllClients(CancellationToken cancellationToken)
+        public async Task<ActionResult> GetAllClients([FromQuery] ClientPageRequest page, CancellationToken cancellationToken)
         {
             logger.LogInformation("Fetching all clients");
 
-            var result = await mediator.Send(new GetAllClientQuery(), cancellationToken);
+            var result = await pagedReads.GetClientsAsync(page, cancellationToken);
             logger.LogInformation("All clients fetched successfully");
             return Ok(result);
         }

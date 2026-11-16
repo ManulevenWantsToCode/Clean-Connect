@@ -8,6 +8,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Clean_Connect.Infrastructure.Operational;
 using System.Security.Claims;
 
 namespace Clean_Connect.Web.Controllers
@@ -43,6 +45,7 @@ namespace Clean_Connect.Web.Controllers
         [HttpPost("Login")]
         [ValidateAntiForgeryToken]
         [AllowAnonymous]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
         public async Task<IActionResult> Login(LoginDto model, CancellationToken cancellationToken = default)
         {
             if (!ModelState.IsValid)
@@ -319,6 +322,7 @@ namespace Clean_Connect.Web.Controllers
             return View();
         }
         [HttpPost("Register-User")]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
         public async Task<IActionResult> Register([FromForm] RegisterUserCommand request, CancellationToken cancellationToken)
         {
 
@@ -381,6 +385,7 @@ namespace Clean_Connect.Web.Controllers
         }
 
         [HttpPost("Resend-Email")]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ResendConfirmationEmail(string email)
         {
@@ -438,6 +443,7 @@ namespace Clean_Connect.Web.Controllers
         }
 
         [HttpGet("Confirm-Email")]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
 
         public async Task<IActionResult> ConfirmEmail(Guid userId, string token, CancellationToken cancellationToken)
         {
@@ -454,12 +460,14 @@ namespace Clean_Connect.Web.Controllers
         }
 
         [HttpGet]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
         public IActionResult ForgotPassword()
         {
            return View(new ForgotPasswordDto());
         }
 
         [HttpPost]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordDto model)
         {
@@ -526,6 +534,7 @@ namespace Clean_Connect.Web.Controllers
 
 
         [HttpPost("Reset-Password")]
+        [EnableRateLimiting(RateLimitConfiguration.Authentication)]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ResetPassword(ResetPasswordDto model)
         {

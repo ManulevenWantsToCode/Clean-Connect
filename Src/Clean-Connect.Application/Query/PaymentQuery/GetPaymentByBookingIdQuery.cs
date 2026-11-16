@@ -27,7 +27,7 @@ namespace Clean_Connect.Application.Query.PaymentQuery
         {
             if(request.BookingId == Guid.Empty)
             {
-                logger.LogWarning("Invalid key", request.BookingId);
+                logger.LogWarning("Invalid booking ID for payment lookup: {BookingId}", request.BookingId);
                 throw new Exception("Invalid key");
             }
             var payments = await repo.Payments.GetPaymentsByBookingId(request.BookingId, cancellationToken);
